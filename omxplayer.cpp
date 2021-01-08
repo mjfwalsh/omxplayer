@@ -2024,15 +2024,23 @@ do_exit:
 
   m_player_subtitles.Clear();
 
-  unsigned t = (unsigned)(m_av_clock->OMXMediaTime()*1e-6);
-  auto dur = m_omx_reader.GetStreamLength() / 1000;
+  int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
+  int dur = m_omx_reader.GetStreamLength() / 1000;
   printf("Stopped at: %02u:%02u:%02u\n", (t/3600), (t/60)%60, t%60);
   printf("  Duration: %02u:%02u:%02u\n", (dur/3600), (dur/60)%60, dur%60);
 
-  // Try to catch instances where m_send_eos has been set but we haven't
-  // actually reached the end of the current file.
-  if(m_send_eos && m_next_prev_file == 0 && (dur - t) > 2)
-    m_send_eos = false;
+  // Catch eos errors, except for live streams
+  if(!m_config_audio.is_live)
+  {
+    // Try to catch instances where m_send_eos has been set but we haven't
+    // actually reached the end of the current file.
+    if(m_send_eos && m_next_prev_file == 0 && (dur - t) > 2)
+      m_send_eos = false;
+
+    // and instances where we're stopping after the end a file
+    if(t >= dur)
+      m_send_eos = true;
+  }
 
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
