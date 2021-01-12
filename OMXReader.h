@@ -166,7 +166,8 @@ public:
     return m_streams[index].index;
   }
 
-  int GetStreamLength();
+  int GetStreamLengthSeconds();
+  int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
   std::string GetCodecName(OMXStreamType type);
   std::string GetCodecName(OMXStreamType type, unsigned int index);

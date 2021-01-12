@@ -1457,7 +1457,7 @@ int main(int argc, char *argv[])
         puts("Step");
         {
           auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
-          auto dur = m_omx_reader.GetStreamLength() / 1000;
+          int dur = m_omx_reader.GetStreamLengthSeconds();
           DISPLAY_TEXT_SHORT(
             strprintf("Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
               (t/3600000), (t/60000)%60, (t/1000)%60, t%1000,
@@ -1696,7 +1696,7 @@ int main(int argc, char *argv[])
             m_player_subtitles.Pause();
 
           auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-6);
-          auto dur = m_omx_reader.GetStreamLength() / 1000;
+          int dur = m_omx_reader.GetStreamLengthSeconds();
           DISPLAY_TEXT_LONG(strprintf("Pause\n%02d:%02d:%02d / %02d:%02d:%02d",
             (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60));
         }
@@ -1706,7 +1706,7 @@ int main(int argc, char *argv[])
             m_player_subtitles.Resume();
 
           auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-6);
-          auto dur = m_omx_reader.GetStreamLength() / 1000;
+          int dur = m_omx_reader.GetStreamLengthSeconds();
           DISPLAY_TEXT_SHORT(strprintf("Play\n%02d:%02d:%02d / %02d:%02d:%02d",
             (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60));
         }
@@ -1775,7 +1775,7 @@ int main(int argc, char *argv[])
         if(m_omx_reader.SeekTime(seek_pos, m_incr < 0.0f, &startpts))
         {
           unsigned t = (unsigned)(startpts*1e-6);
-          auto dur = m_omx_reader.GetStreamLength() / 1000;
+          int dur = m_omx_reader.GetStreamLengthSeconds();
           string m = strprintf("%02d:%02d:%02d / %02d:%02d:%02d",
               (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60);
 
@@ -2025,7 +2025,7 @@ do_exit:
   m_player_subtitles.Clear();
 
   int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
-  int dur = m_omx_reader.GetStreamLength() / 1000;
+  int dur = m_omx_reader.GetStreamLengthSeconds();
   printf("Stopped at: %02u:%02u:%02u\n", (t/3600), (t/60)%60, t%60);
   printf("  Duration: %02u:%02u:%02u\n", (dur/3600), (dur/60)%60, dur%60);
 

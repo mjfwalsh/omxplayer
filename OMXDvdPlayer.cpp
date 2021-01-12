@@ -85,7 +85,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 
 		titles[h].enabled = true;
 		titles[h].vts = title_set_nr;
-		titles[h].length = dvdtime2msec(&pgc->playback_time)/1000.0;
+		titles[h].length = dvdtime2msec(&pgc->playback_time);
 		titles[h].chapter_count = pgc->nr_of_programs;
 		int cell_count = pgc->nr_of_cells;
 
@@ -99,9 +99,9 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			int next = pgc->cell_playback[i+1].first_sector - 1;
 			if(end != next) {
 				last_sector = end;
-				float missing_time = 0;
+				int missing_time = 0;
 				for (i++; i < cell_count; i++){
-					missing_time += dvdtime2msec(&pgc->cell_playback[i].playback_time)/1000.0;
+					missing_time += dvdtime2msec(&pgc->cell_playback[i].playback_time);
 				}
 				titles[h].length -= missing_time;
 				break;
@@ -114,9 +114,9 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		titles[h].last_sector = last_sector;
 
 		// Chapters
-		titles[h].chapters = new float[titles[h].chapter_count];
+		titles[h].chapters = new int[titles[h].chapter_count];
 
-		float acc_chapter = 0;
+		int acc_chapter = 0;
 		for (int i=0; i<titles[h].chapter_count; i++) {
 			int idx = pgc->program_map[i] - 1;
 			int first_cell_sector = pgc->cell_playback[idx].first_sector;
@@ -126,7 +126,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			}
 			titles[h].chapters[i] = acc_chapter;
 
-			acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time)/1000.0;
+			acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
 		}
 
 		// Streams
@@ -259,9 +259,9 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 	return read_blocks * 2048;
 }
 
-int64_t OMXDvdPlayer::getCurrentTrackLength()
+int OMXDvdPlayer::getCurrentTrackLength()
 {
-	return (int64_t)(titles[current_track].length * 1000000);
+	return titles[current_track].length;
 }
 
 int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
@@ -277,7 +277,7 @@ int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
 	return 0;
 }
 
-int64_t OMXDvdPlayer::GetLength()
+int64_t OMXDvdPlayer::GetSizeInBytes()
 {
 	return (int64_t)total_blocks * 2048;
 }
@@ -297,7 +297,7 @@ int OMXDvdPlayer::TotalChapters()
 
 float OMXDvdPlayer::GetChapterStartTime(int i)
 {
-	return titles[current_track].chapters[i];
+	return (float)(titles[current_track].chapters[i] / 1000.0);
 }
 
 void OMXDvdPlayer::CloseTrack()
@@ -415,7 +415,7 @@ void OMXDvdPlayer::enableHeuristicTrackSelection()
 {
 	// Disable tracks which are shorter than two minutes
 	for(int i = 0; i < title_count; i++) {
-		if(titles[i].length < 120) {
+		if(titles[i].length < 120000) {
 			titles[i].enabled = false;
 		}
 	}

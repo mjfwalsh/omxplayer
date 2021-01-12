@@ -19,8 +19,8 @@ class OMXDvdPlayer
 	int Read(unsigned char *lpBuf, int64_t uiBufSize);
 	int64_t Seek(int64_t iFilePosition, int iWhence);
 	bool IsEOF();
-	int64_t GetLength();
-	int64_t getCurrentTrackLength();
+	int64_t GetSizeInBytes();
+	int getCurrentTrackLength();
 	int TotalChapters();
 	float GetChapterStartTime(int i);
 	int GetCurrentTrack() const { return current_track; }
@@ -57,9 +57,9 @@ class OMXDvdPlayer
 	struct title_info {
 		bool enabled;
 		int vts;
-		float length;
+		int length;
 		int chapter_count;
-		float *chapters;
+		int *chapters;
 		int audiostream_count;
 		int subtitle_count;
 		struct stream_info {

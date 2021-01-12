@@ -168,7 +168,7 @@ static offset_t dvdread_file_seek(void *h, offset_t pos, int whence)
 
   OMXDvdPlayer *reader =(OMXDvdPlayer*) h;
   if(whence == AVSEEK_SIZE)
-    return reader->GetLength();
+    return reader->GetSizeInBytes();
   else
     return reader->Seek(pos, whence);
 }
@@ -375,11 +375,11 @@ bool OMXReader::Open(
   if(m_pFile)
   {
     int64_t len = m_pFile->GetLength();
-    int64_t tim = GetStreamLength();
+    int64_t tim = GetStreamLengthMicro();
 
     if(len > 0 && tim > 0)
     {
-      unsigned rate = len * 1000 / tim;
+      unsigned rate = (len * 1000000) / tim;
       unsigned maxrate = rate + 1024 * 1024 / 8;
       if(m_pFile->IoControl(IOCTRL_CACHE_SETRATE, &maxrate) >= 0)
         CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - set cache throttle rate to %u bytes per second", maxrate);
@@ -1133,15 +1133,26 @@ void OMXReader::SetSpeed(int iSpeed)
   }
 }
 
-int OMXReader::GetStreamLength()
+int OMXReader::GetStreamLengthSeconds()
 {
   if (!m_pFormatContext)
     return 0;
 
   if(m_DvdPlayer)
-    return (int)(m_DvdPlayer->getCurrentTrackLength() / (AV_TIME_BASE / 1000));
+    return (int)( m_DvdPlayer->getCurrentTrackLength() / 1000 );
 
-  return (int)(m_pFormatContext->duration / (AV_TIME_BASE / 1000));
+  return (int)(m_pFormatContext->duration / AV_TIME_BASE );
+}
+
+int64_t OMXReader::GetStreamLengthMicro()
+{
+  if (!m_pFormatContext)
+    return 0;
+
+  if(m_DvdPlayer)
+    return m_DvdPlayer->getCurrentTrackLength() * 1000;
+
+  return m_pFormatContext->duration;
 }
 
 double OMXReader::NormalizeFrameduration(double frameduration)

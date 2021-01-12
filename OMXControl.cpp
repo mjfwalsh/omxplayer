@@ -383,8 +383,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
             dbus_message_iter_close_container(&dict_cont, &dict_entry_cont);
             //Second dict entry: duration in us
             const char *key2 = "mpris:length";
-            dbus_int64_t value2 = reader->GetStreamLength()*1000;
-            reader->GetStreamLength();
+            dbus_int64_t value2 = reader->GetStreamLengthMicro();
             dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
               dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key2);
               dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_INT64_AS_STRING, &var);
@@ -431,8 +430,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
       else if (strcmp(property,  "Duration")==0)
       {
         // Returns the duration in microseconds
-        int64_t dur = reader->GetStreamLength();
-        dur *= 1000; // ms -> us
+        int64_t dur = reader->GetStreamLengthMicro();
         dbus_respond_int64(m, dur);
         return KeyConfig::ACTION_BLANK;
       }
@@ -750,8 +748,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Duration"))
   {
     // Returns the duration in microseconds
-    int64_t dur = reader->GetStreamLength();
-    dur *= 1000; // ms -> us
+    int64_t dur = reader->GetStreamLengthMicro();
     dbus_respond_int64(m, dur);
     deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
