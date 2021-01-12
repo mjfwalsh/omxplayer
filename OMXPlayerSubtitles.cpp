@@ -543,6 +543,9 @@ bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
     return true;
   }
 
+  if(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE && !m_dvd_codec_context)
+    return true;
+
   Subtitle sub(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE);
 
   sub.start = static_cast<int>(pkt->pts/1000);
