@@ -57,7 +57,6 @@ version:
 
 omxplayer.bin: version $(OBJS)
 	$(CXX) $(LDFLAGS) -o omxplayer.bin $(OBJS) -lvchiq_arm -lvchostif -lvcos -ldbus-1 -lrt -lpthread -lavutil -lavcodec -lavformat -lswscale -lswresample -lpcre
-	$(STRIP) omxplayer.bin
 
 help.h: README.md Makefile
 	awk '/SYNOPSIS/{p=1;print;next} p&&/KEY BINDINGS/{p=0};p' $< \
@@ -105,6 +104,7 @@ ffmpeg-clean:
 	@ ./ffmpeg_helper.sh clean
 
 dist:
+	$(STRIP) omxplayer.bin
 	tar -cPf $(DIST).tgz \
 	--transform 's,^omxplayer$$,/usr/bin/omxplayer,S' \
 	--transform 's,^omxplayer.bin$$,/usr/bin/omxplayer.bin,S' \
@@ -116,6 +116,7 @@ dist:
 	`if [ -e ffmpeg_compiled ]; then echo ffmpeg_compiled/usr/local/lib/*.so*; fi`
 
 install:
+	$(STRIP) omxplayer.bin
 	cp omxplayer omxplayer.bin /usr/bin/
 	mkdir -p /usr/share/doc/omxplayer
 	cp COPYING /usr/share/doc/omxplayer/COPYING

@@ -686,9 +686,16 @@ int main(int argc, char *argv[])
         m_refresh = true;
         break;
       case 'g':
-        m_gen_log = (char *)malloc(strlen(optarg) + 1);
-        if(optarg) strcpy(m_gen_log, optarg);
-        else strcpy(m_gen_log, "./omxplayer.log");
+        if(optarg)
+        {
+          m_gen_log = (char *)malloc(strlen(optarg) + 1);
+          strcpy(m_gen_log, optarg);
+        }
+        else
+        {
+          m_gen_log = (char *)malloc(16);
+          strcpy(m_gen_log, "./omxplayer.log");
+        }
         break;
       case 'y':
         m_config_video.hdmi_clock_sync = true;
@@ -977,12 +984,19 @@ int main(int argc, char *argv[])
 
   // Init logging
   if(!m_gen_log)
+  {
     CLog::Init(LOGNONE, m_gen_log);
+  }
   else if(strcasecmp(m_gen_log, "stdout") == 0)
+  {
     CLog::Init(LOGWARNING, m_gen_log);
+    free(m_gen_log);
+  }
   else
+  {
     CLog::Init(LOGDEBUG, m_gen_log);
-  free(m_gen_log);
+    free(m_gen_log);
+  }
 
   // start the clock
   m_av_clock = new OMXClock();
