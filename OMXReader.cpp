@@ -903,27 +903,20 @@ bool OMXReader::IsActive(OMXStreamType type, int stream_index)
 
 double OMXReader::SelectAspect(AVStream* st, bool& forced)
 {
-  // trust matroshka container
-  if (m_bMatroska && st->sample_aspect_ratio.num != 0)
+  /* if stream aspect unknown or resolves to 1, use codec aspect */
+  /* but don't do this in Matroska containers */
+  if(!m_bMatroska && (st->sample_aspect_ratio.num == 0 || st->sample_aspect_ratio.num == st->sample_aspect_ratio.den)
+    && st->codec->sample_aspect_ratio.num != 0 && st->codec->sample_aspect_ratio.den != 0)
   {
-    forced = true;
-    return av_q2d(st->sample_aspect_ratio);
-  }
-
-  forced = false;
-  /* if stream aspect is 1:1 or 0:0 use codec aspect */
-  if((st->sample_aspect_ratio.den == 1 || st->sample_aspect_ratio.den == 0) &&
-     (st->sample_aspect_ratio.num == 1 || st->sample_aspect_ratio.num == 0) &&
-      st->codec->sample_aspect_ratio.num != 0)
-  {
+    forced = false;
     return av_q2d(st->codec->sample_aspect_ratio);
   }
 
   forced = true;
-  if(st->sample_aspect_ratio.num != 0)
+  if(st->sample_aspect_ratio.num != 0 && st->sample_aspect_ratio.den != 0)
     return av_q2d(st->sample_aspect_ratio);
 
-  return 0.0;
+  return 1.0;
 }
 
 bool OMXReader::GetHints(AVStream *stream, COMXStreamInfo *hints)
