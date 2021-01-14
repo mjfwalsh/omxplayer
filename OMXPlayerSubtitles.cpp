@@ -512,7 +512,11 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   int got_sub_ptr = -1;
   m_dllAvCodec.avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
 
-  if(got_sub_ptr < 1 || s.num_rects < 1) return false;
+  if(got_sub_ptr < 1 || s.num_rects < 1 || s.rects[0]->nb_colors != 4)
+  {
+    avsubtitle_free(&s);
+    return false;
+  }
 
   // Fix time
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
@@ -520,6 +524,7 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   sub.image.data.assign(s.rects[0]->pict.data[0], s.rects[0]->pict.linesize[0] * s.rects[0]->h);
   sub.image.rect = {s.rects[0]->x, s.rects[0]->y, s.rects[0]->w, s.rects[0]->h};
 
+  avsubtitle_free(&s);
   return true;
 }
 
@@ -563,7 +568,8 @@ bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
   else
     success = GetTextLines(pkt, sub);
 
-  if(!success) return false;
+  // return true to show the packet was used
+  if(!success) return true;
 
   m_subtitle_buffers[stream_index].push_back(sub);
 
