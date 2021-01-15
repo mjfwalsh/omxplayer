@@ -113,7 +113,7 @@ static int interrupt_cb(void *unused)
   return ret;
 }
 
-static int dvdread_file_read(void *h, uint8_t* buf, int size)
+static int dvd_read(void *h, uint8_t* buf, int size)
 {
   RESET_TIMEOUT(1);
   if(interrupt_cb(NULL))
@@ -130,7 +130,7 @@ static int dvdread_file_read(void *h, uint8_t* buf, int size)
   return ret;
 }
 
-static int dvd_file_read(void *h, uint8_t* buf, int size)
+static int media_file_read(void *h, uint8_t* buf, int size)
 {
   RESET_TIMEOUT(1);
   if(interrupt_cb(NULL))
@@ -147,7 +147,7 @@ static int dvd_file_read(void *h, uint8_t* buf, int size)
   return ret;
 }
 
-static offset_t dvd_file_seek(void *h, offset_t pos, int whence)
+static offset_t media_file_seek(void *h, offset_t pos, int whence)
 {
   RESET_TIMEOUT(1);
   if(interrupt_cb(NULL))
@@ -160,7 +160,7 @@ static offset_t dvd_file_seek(void *h, offset_t pos, int whence)
     return pFile->Seek(pos, whence & ~AVSEEK_FORCE);
 }
 
-static offset_t dvdread_file_seek(void *h, offset_t pos, int whence)
+static offset_t dvd_seek(void *h, offset_t pos, int whence)
 {
   RESET_TIMEOUT(1);
   if(interrupt_cb(NULL))
@@ -244,7 +244,7 @@ bool OMXReader::Open(
     CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", m_filename.c_str());
 
     buffer = (unsigned char*)m_dllAvUtil.av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvdread_file_read, NULL, dvdread_file_seek);
+    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
 
     m_dllAvFormat.av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
 
@@ -319,7 +319,7 @@ bool OMXReader::Open(
     }
 
     buffer = (unsigned char*)m_dllAvUtil.av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_pFile, dvd_file_read, NULL, dvd_file_seek);
+    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_pFile, media_file_read, NULL, media_file_seek);
     m_ioContext->max_packet_size = 6144;
     if(m_ioContext->max_packet_size)
       m_ioContext->max_packet_size *= FFMPEG_FILE_BUFFER_SIZE / m_ioContext->max_packet_size;
