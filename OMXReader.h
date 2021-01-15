@@ -33,6 +33,7 @@
 #include "OMXDvdPlayer.h"
 
 #include "File.h"
+#include "utils/simple_geometry.h"
 
 #include <sys/types.h>
 #include <string>
@@ -177,5 +178,6 @@ public:
   std::string GetStreamName(OMXStreamType type, unsigned int index);
   std::string GetStreamType(OMXStreamType type, unsigned int index);
   bool CanSeek();
+  bool FindDVDSubs(Dimension &d, float &aspect);
 };
 #endif

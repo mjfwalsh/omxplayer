@@ -1318,13 +1318,13 @@ int main(int argc, char *argv[])
                                 std::move(external_subtitles)))
       ExitGentlyOnError();
 
-    if(m_is_dvd)
-    {
-      if(!m_player_subtitles.initDVDSubs({m_config_video.hints.width, m_config_video.hints.height},
-                                m_config_video.hints.aspect,
-                                m_config_video.aspectMode))
+	// sub_dim and sub_aspect asre passed through FindDVDSubs in case
+	// the subtitles have a different size
+	Dimension sub_dim = {m_config_video.hints.width, m_config_video.hints.height};
+	float sub_aspect = m_config_video.hints.aspect;
+    if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect)
+        && !m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode))
       ExitGentlyOnError();
-    }
   }
 
   if(m_has_subtitle)
@@ -2013,22 +2013,18 @@ int main(int argc, char *argv[])
     else if(m_has_subtitle && m_omx_pkt && !TRICKPLAY(m_av_clock->OMXPlaySpeed()) &&
             m_omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
     {
-      auto result = m_player_subtitles.AddPacket(m_omx_pkt,
+      m_player_subtitles.AddPacket(m_omx_pkt,
                       m_omx_reader.GetRelativeIndex(m_omx_pkt->stream_index));
-      if (result)
-        m_omx_pkt = NULL;
-      else
-        OMXClock::OMXSleep(10);
+      m_omx_pkt = NULL;
+    }
+    else if(m_omx_pkt)
+    {
+      delete m_omx_pkt;
+      m_omx_pkt = NULL;
     }
     else
     {
-      if(m_omx_pkt)
-      {
-        delete m_omx_pkt;
-        m_omx_pkt = NULL;
-      }
-      else
-        OMXClock::OMXSleep(10);
+      OMXClock::OMXSleep(10);
     }
   }
 

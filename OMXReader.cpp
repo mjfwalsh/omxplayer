@@ -1361,3 +1361,24 @@ bool OMXReader::CanSeek()
 
   return false;
 }
+
+// Find if dvd subs are present and returns true if so.
+// If width and height are available, it sets them too.
+// We assume that all dvd subs will have the same dimensions.
+bool OMXReader::FindDVDSubs(Dimension &d, float &aspect)
+{
+  for(int i = 0; i < MAX_STREAMS; i++)
+  {
+    if(m_streams[i].type == OMXSTREAM_SUBTITLE && m_streams[i].hints.codec == AV_CODEC_ID_DVD_SUBTITLE)
+    {
+      if(m_streams[i].hints.width > 0 && m_streams[i].hints.height > 0)
+      {
+        d.width = m_streams[i].hints.width;
+        d.height = m_streams[i].hints.height;
+        aspect = d.width / (float)d.height;
+      }
+      return true;
+    }
+  }
+  return false;
+}
