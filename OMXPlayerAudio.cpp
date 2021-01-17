@@ -350,13 +350,8 @@ void OMXPlayerAudio::Flush()
 
 bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
 {
-  bool ret = false;
-
-  if(!pkt)
-    return ret;
-
   if(m_bStop || m_bAbort)
-    return ret;
+    return false;
 
   if((m_cached_size + pkt->size) < m_config.queue_size * 1024 * 1024)
   {
@@ -364,11 +359,11 @@ bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
     m_cached_size += pkt->size;
     m_packets.push_back(pkt);
     UnLock();
-    ret = true;
     pthread_cond_broadcast(&m_packet_cond);
+    return true;
   }
 
-  return ret;
+  return false;
 }
 
 bool OMXPlayerAudio::OpenAudioCodec()

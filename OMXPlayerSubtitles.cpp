@@ -528,12 +528,9 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   return true;
 }
 
-bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT
 {
   assert(stream_index < m_subtitle_buffers.size());
-
-  if(!pkt)
-    return false;
 
   SCOPE_EXIT
   {
@@ -545,7 +542,7 @@ bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
      pkt->hints.codec != AV_CODEC_ID_ASS &&
      pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
   {
-    return true;
+    return;
   }
 
   Subtitle sub(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE);
@@ -564,9 +561,7 @@ bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
     success = GetImageData(pkt, sub);
   else
     success = GetTextLines(pkt, sub);
-
-  // return true to show the packet was used
-  if(!success) return true;
+  if(!success) return;
 
   m_subtitle_buffers[stream_index].push_back(sub);
 
@@ -576,8 +571,6 @@ bool OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
   {
     SendToRenderer(Message::Push{std::move(sub)});
   }
-
-  return true;
 }
 
 void OMXPlayerSubtitles::DisplayText(const std::string& text, int duration) BOOST_NOEXCEPT

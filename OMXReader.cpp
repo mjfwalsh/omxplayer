@@ -212,7 +212,10 @@ bool OMXReader::Open(
 
   // the default size doesn't appear to be big enough for DVDs
   if(m_DvdPlayer)
-    m_dllAvFormat.av_set_options_string(m_pFormatContext, "probesize:100M,analyzeduration:100M", ":", ",");
+  {
+    m_pFormatContext->probesize = 100000000;
+    m_pFormatContext->max_analyze_duration = 100000000;
+  }
 
   result = m_dllAvFormat.av_set_options_string(m_pFormatContext, lavfdopts.c_str(), ":", ",");
 

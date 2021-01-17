@@ -93,7 +93,7 @@ public:
 
   void DisplayText(const std::string& text, int duration) BOOST_NOEXCEPT;
 
-  bool AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT;
+  void AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT;
 
 protected:
   DllAvCodec                m_dllAvCodec;

@@ -331,11 +331,11 @@ void SetVideoMode(int width, int height, int fpsrate, int fpsscale, FORMAT_3D_T 
 
       /* Check if frame rate match (equal or exact multiple) */
       if(fabs(r - 1.0f*fps) / fps < 0.002f)
-  score += 0;
+        score += 0;
       else if(fabs(r - 2.0f*fps) / fps < 0.002f)
-  score += 1<<8;
+        score += 1<<8;
       else 
-  score += (1<<16) + (1<<20)/r; // bad - but prefer higher framerate
+        score += (1<<16) + (1<<20)/r; // bad - but prefer higher framerate
 
       /* Check size too, only choose, bigger resolutions */
       if(width && height) 
@@ -857,10 +857,10 @@ int main(int argc, char *argv[])
         }
         break;
       case vol_opt:
-	m_Volume = atoi(optarg);
+        m_Volume = atoi(optarg);
         break;
       case amp_opt:
-	m_Amplification = atoi(optarg);
+        m_Amplification = atoi(optarg);
         break;
       case boost_on_downmix_opt:
         m_config_audio.boostOnDownmix = true;
