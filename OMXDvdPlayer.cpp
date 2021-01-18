@@ -196,7 +196,7 @@ bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 
 bool OMXDvdPlayer::OpenTrack(int ct)
 {
-	if(m_open == true)
+	if(m_open && titles[ct].vts != titles[current_track].vts)
 		CloseTrack();
 
 	if(ct < 0 || ct > title_count - 1)
@@ -213,11 +213,13 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 	total_blocks = titles[current_track].last_sector - titles[current_track].first_sector + 1;
 
 	// open dvd track
-	dvd_track = DVDOpenFile(dvd_device, titles[current_track].vts, DVD_READ_TITLE_VOBS );
+	if(!m_open) {
+		dvd_track = DVDOpenFile(dvd_device, titles[current_track].vts, DVD_READ_TITLE_VOBS );
 
-	if(!dvd_track) {
-		puts("Error on DVDOpenFile");
-		return false;
+		if(!dvd_track) {
+			puts("Error on DVDOpenFile");
+			return false;
+		}
 	}
 
 	m_open = true;
@@ -332,7 +334,7 @@ void OMXDvdPlayer::GetStreamInfo(OMXStream *stream)
 
 OMXDvdPlayer::~OMXDvdPlayer()
 {
-	if(m_open == true)
+	if(m_open)
 		CloseTrack();
 
 	if(m_allocated) {
