@@ -1089,7 +1089,7 @@ int main(int argc, char *argv[])
   }
 
   // read the relevant recent files/dvd store
-  if(!m_dump_format_exit)
+  if(!m_dump_format_exit && !m_loop)
   {
     if(m_is_dvd_device)
     {
@@ -2063,7 +2063,9 @@ do_exit:
   m_seek_flush = false;
   m_incr = 0;
 
-  if(!m_stop && !g_abort && m_send_eos) {
+  if(m_loop) {
+    // nothing
+  } else if(!m_stop && !g_abort && m_send_eos) {
     // default to playing next track file
     if(m_next_prev_file == 0) m_next_prev_file = 1;
 
@@ -2127,8 +2129,10 @@ do_exit:
   g_RBP.Deinitialize();
 
   // save recent files
-  if(m_is_dvd_device) m_dvd_store.saveStore();
-  else m_file_store.saveStore();
+  if(!m_loop) {
+    if(m_is_dvd_device) m_dvd_store.saveStore();
+    else m_file_store.saveStore();
+  }
 
   puts("have a nice day ;)");
 
