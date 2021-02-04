@@ -245,13 +245,8 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
         if(m_flush_requested) return true;
       }
 
-      int ret = 0;
-
-      ret = m_decoder->AddPackets(decoded, decoded_size, dts, pts, m_pAudioCodec->GetFrameSize());
-      if(ret != decoded_size)
-      {
-        printf("error ret %d decoded_size %d\n", ret, decoded_size);
-      }
+      if(!m_decoder->AddPackets(decoded, decoded_size, dts, pts, m_pAudioCodec->GetFrameSize()))
+        return false;
     }
   }
   else
@@ -262,7 +257,8 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
       if(m_flush_requested) return true;
     }
 
-    m_decoder->AddPackets(pkt->data, pkt->size, pkt->dts, pkt->pts, 0);
+    if(!m_decoder->AddPackets(pkt->data, pkt->size, pkt->dts, pkt->pts, 0))
+      return false;
   }
 
   return true;

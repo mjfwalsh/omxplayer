@@ -91,8 +91,7 @@ public:
   ~COMXAudio();
   bool PortSettingsChanged();
 
-  unsigned int AddPackets(const void* data, unsigned int len);
-  unsigned int AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size);
+  bool AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size);
   unsigned int GetSpace();
   bool Deinitialize();
 

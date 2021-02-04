@@ -834,20 +834,14 @@ bool COMXAudio::ApplyVolume(void)
 
 
 //***********************************************************************************************
-unsigned int COMXAudio::AddPackets(const void* data, unsigned int len)
-{
-  return AddPackets(data, len, 0, 0, 0);
-}
-
-//***********************************************************************************************
-unsigned int COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size)
+bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size)
 {
   CSingleLock lock (m_critSection);
 
   if(!m_Initialized)
   {
     CLog::Log(LOGERROR,"COMXAudio::AddPackets - sanity failed. no valid play handle!");
-    return len;
+    return false;
   }
 
   unsigned pitch = (m_config.passthrough || m_config.hwdecode) ? 1:(m_BitsPerSample >> 3) * m_InputChannels;
@@ -868,7 +862,7 @@ unsigned int COMXAudio::AddPackets(const void* data, unsigned int len, int64_t d
     {
       CLog::Log(LOGERROR, "COMXAudio::Decode timeout\n");
       printf("COMXAudio::Decode timeout\n");
-      return len;
+      return false;
     }
 
     omx_buffer->nOffset = 0;
@@ -954,7 +948,7 @@ unsigned int COMXAudio::AddPackets(const void* data, unsigned int len, int64_t d
       CLog::Log(LOGERROR, "%s::%s - OMX_EmptyThisBuffer() failed with result(0x%x)\n", CLASSNAME, __func__, omx_err);
       printf("%s::%s - OMX_EmptyThisBuffer() failed with result(0x%x)\n", CLASSNAME, __func__, omx_err);
       m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
-      return 0;
+      return false;
     }
     //CLog::Log(LOGINFO, "AudiD: dts:%.0f pts:%.0f size:%d\n", dts, pts, len);
 
@@ -969,7 +963,7 @@ unsigned int COMXAudio::AddPackets(const void* data, unsigned int len, int64_t d
   }
   m_submitted += (float)demuxer_samples / m_config.hints.samplerate;
   UpdateAttenuation();
-  return len;
+  return true;
 }
 
 void COMXAudio::UpdateAttenuation()
