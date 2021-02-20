@@ -1022,16 +1022,24 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  // Build default keymap
-  if(keymap.empty())
-    KeyConfig::buildDefaultKeymap(keymap);
-
   // get filename
   m_filename = argv[optind];
+
+  // disable keys when using stdin for input
+  if(m_filename == "pipe:" || m_filename == "pipe:0")
+    m_no_keys = true;
+
+  // Build default keymap
+  if(!m_no_keys && keymap.empty())
+    KeyConfig::buildDefaultKeymap(keymap);
 
   // strip off file://
   if(m_filename.substr(0, 7) == "file://" )
     m_filename.replace(0, 7, "");
+
+  // Disable seeking when reading from a pipe
+  if(IsPipe(m_filename))
+    m_config_audio.is_live = true;
 
   auto ExitFileNotFound = [&](const std::string& path)
   {
