@@ -44,28 +44,16 @@ class OMXAudioConfig
 {
 public:
   COMXStreamInfo hints;
-  bool use_thread;
+  bool use_thread = true;
   CStdString device;
   CStdString subdevice;
-  enum PCMLayout layout;
-  bool boostOnDownmix;
-  bool passthrough;
-  bool hwdecode;
-  bool is_live;
-  float queue_size;
-  float fifo_size;
-
-  OMXAudioConfig()
-  {
-    use_thread = true;
-    layout = PCM_LAYOUT_2_0;
-    boostOnDownmix = true;
-    passthrough = false;
-    hwdecode = false;
-    is_live = false;
-    queue_size = 3.0f;
-    fifo_size = 2.0f;
-  }
+  enum PCMLayout layout = PCM_LAYOUT_2_0;
+  bool boostOnDownmix = true;
+  bool passthrough = false;
+  bool hwdecode = false;
+  bool is_live = false;
+  float queue_size = 3.0f;
+  float fifo_size = 2.0f;
 };
 
 class COMXAudio

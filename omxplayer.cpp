@@ -455,9 +455,7 @@ bool IsURL(const std::string& str)
 
 bool IsPipe(const std::string& str)
 {
-  if (str.compare(0, 5, "pipe:") == 0)
-    return true;
-  return false;
+  return str.substr(0, 5) == "pipe:";
 }
 
 static int get_mem_gpu(void)
@@ -1131,14 +1129,14 @@ int main(int argc, char *argv[])
     &m_omx_reader,
     m_dbus_name
   );
-  if (false == m_no_keys)
+  if (!m_no_keys)
   {
     m_keyboard = new Keyboard();
-  }
-  if (NULL != m_keyboard)
-  {
-    m_keyboard->setKeymap(keymap);
-    m_keyboard->setDbusName(m_dbus_name);
+    if(m_keyboard)
+    {
+      m_keyboard->setKeymap(keymap);
+      m_keyboard->setDbusName(m_dbus_name);
+    }
   }
 
   change_file:
@@ -1896,12 +1894,12 @@ int main(int argc, char *argv[])
       if (audio_pts != AV_NOPTS_VALUE)
       {
         audio_fifo_low = m_has_audio && audio_fifo < threshold;
-        audio_fifo_high = !m_has_audio || (audio_pts != AV_NOPTS_VALUE && audio_fifo > m_threshold);
+        audio_fifo_high = !m_has_audio || audio_fifo > m_threshold;
       }
       if (video_pts != AV_NOPTS_VALUE)
       {
         video_fifo_low = m_has_video && video_fifo < threshold;
-        video_fifo_high = !m_has_video || (video_pts != AV_NOPTS_VALUE && video_fifo > m_threshold);
+        video_fifo_high = !m_has_video || video_fifo > m_threshold;
       }
       CLog::Log(LOGDEBUG, "Normal M:%lld (A:%lld V:%lld) P:%d A:%.2f V:%.2f/T:%.2f (%d,%d,%d,%d) A:%d%% V:%d%% (%.2f,%.2f)\n", stamp, audio_pts, video_pts, m_av_clock->OMXIsPaused(), 
         audio_pts == AV_NOPTS_VALUE ? 0.0:audio_fifo, video_pts == AV_NOPTS_VALUE ? 0.0:video_fifo, m_threshold, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high,

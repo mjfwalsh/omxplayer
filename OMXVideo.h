@@ -48,39 +48,26 @@ class OMXVideoConfig
 {
 public:
   COMXStreamInfo hints;
-  bool use_thread;
+  bool use_thread = true;
   CRect dst_rect;
   CRect src_rect;
-  float display_aspect;
-  EDEINTERLACEMODE deinterlace;
-  bool advanced_hd_deinterlace;
-  OMX_IMAGEFILTERANAGLYPHTYPE anaglyph;
-  bool hdmi_clock_sync;
-  bool allow_mvc;
-  int alpha;
-  int aspectMode;
-  int display;
-  int layer;
-  float queue_size;
-  float fifo_size;
+  float display_aspect = 0.0f;
+  EDEINTERLACEMODE deinterlace = VS_DEINTERLACEMODE_AUTO;
+  bool advanced_hd_deinterlace = true;
+  OMX_IMAGEFILTERANAGLYPHTYPE anaglyph = OMX_ImageFilterAnaglyphNone;
+  bool hdmi_clock_sync = false;
+  bool allow_mvc = false;
+  int alpha = 255;
+  int aspectMode = 0;
+  int display = 0;
+  int layer = 0;
+  float queue_size = 10.0f;
+  float fifo_size = (float)80*1024*60 / (1024*1024);
 
   OMXVideoConfig()
   {
-    use_thread = true;
     dst_rect.SetRect(0, 0, 0, 0);
     src_rect.SetRect(0, 0, 0, 0);
-    display_aspect = 0.0f;
-    deinterlace = VS_DEINTERLACEMODE_AUTO;
-    advanced_hd_deinterlace = true;
-    anaglyph = OMX_ImageFilterAnaglyphNone;
-    hdmi_clock_sync = false;
-    allow_mvc = false;
-    alpha = 255;
-    aspectMode = 0;
-    display = 0;
-    layer = 0;
-    queue_size = 10.0f;
-    fifo_size = (float)80*1024*60 / (1024*1024);
   }
 };
 
