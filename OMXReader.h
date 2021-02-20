@@ -32,13 +32,11 @@
 #include "OMXStreamInfo.h"
 #include "OMXDvdPlayer.h"
 
-#include "File.h"
 #include "utils/simple_geometry.h"
 
 #include <sys/types.h>
 #include <string>
 
-using namespace XFILE;
 using namespace std;
 
 #define MAX_OMX_CHAPTERS 64
@@ -102,7 +100,6 @@ protected:
   std::string               m_filename;
   bool                      m_bMatroska;
   bool                      m_bAVI;
-  XFILE::CFile              *m_pFile;
   AVFormatContext           *m_pFormatContext;
   AVIOContext               *m_ioContext;
   bool                      m_eof;

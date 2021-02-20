@@ -65,7 +65,6 @@ OMXReader::OMXReader()
   m_bMatroska   = false;
   m_bAVI        = false;
   g_abort       = false;
-  m_pFile       = NULL;
   m_ioContext   = NULL;
   m_pFormatContext = NULL;
   m_eof           = false;
@@ -130,36 +129,6 @@ static int dvd_read(void *h, uint8_t* buf, int size)
   return ret;
 }
 
-static int media_file_read(void *h, uint8_t* buf, int size)
-{
-  RESET_TIMEOUT(1);
-  if(interrupt_cb(NULL))
-    return -1;
-
-  XFILE::CFile *pFile = (XFILE::CFile *)h;
-  int ret = pFile->Read(buf, size);
-
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(58,12,100)
-  if (ret == 0 && pFile->IsEOF())
-    ret = AVERROR_EOF;
-#endif
-
-  return ret;
-}
-
-static offset_t media_file_seek(void *h, offset_t pos, int whence)
-{
-  RESET_TIMEOUT(1);
-  if(interrupt_cb(NULL))
-    return -1;
-
-  XFILE::CFile *pFile = (XFILE::CFile *)h;
-  if(whence == AVSEEK_SIZE)
-    return pFile->GetLength();
-  else
-    return pFile->Seek(pos, whence & ~AVSEEK_FORCE);
-}
-
 static offset_t dvd_seek(void *h, offset_t pos, int whence)
 {
   RESET_TIMEOUT(1);
@@ -206,7 +175,6 @@ bool OMXReader::Open(
   int           result    = -1;
   AVInputFormat *iformat  = NULL;
   unsigned char *buffer   = NULL;
-  unsigned int  flags     = READ_TRUNCATED | READ_BITRATE | READ_CHUNKED;
 
   m_pFormatContext     = m_dllAvFormat.avformat_alloc_context();
 
@@ -259,91 +227,62 @@ bool OMXReader::Open(
     }
 
     m_pFormatContext->pb = m_ioContext;
-    result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, NULL, iformat, NULL);
+    result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
     if(result < 0)
     {
-      Close();
-      return false;
-    }
-  }
-  else if(is_url)
-  {
-    if(m_filename.substr(0, 8) == "shout://" )
-      m_filename.replace(0, 8, "http://");
-
-    // ffmpeg dislikes the useragent from AirPlay urls
-    //int idx = m_filename.Find("|User-Agent=AppleCoreMedia");
-    size_t idx = m_filename.find("|");
-    if(idx != string::npos)
-      m_filename = m_filename.substr(0, idx);
-
-    // Enable seeking if http, ftp
-    if(m_filename.substr(0,7) == "http://" || m_filename.substr(0,6) == "ftp://" ||
-       m_filename.substr(0,7) == "sftp://")
-    {
-       if(!live)
-       {
-          av_dict_set(&d, "seekable", "1", 0);
-       }
-       if(!cookie.empty())
-       {
-          av_dict_set(&d, "cookies", cookie.c_str(), 0);
-       }
-       if(!user_agent.empty())
-       {
-          av_dict_set(&d, "user_agent", user_agent.c_str(), 0);
-       }
-    }
-    CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
-    result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, m_filename.c_str(), iformat, &d);
-    if(av_dict_count(d) == 0)
-    {
-       CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input enabled SEEKING ");
-       if(m_filename.substr(0,7) == "http://")
-         m_pFormatContext->pb->seekable = AVIO_SEEKABLE_NORMAL;
-    }
-    av_dict_free(&d);
-    if(result < 0)
-    {
-      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
       Close();
       return false;
     }
   }
   else
   {
-    m_pFile = new CFile();
-
-    if (!m_pFile->Open(m_filename, flags))
+    if(is_url)
     {
-      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - %s ", m_filename.c_str());
-      Close();
-      return false;
+      if(m_filename.substr(0, 8) == "shout://" )
+        m_filename.replace(0, 8, "http://");
+
+      // ffmpeg dislikes the useragent from AirPlay urls
+      //int idx = m_filename.Find("|User-Agent=AppleCoreMedia");
+      size_t idx = m_filename.find("|");
+      if(idx != string::npos)
+        m_filename = m_filename.substr(0, idx);
+
+      // Enable seeking if http, ftp
+      if(m_filename.substr(0,7) == "http://" || m_filename.substr(0,6) == "ftp://" ||
+         m_filename.substr(0,7) == "sftp://")
+      {
+         if(!live)
+         {
+            av_dict_set(&d, "seekable", "1", 0);
+         }
+         if(!cookie.empty())
+         {
+            av_dict_set(&d, "cookies", cookie.c_str(), 0);
+         }
+         if(!user_agent.empty())
+         {
+            av_dict_set(&d, "user_agent", user_agent.c_str(), 0);
+         }
+      }
     }
 
-    buffer = (unsigned char*)m_dllAvUtil.av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_pFile, media_file_read, NULL, media_file_seek);
-    m_ioContext->max_packet_size = 6144;
-    if(m_ioContext->max_packet_size)
-      m_ioContext->max_packet_size *= FFMPEG_FILE_BUFFER_SIZE / m_ioContext->max_packet_size;
-
-    if(m_pFile->IoControl(IOCTRL_SEEK_POSSIBLE, NULL) == 0)
-      m_ioContext->seekable = 0;
-
-    m_dllAvFormat.av_probe_input_buffer(m_ioContext, &iformat, m_filename.c_str(), NULL, 0, 0);
-
-    if(!iformat)
-    {
-      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - av_probe_input_buffer %s ", m_filename.c_str());
-      Close();
-      return false;
-    }
-
-    m_pFormatContext->pb = m_ioContext;
+    CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
     result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, m_filename.c_str(), iformat, &d);
+    
+    if(live)
+    {
+       CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input disabled SEEKING ");
+       m_pFormatContext->pb->seekable = 0;
+    }
+    else if(av_dict_count(d) == 0 && m_filename.substr(0,7) == "http://")
+    {
+       CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input enabled SEEKING ");
+       m_pFormatContext->pb->seekable = AVIO_SEEKABLE_NORMAL;
+    }
     av_dict_free(&d);
     if(result < 0)
     {
+      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
       Close();
       return false;
     }
@@ -373,20 +312,6 @@ bool OMXReader::Open(
   {
     Close();
     return false;
-  }
-
-  if(m_pFile)
-  {
-    int64_t len = m_pFile->GetLength();
-    int64_t tim = GetStreamLengthMicro();
-
-    if(len > 0 && tim > 0)
-    {
-      unsigned rate = (len * 1000000) / tim;
-      unsigned maxrate = rate + 1024 * 1024 / 8;
-      if(m_pFile->IoControl(IOCTRL_CACHE_SETRATE, &maxrate) >= 0)
-        CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - set cache throttle rate to %u bytes per second", maxrate);
-    }
   }
 
   m_speed       = DVD_PLAYSPEED_NORMAL;
@@ -451,13 +376,6 @@ bool OMXReader::Close()
   m_ioContext       = NULL;
   m_pFormatContext  = NULL;
 
-  if(m_pFile)
-  {
-    m_pFile->Close();
-    delete m_pFile;
-    m_pFile = NULL;
-  }
-
   m_dllAvFormat.avformat_network_deinit();
 
   m_dllAvUtil.Unload();
@@ -501,12 +419,6 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
 
   if(!m_pFormatContext)
     return false;
-
-  if(m_pFile && !m_pFile->IoControl(IOCTRL_SEEK_POSSIBLE, NULL))
-  {
-    CLog::Log(LOGDEBUG, "%s - input stream reports it is not seekable", __FUNCTION__);
-    return false;
-  }
 
   Lock();
 

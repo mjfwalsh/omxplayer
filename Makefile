@@ -25,7 +25,6 @@ SRC=	linux/XMemUtils.cpp \
 		OMXVideo.cpp \
 		OMXAudio.cpp \
 		OMXClock.cpp \
-		File.cpp \
 		OMXPlayerVideo.cpp \
 		OMXPlayerAudio.cpp \
 		OMXPlayerSubtitles.cpp \
