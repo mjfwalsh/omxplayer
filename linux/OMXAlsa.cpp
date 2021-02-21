@@ -54,20 +54,12 @@ template <class X> static void omx_init(X &omx)
 	omx.nVersion.nVersion = OMX_VERSION;
 }
 
-#if 1
 #include <utils/log.h>
 #define CLOG(notice, comp, port, msg, ...) do { \
 	struct _GOMX_PORT *_port = (struct _GOMX_PORT *) port; \
 	if (_port) CLog::Log(notice ? LOGNOTICE : LOGDEBUG, "[%p port %d]: %s: " msg "\n", comp, _port->def.nPortIndex, __func__ , ##__VA_ARGS__); \
 	else CLog::Log(notice ? LOGNOTICE : LOGDEBUG, "[%p] %s: " msg "\n", comp, __func__ , ##__VA_ARGS__); \
 } while (0)
-#else
-#define CLOG(notice, comp, port, msg, ...) do { \
-	struct _GOMX_PORT *_port = (struct _GOMX_PORT *) port; \
-	if (_port) fprintf(stderr, "[%p port %d]: %s: " msg "\n", comp, _port->def.nPortIndex, __func__ , ##__VA_ARGS__); \
-	else fprintf(stderr, "[%p] %s: " msg "\n", comp, __func__ , ##__VA_ARGS__); \
-} while (0)
-#endif
 
 #define CINFO(comp, port, msg, ...) CLOG(1, comp, port, msg , ##__VA_ARGS__)
 #define CDEBUG(comp, port, msg, ...) CLOG(0, comp, port, msg , ##__VA_ARGS__)

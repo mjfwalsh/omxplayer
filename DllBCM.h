@@ -20,8 +20,6 @@
  *
  */
 
-#if defined(TARGET_RASPBERRY_PI)
-
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
 #endif
@@ -76,7 +74,6 @@ public:
                                                   EDID_AudioSampleRate fs, uint32_t bitrate) = 0;
 };
 
-#if (defined USE_EXTERNAL_LIBBCM_HOST)
 class DllBcmHost : public DllDynamic, DllBcmHostInterface
 {
 public:
@@ -141,73 +138,3 @@ public:
   }
   virtual void Unload() {}
 };
-#else
-class DllBcmHost : public DllDynamic, DllBcmHostInterface
-{
-  DECLARE_DLL_WRAPPER(DllBcmHost, "/opt/vc/lib/libbcm_host.so")
-
-  DEFINE_METHOD0(void,    bcm_host_init)
-  DEFINE_METHOD0(void,    bcm_host_deinit)
-  DEFINE_METHOD3(int32_t, graphics_get_display_size, (const uint16_t p1, uint32_t *p2, uint32_t *p3))
-  DEFINE_METHOD5(int,     vc_tv_hdmi_get_supported_modes_new, (HDMI_RES_GROUP_T p1, TV_SUPPORTED_MODE_NEW_T *p2,
-                                                           uint32_t p3, HDMI_RES_GROUP_T *p4, uint32_t *p5))
-  DEFINE_METHOD3(int,     vc_tv_hdmi_power_on_explicit_new, (HDMI_MODE_T p1, HDMI_RES_GROUP_T p2, uint32_t p3))
-  DEFINE_METHOD1(int,     vc_tv_hdmi_set_property, (const HDMI_PROPERTY_PARAM_T *property))
-  DEFINE_METHOD1(int,     vc_tv_get_display_state, (TV_DISPLAY_STATE_T *p1))
-  DEFINE_METHOD1(int,     vc_tv_show_info, (uint32_t p1))
-  DEFINE_METHOD3(int,     vc_gencmd, (char *p1, int p2, const char *p3))
-
-  DEFINE_METHOD2(void,    vc_tv_register_callback, (TVSERVICE_CALLBACK_T p1, void *p2))
-  DEFINE_METHOD1(void,    vc_tv_unregister_callback, (TVSERVICE_CALLBACK_T p1))
-
-  DEFINE_METHOD2(void,    vc_cec_register_callback, (CECSERVICE_CALLBACK_T p1, void *p2))
-  //DEFINE_METHOD1(void,    vc_cec_unregister_callback, (CECSERVICE_CALLBACK_T p1))
-  DEFINE_METHOD1(DISPMANX_DISPLAY_HANDLE_T, vc_dispmanx_display_open, (uint32_t p1 ))
-  DEFINE_METHOD1(DISPMANX_UPDATE_HANDLE_T,  vc_dispmanx_update_start, (int32_t p1 ))
-  DEFINE_METHOD10(DISPMANX_ELEMENT_HANDLE_T, vc_dispmanx_element_add, (DISPMANX_UPDATE_HANDLE_T p1, DISPMANX_DISPLAY_HANDLE_T p2,
-                                                                       int32_t p3, const VC_RECT_T *p4, DISPMANX_RESOURCE_HANDLE_T p5,
-                                                                       const VC_RECT_T *p6, DISPMANX_PROTECTION_T p7,
-                                                                       VC_DISPMANX_ALPHA_T *p8,
-                                                                       DISPMANX_CLAMP_T *p9, DISPMANX_TRANSFORM_T p10 ))
-  DEFINE_METHOD1(int, vc_dispmanx_update_submit_sync, (DISPMANX_UPDATE_HANDLE_T p1))
-  DEFINE_METHOD2(int, vc_dispmanx_element_remove, (DISPMANX_UPDATE_HANDLE_T p1, DISPMANX_ELEMENT_HANDLE_T p2))
-  DEFINE_METHOD1(int, vc_dispmanx_display_close, (DISPMANX_DISPLAY_HANDLE_T p1))
-  DEFINE_METHOD2(int, vc_dispmanx_display_get_info, (DISPMANX_DISPLAY_HANDLE_T p1, DISPMANX_MODEINFO_T *p2))
-  DEFINE_METHOD5(int, vc_dispmanx_display_set_background, ( DISPMANX_UPDATE_HANDLE_T p1, DISPMANX_DISPLAY_HANDLE_T p2,
-                                                            uint8_t p3, uint8_t p4, uint8_t p5 ))
-  DEFINE_METHOD4(int, vc_tv_hdmi_audio_supported, (uint32_t p1, uint32_t p2, EDID_AudioSampleRate p3, uint32_t p4))
-
-  BEGIN_METHOD_RESOLVE()
-    RESOLVE_METHOD(bcm_host_init)
-    RESOLVE_METHOD(bcm_host_deinit)
-    RESOLVE_METHOD(graphics_get_display_size)
-    RESOLVE_METHOD(vc_tv_hdmi_get_supported_modes_new)
-    RESOLVE_METHOD(vc_tv_hdmi_power_on_explicit_new)
-    RESOLVE_METHOD(vc_tv_hdmi_set_property)
-    RESOLVE_METHOD(vc_tv_get_display_state)
-    RESOLVE_METHOD(vc_tv_show_info)
-    RESOLVE_METHOD(vc_gencmd)
-    RESOLVE_METHOD(vc_tv_register_callback)
-    RESOLVE_METHOD(vc_tv_unregister_callback)
-    RESOLVE_METHOD(vc_cec_register_callback)
-    //RESOLVE_METHOD(vc_cec_unregister_callback)
-    RESOLVE_METHOD(vc_dispmanx_display_open)
-    RESOLVE_METHOD(vc_dispmanx_update_start)
-    RESOLVE_METHOD(vc_dispmanx_element_add)
-    RESOLVE_METHOD(vc_dispmanx_update_submit_sync)
-    RESOLVE_METHOD(vc_dispmanx_element_remove)
-    RESOLVE_METHOD(vc_dispmanx_display_close)
-    RESOLVE_METHOD(vc_dispmanx_display_get_info)
-    RESOLVE_METHOD(vc_dispmanx_display_set_background)
-    RESOLVE_METHOD(vc_tv_hdmi_audio_supported)
-  END_METHOD_RESOLVE()
-
-public:
-  virtual bool Load()
-  {
-    return DllDynamic::Load();
-  }
-};
-#endif
-
-#endif

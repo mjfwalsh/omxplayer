@@ -36,15 +36,7 @@ extern "C" {
 #ifndef __GNUC__
 #pragma warning(disable:4244)
 #endif
-#if (defined USE_EXTERNAL_FFMPEG)
-  #if (defined HAVE_LIBAVFORMAT_AVFORMAT_H)
-    #include <libavformat/avformat.h>
-  #else
-    #include <ffmpeg/avformat.h>
-  #endif
-#else
-  #include "libavformat/avformat.h"
-#endif
+#include <libavformat/avformat.h>
 }
 
 /* Flag introduced without a version bump */
@@ -58,7 +50,6 @@ class DllAvFormatInterface
 {
 public:
   virtual ~DllAvFormatInterface() {}
-  virtual void av_register_all_dont_call(void)=0;
   virtual AVInputFormat *av_find_input_format(const char *short_name)=0;
   virtual int url_feof(AVIOContext *s)=0;
   virtual void avformat_close_input(AVFormatContext **s)=0;
@@ -66,9 +57,6 @@ public:
   virtual int av_read_play(AVFormatContext *s)=0;
   virtual int av_read_pause(AVFormatContext *s)=0;
   virtual int av_seek_frame(AVFormatContext *s, int stream_index, int64_t timestamp, int flags)=0;
-#if (!defined USE_EXTERNAL_FFMPEG) && (!defined TARGET_DARWIN)
-  virtual int avformat_find_stream_info_dont_call(AVFormatContext *ic, AVDictionary **options)=0;
-#endif
   virtual int avformat_open_input(AVFormatContext **ps, const char *filename, AVInputFormat *fmt, AVDictionary **options)=0;
   virtual AVIOContext *avio_alloc_context(unsigned char *buffer, int buffer_size, int write_flag, void *opaque,
                             int (*read_packet)(void *opaque, uint8_t *buf, int buf_size),
@@ -101,18 +89,19 @@ public:
   virtual int avformat_network_deinit  (void)=0;
 };
 
-#if (defined USE_EXTERNAL_FFMPEG) || (defined TARGET_DARWIN) 
-
 // Use direct mapping
 class DllAvFormat : public DllDynamic, DllAvFormatInterface
 {
 public:
   virtual ~DllAvFormat() {}
+
+#if LIBAVFORMAT_VERSION_MAJOR < 58
   virtual void av_register_all() 
   { 
     return ::av_register_all();
-  } 
-  virtual void av_register_all_dont_call() { *(volatile int* )0x0 = 0; } 
+  }
+#endif
+
   virtual AVInputFormat *av_find_input_format(const char *short_name) { return ::av_find_input_format(short_name); }
   virtual int url_feof(AVIOContext *s) { return ::avio_feof(s); }
   virtual void avformat_close_input(AVFormatContext **s) { ::avformat_close_input(s); }
@@ -164,111 +153,3 @@ public:
   }
   virtual void Unload() {}
 };
-
-#else
-
-class DllAvFormat : public DllDynamic, DllAvFormatInterface
-{
-  DECLARE_DLL_WRAPPER(DllAvFormat, DLL_PATH_LIBAVFORMAT)
-
-  LOAD_SYMBOLS()
-
-  DEFINE_METHOD0(void, av_register_all_dont_call)
-  DEFINE_METHOD1(AVInputFormat*, av_find_input_format, (const char *p1))
-  DEFINE_METHOD1(int, url_feof, (AVIOContext *p1))
-  DEFINE_METHOD1(void, avformat_close_input, (AVFormatContext **p1))
-  DEFINE_METHOD1(int, av_read_play, (AVFormatContext *p1))
-  DEFINE_METHOD1(int, av_read_pause, (AVFormatContext *p1))
-  DEFINE_FUNC_ALIGNED2(int, __cdecl, av_read_frame, AVFormatContext *, AVPacket *)
-  DEFINE_FUNC_ALIGNED4(int, __cdecl, av_seek_frame, AVFormatContext*, int, int64_t, int)
-  DEFINE_FUNC_ALIGNED2(int, __cdecl, avformat_find_stream_info_dont_call, AVFormatContext*, AVDictionary **)
-  DEFINE_FUNC_ALIGNED4(int, __cdecl, avformat_open_input, AVFormatContext **, const char *, AVInputFormat *, AVDictionary **)
-  DEFINE_FUNC_ALIGNED2(AVInputFormat*, __cdecl, av_probe_input_format, AVProbeData*, int)
-  DEFINE_FUNC_ALIGNED3(AVInputFormat*, __cdecl, av_probe_input_format2, AVProbeData*, int, int*)
-  DEFINE_FUNC_ALIGNED6(int, __cdecl, av_probe_input_buffer, AVIOContext *, AVInputFormat **, const char *, void *, unsigned int, unsigned int)
-  DEFINE_FUNC_ALIGNED3(int, __cdecl, avio_read, AVIOContext*, unsigned char *, int)
-  DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_w8, AVIOContext*, int)
-  DEFINE_FUNC_ALIGNED3(void, __cdecl, avio_write, AVIOContext*, const unsigned char *, int)
-  DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb24, AVIOContext*, unsigned int)
-  DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb32, AVIOContext*, unsigned int)
-  DEFINE_FUNC_ALIGNED2(void, __cdecl, avio_wb16, AVIOContext*, unsigned int)
-  DEFINE_METHOD7(AVIOContext *, avio_alloc_context, (unsigned char *p1, int p2, int p3, void *p4,
-                  int(*p5)(void *opaque, uint8_t *buf, int buf_size),
-                  int(*p6)(void *opaque, uint8_t *buf, int buf_size),
-                  offset_t(*p7)(void *opaque, offset_t offset, int whence)))
-  DEFINE_METHOD4(void, av_dump_format, (AVFormatContext *p1, int p2, const char *p3, int p4))
-  DEFINE_METHOD3(int, avio_open, (AVIOContext **p1, const char *p2, int p3))
-  DEFINE_METHOD1(int, avio_close, (AVIOContext *p1))
-  DEFINE_METHOD1(int, avio_open_dyn_buf, (AVIOContext **p1))
-  DEFINE_METHOD2(int, avio_close_dyn_buf, (AVIOContext *p1, uint8_t **p2))
-  DEFINE_METHOD3(offset_t, avio_seek, (AVIOContext *p1, offset_t p2, int p3))
-  DEFINE_METHOD0(AVFormatContext *, avformat_alloc_context)
-  DEFINE_METHOD4(int, av_set_options_string, (AVFormatContext *p1, const char *p2, const char *p3, const char *p4))
-  DEFINE_METHOD2(AVStream *, avformat_new_stream, (AVFormatContext *p1, AVCodec *p2))
-  DEFINE_METHOD3(AVOutputFormat *, av_guess_format, (const char *p1, const char *p2, const char *p3))
-  DEFINE_METHOD2(int, avformat_write_header , (AVFormatContext *p1, AVDictionary **p2))
-  DEFINE_METHOD1(int, av_write_trailer, (AVFormatContext *p1))
-  DEFINE_METHOD2(int, av_write_frame  , (AVFormatContext *p1, AVPacket *p2))
-  DEFINE_METHOD0(int, avformat_network_init)
-  DEFINE_METHOD0(int, avformat_network_deinit)
-  BEGIN_METHOD_RESOLVE()
-    RESOLVE_METHOD_RENAME(av_register_all, av_register_all_dont_call)
-    RESOLVE_METHOD(av_find_input_format)
-    RESOLVE_METHOD(url_feof)
-    RESOLVE_METHOD(avformat_close_input)
-    RESOLVE_METHOD(av_read_frame)
-    RESOLVE_METHOD(av_read_play)
-    RESOLVE_METHOD(av_read_pause)
-    RESOLVE_METHOD(av_seek_frame)
-    RESOLVE_METHOD_RENAME(avformat_find_stream_info, avformat_find_stream_info_dont_call)
-    RESOLVE_METHOD(avformat_open_input)
-    RESOLVE_METHOD(avio_alloc_context)
-    RESOLVE_METHOD(av_probe_input_format)
-    RESOLVE_METHOD(av_probe_input_format2)
-    RESOLVE_METHOD(av_probe_input_buffer)
-    RESOLVE_METHOD(av_dump_format)
-    RESOLVE_METHOD(avio_open)
-    RESOLVE_METHOD(avio_close)
-    RESOLVE_METHOD(avio_open_dyn_buf)
-    RESOLVE_METHOD(avio_close_dyn_buf)
-    RESOLVE_METHOD(avio_seek)
-    RESOLVE_METHOD(avio_read)
-    RESOLVE_METHOD(avio_w8)
-    RESOLVE_METHOD(avio_write)
-    RESOLVE_METHOD(avio_wb24)
-    RESOLVE_METHOD(avio_wb32)
-    RESOLVE_METHOD(avio_wb16)
-    RESOLVE_METHOD(avformat_alloc_context)
-    RESOLVE_METHOD(av_set_options_string)
-    RESOLVE_METHOD(avformat_new_stream)
-    RESOLVE_METHOD(av_guess_format)
-    RESOLVE_METHOD(avformat_write_header)
-    RESOLVE_METHOD(av_write_trailer)
-    RESOLVE_METHOD(av_write_frame)
-    RESOLVE_METHOD(avformat_network_init)
-    RESOLVE_METHOD(avformat_network_deinit)
-  END_METHOD_RESOLVE()
-
-  /* dependencies of libavformat */
-  DllAvCodec m_dllAvCodec;
-  // DllAvUtil loaded implicitely by m_dllAvCodec
-
-public:
-  void av_register_all()
-  {
-    av_register_all_dont_call();
-  }
-  int avformat_find_stream_info(AVFormatContext *ic, AVDictionary **options)
-  {
-    return avformat_find_stream_info_dont_call(ic, options);
-  }
-
-  virtual bool Load()
-  {
-    if (!m_dllAvCodec.Load())
-      return false;
-    return DllDynamic::Load();
-  }
-};
-
-#endif

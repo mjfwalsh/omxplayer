@@ -19,15 +19,8 @@
  *
  */
 
-#if defined(HAVE_OMXLIB)
-
 #include <string>
 #include <queue>
-
-// TODO: should this be in configure
-#ifndef OMX_SKIP64BIT
-#define OMX_SKIP64BIT
-#endif
 
 #include "DllOMX.h"
 
@@ -35,10 +28,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
-#if 0
-#define OMX_DEBUG_VERBOSE
-#define OMX_DEBUG_EVENTHANDLER
-#endif
 
 #define OMX_INIT_STRUCTURE(a) \
   memset(&(a), 0, sizeof(a)); \
@@ -216,6 +205,3 @@ protected:
   bool              m_is_open;
   DllOMX            *m_DllOMX;
 };
-
-#endif
-

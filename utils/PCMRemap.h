@@ -136,14 +136,6 @@ public:
   void Reset();
   enum PCMChannels *SetInputFormat (unsigned int channels, enum PCMChannels *channelMap, unsigned int sampleSize, unsigned int sampleRate, enum PCMLayout channelLayout, bool dontnormalize);
   void SetOutputFormat(unsigned int channels, enum PCMChannels *channelMap, bool ignoreLayout = false);
-#if 0
-  void Remap(void *data, void *out, unsigned int samples, long drc);
-  void Remap(void *data, void *out, unsigned int samples, float gain = 1.0f);
-  bool CanRemap();
-  int  InBytesToFrames (int bytes );
-  int  FramesToOutBytes(int frames);
-  int  FramesToInBytes (int frames);
-#endif
   float GetCurrentAttenuation() { return m_attenuationMin; }
   void               GetDownmixMatrix(float *downmix);
 };

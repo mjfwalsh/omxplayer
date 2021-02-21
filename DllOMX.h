@@ -20,8 +20,6 @@
  *
  */
 
-#if defined(HAVE_OMXLIB)
-
 #if (defined HAVE_CONFIG_H) && (!defined WIN32)
   #include "config.h"
 #endif
@@ -58,7 +56,6 @@ public:
 
 };
 
-#if (defined USE_EXTERNAL_OMX)
 class DllOMX : public DllDynamic, DllOMXInterface
 {
 public:
@@ -88,37 +85,3 @@ public:
   virtual void Unload() {}
   static DllOMX *GetDllOMX() { static DllOMX static_dll_omx; return &static_dll_omx; }
 };
-#else
-class DllOMX : public DllDynamic, DllOMXInterface
-{
-  //DECLARE_DLL_WRAPPER(DllLibOpenMax, "/usr/lib/libnvomx.so")
-  DECLARE_DLL_WRAPPER(DllOMX, "/opt/vc/lib/libopenmaxil.so")
-
-  DEFINE_METHOD0(OMX_ERRORTYPE, OMX_Init)
-  DEFINE_METHOD0(OMX_ERRORTYPE, OMX_Deinit)
-  DEFINE_METHOD4(OMX_ERRORTYPE, OMX_GetHandle, (OMX_HANDLETYPE *p1, OMX_STRING p2, OMX_PTR p3, OMX_CALLBACKTYPE *p4))
-  DEFINE_METHOD1(OMX_ERRORTYPE, OMX_FreeHandle, (OMX_HANDLETYPE p1))
-  DEFINE_METHOD3(OMX_ERRORTYPE, OMX_GetComponentsOfRole, (OMX_STRING p1, OMX_U32 *p2, OMX_U8 **p3))
-  DEFINE_METHOD3(OMX_ERRORTYPE, OMX_GetRolesOfComponent, (OMX_STRING p1, OMX_U32 *p2, OMX_U8 **p3))
-  DEFINE_METHOD3(OMX_ERRORTYPE, OMX_ComponentNameEnum, (OMX_STRING p1, OMX_U32 p2, OMX_U32 p3))
-  DEFINE_METHOD4(OMX_ERRORTYPE, OMX_SetupTunnel, (OMX_HANDLETYPE p1, OMX_U32 p2, OMX_HANDLETYPE p3, OMX_U32 p4));
-  BEGIN_METHOD_RESOLVE()
-    RESOLVE_METHOD(OMX_Init)
-    RESOLVE_METHOD(OMX_Deinit)
-    RESOLVE_METHOD(OMX_GetHandle)
-    RESOLVE_METHOD(OMX_FreeHandle)
-    RESOLVE_METHOD(OMX_GetComponentsOfRole)
-    RESOLVE_METHOD(OMX_GetRolesOfComponent)
-    RESOLVE_METHOD(OMX_ComponentNameEnum)
-    RESOLVE_METHOD(OMX_SetupTunnel)
-  END_METHOD_RESOLVE()
-
-public:
-  virtual bool Load()
-  {
-    return DllDynamic::Load();
-  }
-};
-#endif
-
-#endif

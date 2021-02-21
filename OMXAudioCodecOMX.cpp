@@ -67,7 +67,9 @@ bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
   if (!m_dllAvUtil.Load() || !m_dllAvCodec.Load() || !m_dllSwResample.Load())
     return false;
 
+#if LIBAVCODEC_VERSION_MAJOR < 58
   m_dllAvCodec.avcodec_register_all();
+#endif
 
   pCodec = m_dllAvCodec.avcodec_find_decoder(hints.codec);
   if (!pCodec)

@@ -18,11 +18,6 @@
  *
  */
 
-#if defined(HAVE_OMXLIB)
-
-//#include "video/VideoReferenceClock.h"
-//#include "settings/Settings.h"
-
 #include "OMXClock.h"
 
 #define OMX_PRE_ROLL 200
@@ -563,5 +558,3 @@ int64_t OMXClock::GetAbsoluteClock()
 {
   return CurrentHostCounter()/1000;
 }
-#endif
-

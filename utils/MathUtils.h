@@ -187,23 +187,5 @@ namespace MathUtils
     MathUtils::truncate_int(0.0);
     MathUtils::abs(0);
   }
-
-#if 0
-  /*! \brief test routine for round_int and truncate_int
-   Must return true on all platforms.
-   */
-  inline bool test()
-  {
-    for (int i = -8; i < 8; ++i)
-    {
-      double d = 0.25*i;
-      int r = (i < 0) ? (i - 1) / 4 : (i + 2) / 4;
-      int t = i / 4;
-      if (round_int(d) != r || truncate_int(d) != t)
-        return false;
-    }
-    return true;
-  }
-#endif
 } // namespace MathUtils
 

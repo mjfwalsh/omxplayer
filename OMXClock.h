@@ -32,7 +32,6 @@
 #define DVD_PLAYSPEED_PAUSE       0       // frame stepping
 #define DVD_PLAYSPEED_NORMAL      1000
 
-#ifdef OMX_SKIP64BIT
 static inline OMX_TICKS ToOMXTime(int64_t pts)
 {
   OMX_TICKS ticks;
@@ -45,10 +44,6 @@ static inline int64_t FromOMXTime(OMX_TICKS ticks)
   int64_t pts = ticks.nLowPart | ((uint64_t)(ticks.nHighPart) << 32);
   return pts;
 }
-#else
-#define FromOMXTime(x) (x)
-#define ToOMXTime(x) (x)
-#endif
 
 class OMXClock
 {

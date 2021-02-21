@@ -20,18 +20,6 @@
  *
  */
 
-/*
-#define _HAVE_SBRK 1
-#define HAVE_CMAKE_CONFIG 1
-#define _REENTRANT 1
-#ifndef VCHI_BULK_ALIGN
-#define VCHI_BULK_ALIGN 1
-#endif
-#ifndef VCHI_BULK_GRANULARITY
-#define VCHI_BULK_GRANULARITY 1 
-#endif
-*/
-//#define OMX_SKIP64BIT 
 #ifndef USE_VCHIQ_ARM
 #define USE_VCHIQ_ARM
 #endif

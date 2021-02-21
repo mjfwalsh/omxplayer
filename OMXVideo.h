@@ -20,8 +20,6 @@
  *
  */
 
-#if defined(HAVE_OMXLIB)
-
 #include "OMXCore.h"
 #include "OMXStreamInfo.h"
 
@@ -135,5 +133,3 @@ protected:
   bool              m_settings_changed;
   CCriticalSection  m_critSection;
 };
-
-#endif

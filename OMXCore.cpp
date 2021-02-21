@@ -21,7 +21,6 @@
 #include <math.h>
 #include <sys/time.h>
 
-#if defined(HAVE_OMXLIB)
 #include "OMXCore.h"
 #include "utils/log.h"
 
@@ -1820,5 +1819,3 @@ void COMXCore::Deinitialize()
     m_DllOMX->Unload();
   }
 }
-
-#endif
