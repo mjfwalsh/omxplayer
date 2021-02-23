@@ -217,26 +217,14 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
   else if(pkt->dts != AV_NOPTS_VALUE)
     m_iCurrentPts = pkt->dts;
 
-  const uint8_t *data_dec = pkt->data;
-  int            data_len = pkt->size;
-
   if(!m_passthrough && !m_hw_decode)
   {
-    int64_t dts = pkt->dts, pts=pkt->pts;
-    while(data_len > 0)
-    {
-      int len = m_pAudioCodec->Decode((BYTE *)data_dec, data_len, dts, pts);
-      if( (len < 0) || (len >  data_len) )
-      {
-        m_pAudioCodec->Reset();
-        break;
-      }
+    if(!m_pAudioCodec->SendPacket(pkt))
+      return true;
 
-      data_dec+= len;
-      data_len -= len;
-
+    while (m_pAudioCodec->GetFrame()) {
       uint8_t *decoded;
-      int decoded_size = m_pAudioCodec->GetData(&decoded, dts, pts);
+      int decoded_size = m_pAudioCodec->GetData(&decoded, pkt->dts, pkt->pts);
 
       if(decoded_size <=0)
         continue;
@@ -247,7 +235,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
         if(m_flush_requested) return true;
       }
 
-      if(!m_decoder->AddPackets(decoded, decoded_size, dts, pts, m_pAudioCodec->GetFrameSize()))
+      if(!m_decoder->AddPackets(decoded, decoded_size, pkt->dts, pkt->pts, m_pAudioCodec->GetFrameSize()))
         return false;
     }
   }

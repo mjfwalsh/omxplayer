@@ -160,48 +160,57 @@ void COMXAudioCodecOMX::Dispose()
   m_bGotFrame = false;
 }
 
-int COMXAudioCodecOMX::Decode(BYTE* pData, int iSize, int64_t dts, int64_t pts)
+bool COMXAudioCodecOMX::SendPacket(OMXPacket *pkt)
 {
-  int iBytesUsed, got_frame;
-  if (!m_pCodecContext) return -1;
+  if (!m_pCodecContext) return false;
 
-  AVPacket avpkt;
   if (!m_iBufferOutputUsed)
   {
-    m_dts = dts;
-    m_pts = pts;
+    m_dts = pkt->dts;
+    m_pts = pkt->pts;
   }
+
+  int result = avcodec_send_packet(m_pCodecContext, pkt);
+
+  if (result && m_bFirstFrame)
+    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::SendPacket(%p,%d)", pkt->data, pkt->size);
+
+  return result == 0;
+}
+
+
+bool COMXAudioCodecOMX::GetFrame()
+{
+  if (!m_pCodecContext) return false;
+
   if (m_bGotFrame)
-    return 0;
+    return true;
 
-  m_dllAvCodec.av_init_packet(&avpkt);
-  avpkt.data = pData;
-  avpkt.size = iSize;
-  iBytesUsed = m_dllAvCodec.avcodec_decode_audio4( m_pCodecContext
-                                                 , m_pFrame1
-                                                 , &got_frame
-                                                 , &avpkt);
-  if (iBytesUsed < 0 || !got_frame)
+  int result = avcodec_receive_frame(m_pCodecContext, m_pFrame1);
+  if (result == 0)
   {
-    return iBytesUsed;
-  }
-  /* some codecs will attempt to consume more data than what we gave */
-  if (iBytesUsed > iSize)
-  {
-    CLog::Log(LOGWARNING, "COMXAudioCodecOMX::Decode - decoder attempted to consume more data than given");
-    iBytesUsed = iSize;
-  }
-  m_bGotFrame = true;
+    m_bGotFrame = true;
 
-  if (m_bFirstFrame)
-  {
-    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::Decode(%p,%d) format=%d(%d) chan=%d samples=%d size=%d data=%p,%p,%p,%p,%p,%p,%p,%p",
-             pData, iSize, m_pCodecContext->sample_fmt, m_desiredSampleFormat, m_pCodecContext->channels, m_pFrame1->nb_samples,
-             m_pFrame1->linesize[0],
-             m_pFrame1->data[0], m_pFrame1->data[1], m_pFrame1->data[2], m_pFrame1->data[3], m_pFrame1->data[4], m_pFrame1->data[5], m_pFrame1->data[6], m_pFrame1->data[7]
-             );
+    if (m_bFirstFrame)
+    {
+      CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::GetFrame format=%d(%d) chan=%d samples=%d size=%d data=%p,%p,%p,%p,%p,%p,%p,%p",
+               m_pCodecContext->sample_fmt, m_desiredSampleFormat, m_pCodecContext->channels, m_pFrame1->nb_samples,
+               m_pFrame1->linesize[0],
+               m_pFrame1->data[0], m_pFrame1->data[1], m_pFrame1->data[2], m_pFrame1->data[3], m_pFrame1->data[4], m_pFrame1->data[5], m_pFrame1->data[6], m_pFrame1->data[7]
+               );
+    }
+    return true;
   }
-  return iBytesUsed;
+  else if(result == AVERROR_EOF || result == AVERROR(EAGAIN))
+  {
+    return false;
+  }
+  else
+  {
+    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::GetFrame error=%d", result);
+    Reset();
+    return false;
+  }
 }
 
 int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)

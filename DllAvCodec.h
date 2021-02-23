@@ -64,7 +64,6 @@ public:
   virtual AVCodec *avcodec_find_encoder(enum AVCodecID id)=0;
   virtual int avcodec_close_dont_call(AVCodecContext *avctx)=0;
   virtual AVFrame *av_frame_alloc(void)=0;
-  virtual int avcodec_decode_audio4(AVCodecContext *avctx, AVFrame *frame, int *got_frame_ptr, AVPacket *avpkt)=0;
   virtual int avcodec_decode_subtitle2(AVCodecContext *avctx, AVSubtitle *sub, int *got_sub_ptr, AVPacket *avpkt)=0;
   virtual AVCodecContext *avcodec_alloc_context3(AVCodec *codec)=0;
   virtual void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode)=0;
@@ -107,7 +106,6 @@ public:
     return ::avcodec_close(avctx);
   }
   virtual AVFrame *av_frame_alloc() { return ::av_frame_alloc(); }
-  virtual int avcodec_decode_audio4(AVCodecContext *avctx, AVFrame *frame, int *got_frame_ptr, AVPacket *avpkt) { return ::avcodec_decode_audio4(avctx, frame, got_frame_ptr, avpkt); }
   virtual int avcodec_decode_subtitle2(AVCodecContext *avctx, AVSubtitle *sub, int *got_sub_ptr, AVPacket *avpkt) { return ::avcodec_decode_subtitle2(avctx, sub, got_sub_ptr, avpkt); }
   virtual AVCodecContext *avcodec_alloc_context3(AVCodec *codec) { return ::avcodec_alloc_context3(codec); }
   virtual void avcodec_string(char *buf, int buf_size, AVCodecContext *enc, int encode) { ::avcodec_string(buf, buf_size, enc, encode); }

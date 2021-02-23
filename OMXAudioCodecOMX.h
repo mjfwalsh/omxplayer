@@ -25,6 +25,7 @@
 #include "DllAvFormat.h"
 #include "DllAvUtil.h"
 #include "DllSwResample.h"
+#include "OMXReader.h"
 
 #include "OMXStreamInfo.h"
 #include "utils/PCMRemap.h"
@@ -37,7 +38,8 @@ public:
   ~COMXAudioCodecOMX();
   bool Open(COMXStreamInfo &hints, enum PCMLayout layout);
   void Dispose();
-  int Decode(BYTE* pData, int iSize, int64_t dts, int64_t pts);
+  bool SendPacket(OMXPacket *pkt);
+  bool GetFrame();
   int GetData(BYTE** dst, int64_t &dts, int64_t &pts);
   void Reset();
   int GetChannels();
