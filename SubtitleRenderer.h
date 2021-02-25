@@ -24,10 +24,11 @@
 #include <cairo.h>
 
 #include "utils/simple_geometry.h"
-#include "Subtitle.h"
 
 class CRegExp;
 class DispmanxLayer;
+class Subtitle;
+
 using namespace std;
 
 class SubtitleRenderer {

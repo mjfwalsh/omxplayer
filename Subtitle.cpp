@@ -19,7 +19,6 @@
 
 #include <vector>
 #include <string>
-#include <iostream>
 
 #include "Subtitle.h"
 #include "utils/simple_geometry.h"

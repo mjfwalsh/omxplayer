@@ -19,14 +19,13 @@
  */
 
 #include "OMXClock.h"
+#include "utils/log.h"
 
 #define OMX_PRE_ROLL 200
 #define TP(speed) ((speed) < 0 || (speed) > 4*DVD_PLAYSPEED_NORMAL)
 
 OMXClock::OMXClock()
 {
-  m_dllAvFormat.Load();
-
   m_pause       = false;
 
   m_omx_speed = DVD_PLAYSPEED_NORMAL;
@@ -42,8 +41,6 @@ OMXClock::OMXClock()
 OMXClock::~OMXClock()
 {
   OMXDeinitialize();
-
-  m_dllAvFormat.Unload();
   pthread_mutex_destroy(&m_lock);
 }
 

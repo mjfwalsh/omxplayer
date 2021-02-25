@@ -18,13 +18,11 @@
  *
  */
 
-#include <math.h>
 #include <sys/time.h>
+#include <cassert>
 
 #include "OMXCore.h"
 #include "utils/log.h"
-
-#include "OMXClock.h"
 
 #ifdef TARGET_LINUX
 #include "XMemUtils.h"
@@ -57,7 +55,6 @@ COMXCoreTunel::COMXCoreTunel()
   m_src_port            = 0;
   m_dst_port            = 0;
   m_tunnel_set          = false;
-  m_DllOMX              = DllOMX::GetDllOMX();
 }
 
 COMXCoreTunel::~COMXCoreTunel()
@@ -123,7 +120,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
 
   if(m_src_component->GetComponent())
   {
-    omx_err = m_DllOMX->OMX_SetupTunnel(m_src_component->GetComponent(), m_src_port, NULL, 0);
+    omx_err = OMX_SetupTunnel(m_src_component->GetComponent(), m_src_port, NULL, 0);
     if(omx_err != OMX_ErrorNone)
     {
       CLog::Log(LOGERROR, "COMXCoreTunel::Deestablish - could not unset tunnel on comp src %s port %d omx_err(0x%08x)\n",
@@ -133,7 +130,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
 
   if(m_dst_component->GetComponent())
   {
-    omx_err = m_DllOMX->OMX_SetupTunnel(m_dst_component->GetComponent(), m_dst_port, NULL, 0);
+    omx_err = OMX_SetupTunnel(m_dst_component->GetComponent(), m_dst_port, NULL, 0);
     if(omx_err != OMX_ErrorNone)
     {
       CLog::Log(LOGERROR, "COMXCoreTunel::Deestablish - could not unset tunnel on comp dst %s port %d omx_err(0x%08x)\n",
@@ -212,7 +209,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish(bool enable_ports /* = true */, bool disa
 
   if(m_src_component->GetComponent() && m_dst_component->GetComponent())
   {
-    omx_err = m_DllOMX->OMX_SetupTunnel(m_src_component->GetComponent(), m_src_port, m_dst_component->GetComponent(), m_dst_port);
+    omx_err = OMX_SetupTunnel(m_src_component->GetComponent(), m_src_port, m_dst_component->GetComponent(), m_dst_port);
     if(omx_err != OMX_ErrorNone) 
     {
       CLog::Log(LOGERROR, "COMXCoreTunel::Establish - could not setup tunnel src %s port %d dst %s port %d omx_err(0x%08x)\n", 
@@ -318,8 +315,6 @@ COMXCoreComponent::COMXCoreComponent()
   pthread_cond_init(&m_input_buffer_cond, NULL);
   pthread_cond_init(&m_output_buffer_cond, NULL);
   pthread_cond_init(&m_omx_event_cond, NULL);
-
-  m_DllOMX = DllOMX::GetDllOMX();
 }
 
 COMXCoreComponent::~COMXCoreComponent()
@@ -1428,7 +1423,7 @@ bool COMXCoreComponent::Initialize( const std::string &component_name, OMX_INDEX
       omx_err = OMXALSA_GetHandle(&m_handle, (char*) component_name.c_str(), this, &m_callbacks);
     else
 #endif
-    omx_err = m_DllOMX->OMX_GetHandle(&m_handle, (char*)component_name.c_str(), this, &m_callbacks);
+    omx_err = OMX_GetHandle(&m_handle, (char*)component_name.c_str(), this, &m_callbacks);
     if (!m_handle || omx_err != OMX_ErrorNone)
     {
       CLog::Log(LOGERROR, "COMXCoreComponent::Initialize - could not get component handle for %s omx_err(0x%08x)\n",
@@ -1509,7 +1504,7 @@ bool COMXCoreComponent::Deinitialize()
       omx_err = OMXALSA_FreeHandle(m_handle);
     else
 #endif
-    omx_err = m_DllOMX->OMX_FreeHandle(m_handle);
+    omx_err = OMX_FreeHandle(m_handle);
     if (omx_err != OMX_ErrorNone)
     {
       CLog::Log(LOGERROR, "COMXCoreComponent::Deinitialize - failed to free handle for component %s omx_err(0x%08x)",
@@ -1782,21 +1777,15 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
 COMXCore::COMXCore()
 {
   m_is_open = false;
-
-  m_DllOMX  = new DllOMX();
 }
 
 COMXCore::~COMXCore()
 {
-  delete m_DllOMX;
 }
 
 bool COMXCore::Initialize()
 {
-  if(!m_DllOMX->Load())
-    return false;
-
-  OMX_ERRORTYPE omx_err = m_DllOMX->OMX_Init();
+  OMX_ERRORTYPE omx_err = OMX_Init();
   if (omx_err != OMX_ErrorNone)
   {
     CLog::Log(LOGERROR, "COMXCore::Initialize - OMXCore failed to init, omx_err(0x%08x)", omx_err);
@@ -1811,11 +1800,10 @@ void COMXCore::Deinitialize()
 {
   if(m_is_open)
   {
-    OMX_ERRORTYPE omx_err = m_DllOMX->OMX_Deinit();
+    OMX_ERRORTYPE omx_err = OMX_Deinit();
     if (omx_err != OMX_ErrorNone)
     {
       CLog::Log(LOGERROR, "COMXCore::Deinitialize - OMXCore failed to deinit, omx_err(0x%08x)", omx_err);
-    }  
-    m_DllOMX->Unload();
+    }
   }
 }

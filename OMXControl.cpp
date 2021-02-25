@@ -1,18 +1,17 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <sys/mman.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <dbus/dbus.h>
 
 #include <string>
 #include <sstream>
-#include <utility>
 
 #include "utils/log.h"
 #include "OMXControl.h"
 #include "KeyConfig.h"
-
+#include "OMXPlayerAudio.h"
+#include "OMXReader.h"
+#include "OMXPlayerSubtitles.h"
 
 void ToURI(const std::string& str, char *uri)
 {

@@ -1,5 +1,4 @@
 #include <map>
-#include <string>
 
 class KeyConfig
 {

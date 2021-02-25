@@ -22,20 +22,16 @@
 #ifndef _OMX_READER_H_
 #define _OMX_READER_H_
 
-#include "DllAvUtil.h"
 #include "DllAvFormat.h"
-#include "DllAvCodec.h"
 #include "OMXStreamInfo.h"
 #include "OMXThread.h"
-#include <queue>
-
-#include "OMXStreamInfo.h"
-#include "OMXDvdPlayer.h"
-
 #include "utils/simple_geometry.h"
 
 #include <sys/types.h>
 #include <string>
+#include <cassert>
+
+class OMXDvdPlayer;
 
 using namespace std;
 
@@ -49,8 +45,6 @@ using namespace std;
 #ifndef MAX_STREAMS
 #define MAX_STREAMS 100
 #endif
-
-class OMXReader;
 
 class OMXPacket : public AVPacket
 {
@@ -93,9 +87,6 @@ protected:
   int                       m_video_count;
   int                       m_audio_count;
   int                       m_subtitle_count;
-  DllAvUtil                 m_dllAvUtil;
-  DllAvCodec                m_dllAvCodec;
-  DllAvFormat               m_dllAvFormat;
   bool                      m_open;
   std::string               m_filename;
   bool                      m_bMatroska;

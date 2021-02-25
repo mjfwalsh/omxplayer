@@ -15,7 +15,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
-
+#include "OMXReader.h"
+#include "OMXClock.h"
 #include "OMXPlayerSubtitles.h"
 #include "SubtitleRenderer.h"
 #include "Subtitle.h"
@@ -100,9 +101,9 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video,
 {
   SendToRenderer(Message::DVDSubs{video, video_aspect, aspect_mode});
 
-  AVCodec *dvd_codec = m_dllAvCodec.avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
-  m_dvd_codec_context = m_dllAvCodec.avcodec_alloc_context3(dvd_codec);
-  m_dllAvCodec.avcodec_open2(m_dvd_codec_context, dvd_codec, NULL);
+  AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
+  m_dvd_codec_context = avcodec_alloc_context3(dvd_codec);
+  avcodec_open2(m_dvd_codec_context, dvd_codec, NULL);
 
   return true;
 }
@@ -510,7 +511,7 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 {
   AVSubtitle s;
   int got_sub_ptr = -1;
-  m_dllAvCodec.avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
+  avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
 
   if(got_sub_ptr < 1 || s.num_rects < 1 || s.rects[0]->nb_colors != 4)
   {

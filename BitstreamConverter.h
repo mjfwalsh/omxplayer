@@ -23,7 +23,6 @@
 #define _BITSTREAMCONVERTER_H_
 
 #include <stdint.h>
-#include "DllAvUtil.h"
 #include "DllAvFormat.h"
 #include "DllAvCodec.h"
 
@@ -161,8 +160,6 @@ protected:
   int               m_extrasize;
   bool              m_convert_3byteTo4byteNALSize;
   bool              m_convert_bytestream;
-  DllAvUtil         *m_dllAvUtil;
-  DllAvFormat       *m_dllAvFormat;
   AVCodecID         m_codec;
 };
 

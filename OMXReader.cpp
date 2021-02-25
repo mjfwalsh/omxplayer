@@ -21,11 +21,13 @@
 
 #include "OMXReader.h"
 #include "OMXClock.h"
+#include "OMXDvdPlayer.h"
 
 #include <stdio.h>
-#include <unistd.h>
+//i#include <unistd.h>
 
-#include "linux/XMemUtils.h"
+#include "DllAvUtil.h"
+#include "utils/log.h"
 
 #define MAX_DATA_SIZE_VIDEO    8 * 1024 * 1024
 #define MAX_DATA_SIZE_AUDIO    2 * 1024 * 1024
@@ -154,9 +156,6 @@ bool OMXReader::Open(
 	std::string &avdict,
 	OMXDvdPlayer *dvd)
 {
-  if (!m_dllAvUtil.Load() || !m_dllAvCodec.Load() || !m_dllAvFormat.Load())
-    return false;
-
   timeout_default_duration = (int64_t) (timeout * 1e9);
   m_iCurrentPts = AV_NOPTS_VALUE;
   m_filename    = filename; 
@@ -169,16 +168,16 @@ bool OMXReader::Open(
   ClearStreams();
 
 #if LIBAVFORMAT_VERSION_MAJOR < 58
-  m_dllAvFormat.av_register_all();
+  av_register_all();
 #endif
-  m_dllAvFormat.avformat_network_init();
-  m_dllAvUtil.av_log_set_level(dump_format ? AV_LOG_INFO:AV_LOG_QUIET);
+  avformat_network_init();
+  av_log_set_level(dump_format ? AV_LOG_INFO:AV_LOG_QUIET);
 
   int           result    = -1;
   AVInputFormat *iformat  = NULL;
   unsigned char *buffer   = NULL;
 
-  m_pFormatContext     = m_dllAvFormat.avformat_alloc_context();
+  m_pFormatContext     = avformat_alloc_context();
 
   // the default size doesn't appear to be big enough for DVDs
   if(m_DvdPlayer)
@@ -187,7 +186,7 @@ bool OMXReader::Open(
     m_pFormatContext->max_analyze_duration = 100000000;
   }
 
-  result = m_dllAvFormat.av_set_options_string(m_pFormatContext, lavfdopts.c_str(), ":", ",");
+  result = av_set_options_string(m_pFormatContext, lavfdopts.c_str(), ":", ",");
 
   if (result < 0)
   {
@@ -197,7 +196,7 @@ bool OMXReader::Open(
   }
 
   AVDictionary *d = NULL;
-  result = m_dllAvUtil.av_dict_parse_string(&d, avdict.c_str(), ":", ",", 0);
+  result = av_dict_parse_string(&d, avdict.c_str(), ":", ",", 0);
 
   if (result < 0)
   {
@@ -216,10 +215,10 @@ bool OMXReader::Open(
   {
     CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", m_filename.c_str());
 
-    buffer = (unsigned char*)m_dllAvUtil.av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = m_dllAvFormat.avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
+    buffer = (unsigned char*)av_malloc(FFMPEG_FILE_BUFFER_SIZE);
+    m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
 
-    m_dllAvFormat.av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
+    av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
 
     if(!iformat)
     {
@@ -229,7 +228,7 @@ bool OMXReader::Open(
     }
 
     m_pFormatContext->pb = m_ioContext;
-    result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
+    result = avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
     if(result < 0)
     {
       Close();
@@ -269,7 +268,7 @@ bool OMXReader::Open(
     }
 
     CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
-    result = m_dllAvFormat.avformat_open_input(&m_pFormatContext, m_filename.c_str(), iformat, &d);
+    result = avformat_open_input(&m_pFormatContext, m_filename.c_str(), iformat, &d);
     
     if(live)
     {
@@ -303,7 +302,7 @@ bool OMXReader::Open(
   if (live)
     m_pFormatContext->flags |= AVFMT_FLAG_NOBUFFER;
 
-  result = m_dllAvFormat.avformat_find_stream_info(m_pFormatContext, NULL);
+  result = avformat_find_stream_info(m_pFormatContext, NULL);
   if(result < 0)
   {
     Close();
@@ -319,7 +318,7 @@ bool OMXReader::Open(
   m_speed       = DVD_PLAYSPEED_NORMAL;
 
   if(dump_format)
-    m_dllAvFormat.av_dump_format(m_pFormatContext, 0, m_filename.c_str(), 0);
+    av_dump_format(m_pFormatContext, 0, m_filename.c_str(), 0);
 
   UpdateCurrentPTS();
 
@@ -366,23 +365,19 @@ bool OMXReader::Close()
       CLog::Log(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
       m_ioContext = m_pFormatContext->pb;
     }
-    m_dllAvFormat.avformat_close_input(&m_pFormatContext);
+    avformat_close_input(&m_pFormatContext);
   }
 
   if(m_ioContext)
   {
-    m_dllAvUtil.av_free(m_ioContext->buffer);
-    m_dllAvUtil.av_free(m_ioContext);
+    av_free(m_ioContext->buffer);
+    av_free(m_ioContext);
   }
   
   m_ioContext       = NULL;
   m_pFormatContext  = NULL;
 
-  m_dllAvFormat.avformat_network_deinit();
-
-  m_dllAvUtil.Unload();
-  m_dllAvCodec.Unload();
-  m_dllAvFormat.Unload();
+  avformat_network_deinit();
 
   m_open            = false;
   m_filename.clear();
@@ -434,7 +429,7 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
     seek_pts += m_pFormatContext->start_time;
 
   RESET_TIMEOUT(1);
-  int ret = m_dllAvFormat.av_seek_frame(m_pFormatContext, -1, seek_pts, backwords ? AVSEEK_FLAG_BACKWARD : 0);
+  int ret = av_seek_frame(m_pFormatContext, -1, seek_pts, backwords ? AVSEEK_FLAG_BACKWARD : 0);
 
   if(ret >= 0)
     UpdateCurrentPTS();
@@ -474,7 +469,7 @@ OMXPacket *OMXReader::Read()
     m_pFormatContext->pb->eof_reached = 0;
 
   RESET_TIMEOUT(1);
-  result = m_dllAvFormat.av_read_frame(m_pFormatContext, m_omx_pkt);
+  result = av_read_frame(m_pFormatContext, m_omx_pkt);
   if (result < 0)
   {
     m_eof = true;
@@ -493,7 +488,7 @@ OMXPacket *OMXReader::Read()
       //FlushRead();
     }
 
-    m_dllAvCodec.av_packet_unref(m_omx_pkt);
+    av_packet_unref(m_omx_pkt);
 
     m_eof = true;
     UnLock();
@@ -506,7 +501,7 @@ OMXPacket *OMXReader::Read()
   /*
   if(!IsActive(pkt.stream_index))
   {
-    m_dllAvCodec.av_packet_unref(&pkt);
+    av_packet_unref(&pkt);
     UnLock();
     return NULL;
   }
@@ -547,7 +542,7 @@ OMXPacket *OMXReader::Read()
     if(duration > pStream->duration)
     {
       pStream->duration = duration;
-      duration = m_dllAvUtil.av_rescale_rnd(pStream->duration, (int64_t)pStream->time_base.num * AV_TIME_BASE, 
+      duration = av_rescale_rnd(pStream->duration, (int64_t)pStream->time_base.num * AV_TIME_BASE, 
                                             pStream->time_base.den, AV_ROUND_NEAR_INF);
       if (m_pFormatContext->duration == AV_NOPTS_VALUE || duration > m_pFormatContext->duration)
         m_pFormatContext->duration = duration;
@@ -701,7 +696,7 @@ void OMXReader::AddStream(int id)
   }
 
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,83,0)
-  AVDictionaryEntry *langTag = m_dllAvUtil.av_dict_get(pStream->metadata, "language", NULL, 0);
+  AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
   if (langTag)
     strncpy(m_streams[id].language, langTag->value, 3);
 #else
@@ -709,7 +704,7 @@ void OMXReader::AddStream(int id)
 #endif
 
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,83,0)
-  AVDictionaryEntry *titleTag = m_dllAvUtil.av_dict_get(pStream->metadata,"title", NULL, 0);
+  AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata,"title", NULL, 0);
   if (titleTag)
     m_streams[id].name = titleTag->value;
 #else
@@ -879,7 +874,7 @@ bool OMXReader::GetHints(AVStream *stream, COMXStreamInfo *hints)
 
     if (m_bAVI && stream->codecpar->codec_id == AV_CODEC_ID_H264)
       hints->ptsinvalid = true;
-    AVDictionaryEntry *rtag = m_dllAvUtil.av_dict_get(stream->metadata, "rotate", NULL, 0);
+    AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", NULL, 0);
     if (rtag)
       hints->orientation = atoi(rtag->value);
     m_aspect = hints->aspect;
@@ -1014,11 +1009,11 @@ void OMXReader::SetSpeed(int iSpeed)
 
   if(m_speed != DVD_PLAYSPEED_PAUSE && iSpeed == DVD_PLAYSPEED_PAUSE)
   {
-    m_dllAvFormat.av_read_pause(m_pFormatContext);
+    av_read_pause(m_pFormatContext);
   }
   else if(m_speed == DVD_PLAYSPEED_PAUSE && iSpeed != DVD_PLAYSPEED_PAUSE)
   {
-    m_dllAvFormat.av_read_play(m_pFormatContext);
+    av_read_play(m_pFormatContext);
   }
   m_speed = iSpeed;
 
@@ -1125,7 +1120,7 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
   }
 #endif
 
-  AVCodec *codec = m_dllAvCodec.avcodec_find_decoder(stream->codecpar->codec_id);
+  AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
 
   if (codec)
     strStreamName = codec->name;

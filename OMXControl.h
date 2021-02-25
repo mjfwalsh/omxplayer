@@ -4,9 +4,10 @@
 
 #include <dbus/dbus.h>
 #include "OMXClock.h"
-#include "OMXPlayerAudio.h"
-#include "OMXPlayerSubtitles.h"
 
+class OMXPlayerAudio;
+class OMXPlayerSubtitles;
+class OMXReader;
 
 #define MIN_RATE (1)
 #define MAX_RATE (4 * DVD_PLAYSPEED_NORMAL)

@@ -25,11 +25,10 @@
 
 #include <IL/OMX_Video.h>
 
-#include "OMXClock.h"
-#include "OMXReader.h"
-
 #include "guilib/Geometry.h"
 #include "utils/SingleLock.h"
+
+class OMXClock;
 
 #define VIDEO_BUFFERS 60
 
@@ -69,8 +68,6 @@ public:
   }
 };
 
-class DllAvUtil;
-class DllAvFormat;
 class COMXVideo
 {
 public:

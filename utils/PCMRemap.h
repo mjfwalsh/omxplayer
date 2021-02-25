@@ -22,7 +22,6 @@
  *
  */
 
-#include <stdint.h>
 #include <vector>
 #include "StdString.h"
 

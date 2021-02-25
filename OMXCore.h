@@ -21,6 +21,7 @@
 
 #include <string>
 #include <queue>
+#include <cstring>
 
 #include "DllOMX.h"
 
@@ -45,10 +46,7 @@ typedef struct omx_event {
   OMX_U32 nData2;
 } omx_event;
 
-class COMXCore;
 class COMXCoreComponent;
-class COMXCoreTunel;
-class COMXCoreClock;
 
 class COMXCoreTunel
 {
@@ -65,7 +63,6 @@ private:
   COMXCoreComponent *m_dst_component;
   unsigned int      m_src_port;
   unsigned int      m_dst_port;
-  DllOMX            *m_DllOMX;
   bool              m_tunnel_set;
 };
 
@@ -180,7 +177,6 @@ private:
   bool          m_omx_output_use_buffers;
 
   bool          m_exit;
-  DllOMX        *m_DllOMX;
   pthread_cond_t    m_input_buffer_cond;
   pthread_cond_t    m_output_buffer_cond;
   pthread_cond_t    m_omx_event_cond;
@@ -199,9 +195,7 @@ public:
   // initialize OMXCore and get decoder component
   bool Initialize();
   void Deinitialize();
-  DllOMX *GetDll() { return m_DllOMX; }
 
 protected:
   bool              m_is_open;
-  DllOMX            *m_DllOMX;
 };

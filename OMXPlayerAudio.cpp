@@ -20,11 +20,13 @@
  */
 
 #include "OMXPlayerAudio.h"
+#include "OMXReader.h"
+#include "OMXAudioCodecOMX.h"
+#include "OMXClock.h"
 
 #include <stdio.h>
-#include <unistd.h>
 
-#include "linux/XMemUtils.h"
+#include "utils/log.h"
 
 OMXPlayerAudio::OMXPlayerAudio()
 {
@@ -88,11 +90,11 @@ bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXR
   if(ThreadHandle())
     Close();
 
-  if (!m_dllAvUtil.Load() || !m_dllAvCodec.Load() || !m_dllAvFormat.Load() || !av_clock)
+  if (!av_clock)
     return false;
 
 #if LIBAVFORMAT_VERSION_MAJOR < 58
-  m_dllAvFormat.av_register_all();
+  av_register_all();
 #endif
 
   m_config      = config;
@@ -151,10 +153,6 @@ bool OMXPlayerAudio::Close()
   m_stream_id     = -1;
   m_iCurrentPts   = AV_NOPTS_VALUE;
   m_pStream       = NULL;
-
-  m_dllAvUtil.Unload();
-  m_dllAvCodec.Unload();
-  m_dllAvFormat.Unload();
 
   return true;
 }

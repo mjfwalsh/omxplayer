@@ -22,10 +22,15 @@
 #include "OMXPlayerVideo.h"
 
 #include <stdio.h>
-#include <unistd.h>
-#include <sys/time.h>
+#include <string>
 
-#include "linux/XMemUtils.h"
+#include "utils/log.h"
+
+#include "OMXClock.h"
+#include "OMXReader.h"
+#include "OMXStreamInfo.h"
+
+class CRect;
 
 OMXPlayerVideo::OMXPlayerVideo()
 {
@@ -83,14 +88,14 @@ void OMXPlayerVideo::UnLockDecoder()
 
 bool OMXPlayerVideo::Open(OMXClock *av_clock, const OMXVideoConfig &config)
 {
-  if (!m_dllAvUtil.Load() || !m_dllAvCodec.Load() || !m_dllAvFormat.Load() || !av_clock)
+  if (!av_clock)
     return false;
   
   if(ThreadHandle())
     Close();
 
 #if LIBAVFORMAT_VERSION_MAJOR < 58
-  m_dllAvFormat.av_register_all();
+  av_register_all();
 #endif
 
   m_config      = config;
@@ -157,10 +162,6 @@ bool OMXPlayerVideo::Close()
   }
 
   CloseDecoder();
-
-  m_dllAvUtil.Unload();
-  m_dllAvCodec.Unload();
-  m_dllAvFormat.Unload();
 
   m_open          = false;
   m_stream_id     = -1;

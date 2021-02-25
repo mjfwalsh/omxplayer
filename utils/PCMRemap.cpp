@@ -24,11 +24,9 @@
 #endif
 
 #include <cstdlib>
-#include <string.h>
-#include <stdio.h>
-#include <math.h>
+#include <cstring>
+#include <cmath>
 
-#include "MathUtils.h"
 #include "PCMRemap.h"
 #include "utils/log.h"
 

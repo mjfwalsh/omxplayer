@@ -20,10 +20,9 @@
 
 #include "OMXAudio.h"
 #include "utils/log.h"
+#include "OMXClock.h"
 
 #define CLASSNAME "COMXAudio"
-
-#include "linux/XMemUtils.h"
 
 #ifndef VOLUME_MINIMUM
 #define VOLUME_MINIMUM 0
@@ -392,9 +391,6 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
 
   Deinitialize();
 
-  if(!m_dllAvUtil.Load())
-    return false;
-
   m_config = config;
   m_InputChannels = count_bits(channelMap);
 
@@ -704,8 +700,6 @@ bool COMXAudio::Deinitialize()
   m_av_clock  = NULL;
 
   m_Initialized = false;
-
-  m_dllAvUtil.Unload();
 
   while(!m_ampqueue.empty())
     m_ampqueue.pop_front();

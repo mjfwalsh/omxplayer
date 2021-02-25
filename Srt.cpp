@@ -25,6 +25,7 @@
 // DEALINGS IN THE SOFTWARE.
 
 #include "Srt.h"
+#include "Subtitle.h"
 
 #include <fstream>
 #include <utility>

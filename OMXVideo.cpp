@@ -20,13 +20,11 @@
  */
 
 #include "OMXVideo.h"
+#include "OMXClock.h"
 
 #include "OMXStreamInfo.h"
 #include "utils/log.h"
-#include "linux/XMemUtils.h"
-
-#include <sys/time.h>
-#include <inttypes.h>
+#include "DllAvUtil.h"
 
 #ifdef CLASSNAME
 #undef CLASSNAME

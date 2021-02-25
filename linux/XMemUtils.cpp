@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 
 /*
  *      Copyright (C) 2005-2008 Team XBMC

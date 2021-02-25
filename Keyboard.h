@@ -4,6 +4,7 @@
 
 #include "OMXThread.h"
 #include <map>
+#include <termios.h>
 
  class Keyboard : public OMXThread
  {

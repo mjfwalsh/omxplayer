@@ -12,11 +12,9 @@ STRIP ?= strip
 SRC=	linux/XMemUtils.cpp \
 		linux/OMXAlsa.cpp \
 		utils/log.cpp \
-		DynamicDll.cpp \
 		utils/PCMRemap.cpp \
 		utils/RegExp.cpp \
 		BitstreamConverter.cpp \
-		linux/RBP.cpp \
 		OMXThread.cpp \
 		OMXReader.cpp \
 		OMXStreamInfo.cpp \
@@ -47,7 +45,7 @@ all: omxplayer.bin omxplayer.1
 
 %.o: %.cpp
 	@rm -f $@ 
-	$(CXX) $(CFLAGS) $(INCLUDES) -c $< -o $@ -Wno-deprecated-declarations
+	$(CXX) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 omxplayer.o: help.h keys.h
 

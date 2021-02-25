@@ -22,14 +22,13 @@
  */
 
 #include "DllAvCodec.h"
-#include "DllAvFormat.h"
-#include "DllAvUtil.h"
 #include "DllSwResample.h"
-#include "OMXReader.h"
 
-#include "OMXStreamInfo.h"
 #include "utils/PCMRemap.h"
 #include "linux/PlatformDefs.h"
+
+class COMXStreamInfo;
+class OMXPacket;
 
 class COMXAudioCodecOMX
 {
@@ -71,7 +70,4 @@ protected:
   bool m_bNoConcatenate;
   unsigned int  m_frameSize;
   uint64_t m_dts, m_pts;
-  DllAvCodec m_dllAvCodec;
-  DllAvUtil m_dllAvUtil;
-  DllSwResample m_dllSwResample;
 };

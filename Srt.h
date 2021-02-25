@@ -29,6 +29,6 @@
 #include <string>
 #include <vector>
 
-#include "Subtitle.h"
+class Subtitle;
 
 bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles);

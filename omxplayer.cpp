@@ -21,17 +21,11 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <stdint.h>
-#include <termios.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
 #include <getopt.h>
 #include <string.h>
 
-#define AV_NOWARN_DEPRECATED
-
 extern "C" {
-#include <libavformat/avformat.h>
-#include <libavutil/avutil.h>
+#include <bcm_host.h>
 };
 
 #include "OMXStreamInfo.h"
@@ -39,12 +33,9 @@ extern "C" {
 #include "utils/log.h"
 
 #include "DllAvUtil.h"
-#include "DllAvFormat.h"
 #include "DllAvCodec.h"
-#include "linux/RBP.h"
 
 #include "OMXVideo.h"
-#include "OMXAudioCodecOMX.h"
 #include "utils/PCMRemap.h"
 #include "OMXClock.h"
 #include "OMXAudio.h"
@@ -52,6 +43,7 @@ extern "C" {
 #include "OMXPlayerVideo.h"
 #include "OMXPlayerAudio.h"
 #include "OMXPlayerSubtitles.h"
+#include "OMXDvdPlayer.h"
 #include "OMXControl.h"
 #include "DllOMX.h"
 #include "Srt.h"
@@ -104,7 +96,6 @@ OMXPacket         *m_omx_pkt            = NULL;
 bool              m_no_hdmi_clock_sync  = false;
 bool              m_stop                = false;
 int               m_subtitle_index      = -1;
-DllBcmHost        m_BcmHost;
 OMXPlayerVideo    m_player_video;
 OMXPlayerAudio    m_player_audio;
 OMXPlayerSubtitles  m_player_subtitles;
@@ -300,14 +291,14 @@ void SetVideoMode(int width, int height, int fpsrate, int fpsscale, FORMAT_3D_T 
   //Supported HDMI CEA/DMT resolutions, preferred resolution will be returned
   TV_SUPPORTED_MODE_NEW_T *supported_modes = NULL;
   // query the number of modes first
-  int max_supported_modes = m_BcmHost.vc_tv_hdmi_get_supported_modes_new(group, NULL, 0, &prefer_group, &prefer_mode);
+  int max_supported_modes = vc_tv_hdmi_get_supported_modes_new(group, NULL, 0, &prefer_group, &prefer_mode);
  
   if (max_supported_modes > 0)
     supported_modes = new TV_SUPPORTED_MODE_NEW_T[max_supported_modes];
  
   if (supported_modes)
   {
-    num_modes = m_BcmHost.vc_tv_hdmi_get_supported_modes_new(group,
+    num_modes = vc_tv_hdmi_get_supported_modes_new(group,
         supported_modes, max_supported_modes, &prefer_group, &prefer_mode);
 
     CLog::Log(LOGDEBUG, "EGL get supported modes (%d) = %d, prefer_group=%x, prefer_mode=%x\n",
@@ -409,18 +400,18 @@ void SetVideoMode(int width, int height, int fpsrate, int fpsscale, FORMAT_3D_T 
         property.param1 = HDMI_3D_FORMAT_TB_HALF;
       else if (is3d == CONF_FLAGS_FORMAT_FP && tv_found->struct_3d_mask & HDMI_3D_STRUCT_FRAME_PACKING)
         property.param1 = HDMI_3D_FORMAT_FRAME_PACKING;
-      m_BcmHost.vc_tv_hdmi_set_property(&property);
+      vc_tv_hdmi_set_property(&property);
     }
 
     printf("ntsc_freq:%d %s\n", ntsc_freq, property.param1 == HDMI_3D_FORMAT_SBS_HALF ? "3DSBS" :
             property.param1 == HDMI_3D_FORMAT_TB_HALF ? "3DTB" : property.param1 == HDMI_3D_FORMAT_FRAME_PACKING ? "3DFP":"");
     sem_t tv_synced;
     sem_init(&tv_synced, 0, 0);
-    m_BcmHost.vc_tv_register_callback(CallbackTvServiceCallback, &tv_synced);
-    int success = m_BcmHost.vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)group, tv_found->code);
+    vc_tv_register_callback(CallbackTvServiceCallback, &tv_synced);
+    int success = vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)group, tv_found->code);
     if (success == 0)
       sem_wait(&tv_synced);
-    m_BcmHost.vc_tv_unregister_callback(CallbackTvServiceCallback);
+    vc_tv_unregister_callback(CallbackTvServiceCallback);
     sem_destroy(&tv_synced);
   }
   if (supported_modes)
@@ -537,7 +528,6 @@ int main(int argc, char *argv[])
   OMXDvdPlayer          *m_DvdPlayer          = NULL;
   int                   m_incr                = 0;
   int                   m_loop_from           = 0;
-  CRBP                  g_RBP;
   COMXCore              g_OMX;
   bool                  m_stats               = false;
   bool                  m_dump_format         = false;
@@ -999,7 +989,7 @@ int main(int argc, char *argv[])
   // start the clock
   m_av_clock = new OMXClock();
 
-  g_RBP.Initialize();
+  bcm_host_init();
   g_OMX.Initialize();
 
   blank_background(m_blank_background);
@@ -1015,7 +1005,7 @@ int main(int argc, char *argv[])
   {
     m_av_clock->OMXStop();
     m_av_clock->OMXStateIdle();
-    g_RBP.Deinitialize();
+    bcm_host_deinit();
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
@@ -1045,7 +1035,7 @@ int main(int argc, char *argv[])
     m_player_subtitles.DeInit();
     m_av_clock->OMXStop();
     m_av_clock->OMXStateIdle();
-    g_RBP.Deinitialize();
+    bcm_host_deinit();
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   };
@@ -1292,14 +1282,14 @@ int main(int argc, char *argv[])
   if(m_has_video && m_refresh)
   {
     memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
-    m_BcmHost.vc_tv_get_display_state(&tv_state);
+    vc_tv_get_display_state(&tv_state);
 
     SetVideoMode(m_config_video.hints.width, m_config_video.hints.height, m_config_video.hints.fpsrate, m_config_video.hints.fpsscale, m_3d);
   }
   // get display aspect
   TV_DISPLAY_STATE_T current_tv_state;
   memset(&current_tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
-  m_BcmHost.vc_tv_get_display_state(&current_tv_state);
+  vc_tv_get_display_state(&current_tv_state);
   if(current_tv_state.state & ( VC_HDMI_HDMI | VC_HDMI_DVI )) {
     //HDMI or DVI on
     m_config_video.display_aspect = get_display_aspect_ratio((HDMI_ASPECT_T)current_tv_state.display.hdmi.aspect_ratio);
@@ -1355,7 +1345,7 @@ int main(int argc, char *argv[])
 
   if (m_config_audio.device.empty())
   {
-    if (m_BcmHost.vc_tv_hdmi_audio_supported(EDID_AudioFormat_ePCM, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) == 0)
+    if (vc_tv_hdmi_audio_supported(EDID_AudioFormat_ePCM, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) == 0)
       m_config_audio.device = "omx:hdmi";
     else
       m_config_audio.device = "omx:local";
@@ -1365,10 +1355,10 @@ int main(int argc, char *argv[])
     m_config_audio.subdevice = "default";
 
   if ((m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3) &&
-      m_BcmHost.vc_tv_hdmi_audio_supported(EDID_AudioFormat_eAC3, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
+      vc_tv_hdmi_audio_supported(EDID_AudioFormat_eAC3, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
     m_config_audio.passthrough = false;
   if (m_config_audio.hints.codec == AV_CODEC_ID_DTS &&
-      m_BcmHost.vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
+      vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
     m_config_audio.passthrough = false;
 
   if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, &m_omx_reader))
@@ -2112,7 +2102,7 @@ do_exit:
   }
   if(m_has_video && m_refresh && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
   {
-    m_BcmHost.vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
+    vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
   }
 
   m_player_subtitles.DeInit();
@@ -2132,7 +2122,7 @@ do_exit:
   vc_tv_show_info(0);
 
   g_OMX.Deinitialize();
-  g_RBP.Deinitialize();
+  bcm_host_deinit();
 
   // save recent files
   if(!m_loop) {

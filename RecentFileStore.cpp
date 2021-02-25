@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <vector>
 #include <map>
-#include <iostream>
 #include <dirent.h>
 #include <sys/stat.h>
 

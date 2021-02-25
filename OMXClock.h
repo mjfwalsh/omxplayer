@@ -22,8 +22,6 @@
 #ifndef _AVCLOCK_H_
 #define _AVCLOCK_H_
 
-#include "DllAvFormat.h"
-
 #include "OMXCore.h"
 
 #define DVD_SEC_TO_MICROSEC(x) ((x)       * 1000000)
@@ -58,7 +56,6 @@ private:
   COMXCoreComponent m_omx_clock;
   int64_t            m_last_media_time;
   int64_t            m_last_media_time_read;
-  DllAvFormat       m_dllAvFormat;
 
 public:
   OMXClock();

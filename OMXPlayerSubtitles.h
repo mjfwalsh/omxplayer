@@ -19,18 +19,17 @@
  */
 
 #include "OMXThread.h"
-#include "OMXReader.h"
-#include "OMXClock.h"
 #include "Subtitle.h"
 #include "utils/Mailbox.h"
-#include "DllAvCodec.h"
+#include "utils/log.h"
 
-#include <boost/config.hpp>
 #include <boost/circular_buffer.hpp>
 #include <atomic>
 #include <string>
 #include <vector>
-#include <utility>
+
+class OMXClock;
+class OMXPacket;
 
 class OMXPlayerSubtitles : public OMXThread
 {
@@ -96,7 +95,6 @@ public:
   void AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT;
 
 protected:
-  DllAvCodec                m_dllAvCodec;
   AVCodecContext           *m_dvd_codec_context;
 
 private:

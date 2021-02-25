@@ -22,23 +22,21 @@
 #ifndef _OMX_PLAYERAUDIO_H_
 #define _OMX_PLAYERAUDIO_H_
 
-#include "DllAvUtil.h"
 #include "DllAvFormat.h"
-#include "DllAvCodec.h"
 
-#include "utils/PCMRemap.h"
-
-#include "OMXReader.h"
-#include "OMXClock.h"
 #include "OMXStreamInfo.h"
 #include "OMXAudio.h"
-#include "OMXAudioCodecOMX.h"
 #include "OMXThread.h"
 
 #include <deque>
 #include <string>
 #include <atomic>
 #include <sys/types.h>
+
+class COMXAudioCodecOMX;
+class OMXClock;
+class OMXPacket;
+class OMXReader;
 
 using namespace std;
 
@@ -48,9 +46,6 @@ protected:
   AVStream                  *m_pStream;
   int                       m_stream_id;
   std::deque<OMXPacket *>   m_packets;
-  DllAvUtil                 m_dllAvUtil;
-  DllAvCodec                m_dllAvCodec;
-  DllAvFormat               m_dllAvFormat;
   bool                      m_open;
   COMXStreamInfo            m_hints;
   int64_t                   m_iCurrentPts;
