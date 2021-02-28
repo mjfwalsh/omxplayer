@@ -19,6 +19,8 @@
 
 #include <vector>
 #include <string>
+#include <cstring>
+#include <cstdio>
 
 #include "Subtitle.h"
 #include "utils/simple_geometry.h"
@@ -28,20 +30,43 @@ using namespace std;
 Subtitle::Subtitle(bool is_image)
 : isImage(is_image)
 {
+  refcount = NULL;
   if(isImage) {
-    new(&image.data) basic_string<unsigned char>();
+    image.data = NULL;
   } else {
-    new(&text_lines) vector<string>();
+    text.lines = NULL;
   }
 }
 
-Subtitle::Subtitle(int start, int stop, vector<string> &tl)
+Subtitle::Subtitle(int start, int stop, const char *t, int l)
 : start(start),
   stop(stop)
 {
   isImage = false;
-  new(&text_lines) vector<string>();
-  text_lines = move(tl);
+  refcount = new int;
+  *refcount = 1;
+
+  text.length = l;
+  text.lines = new char[l + 1];
+  memcpy(text.lines, t, l);
+  text.lines[l] = '\0';
+}
+
+void Subtitle::assign_image(unsigned char *srcData, int size)
+{
+  refcount = new int;
+  *refcount = 1;
+
+  image.data = new unsigned char[size];
+  memcpy(image.data, srcData, size);
+}
+
+void Subtitle::alloc_text(int size)
+{
+  refcount = new int;
+  *refcount = 1;
+
+  text.lines = new char[size + 1];
 }
 
 Subtitle::Subtitle(const Subtitle &old) //copy
@@ -51,13 +76,15 @@ Subtitle::Subtitle(const Subtitle &old) //copy
   isImage = old.isImage;
 
   if(isImage) {
-    new(&image.data) basic_string<unsigned char>();
     image.data = old.image.data;
     image.rect = old.image.rect;
   } else {
-    new(&text_lines) vector<string>();
-    text_lines = old.text_lines;
+    text.lines = old.text.lines;
+    text.length = old.text.length;
   }
+
+  refcount = old.refcount;
+  (*refcount)++;
 }
 
 Subtitle& Subtitle::operator=(const Subtitle &old) // copy assign
@@ -67,13 +94,16 @@ Subtitle& Subtitle::operator=(const Subtitle &old) // copy assign
   isImage = old.isImage;
 
   if(isImage) {
-    new(&image.data) basic_string<unsigned char>();
     image.data = old.image.data;
     image.rect = old.image.rect;
+
   } else {
-    new(&text_lines) vector<string>();
-    text_lines = old.text_lines;
+    text.lines = old.text.lines;
+    text.length = old.text.length;
   }
+
+  refcount = old.refcount;
+  (*refcount)++;
   return *this;
 }
 
@@ -82,14 +112,18 @@ Subtitle::Subtitle(Subtitle &&old) noexcept //move
   start = old.start;
   stop = old.stop;
   isImage = old.isImage;
+  refcount = old.refcount;
+
+  old.refcount = NULL;
 
   if(isImage) {
-    new(&image.data) basic_string<unsigned char>();
-    image.data = move(old.image.data);
+    image.data = old.image.data;
     image.rect = move(old.image.rect);
+    old.image.data = NULL;
   } else {
-    new(&text_lines) vector<string>();
-    text_lines = move(old.text_lines);
+    text.lines = old.text.lines;
+    text.length = old.text.length;
+    old.text.lines = NULL;
   }
 }
 
@@ -98,23 +132,40 @@ Subtitle& Subtitle::operator=(Subtitle &&old) noexcept // move assign
   start = old.start;
   stop = old.stop;
   isImage = old.isImage;
+  refcount = old.refcount;
+
+  old.refcount = NULL;
 
   if(isImage) {
-    new(&image.data) basic_string<unsigned char>();
-    image.data = move(old.image.data);
+    image.data = old.image.data;
     image.rect = move(old.image.rect);
+    old.image.data = NULL;
   } else {
-    new(&text_lines) vector<string>();
-    text_lines = move(old.text_lines);
+    text.lines = old.text.lines;
+    text.length = old.text.length;
+    old.text.lines = NULL;
   }
   return *this;
 }
 
 Subtitle::~Subtitle()
 {
+  if(refcount == NULL)
+    return;
+
   if(isImage) {
-    image.data.~basic_string<unsigned char>();
+    if(*refcount == 1) {
+      delete image.data;
+      delete refcount;
+    } else if(*refcount > 1) {
+      (*refcount)--;
+    }
   } else {
-    text_lines.~vector<string>();
+    if(*refcount == 1) {
+      delete text.lines;
+      delete refcount;
+    } else if(*refcount > 1) {
+      (*refcount)--;
+    }
   }
 }

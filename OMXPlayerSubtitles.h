@@ -133,7 +133,7 @@ private:
     };
     struct DisplayText
     {
-      std::vector<std::string> text_lines;
+      std::string text_lines;
       int duration;
     };
     struct Clear {};

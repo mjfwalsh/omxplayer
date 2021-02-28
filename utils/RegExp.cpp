@@ -99,7 +99,7 @@ CRegExp* CRegExp::RegComp(const char *re)
   return this;
 }
 
-int CRegExp::RegFind(const char* str, int startoffset)
+int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
 {
   m_bMatched    = false;
   m_iMatchCount = 0;
@@ -116,8 +116,11 @@ int CRegExp::RegFind(const char* str, int startoffset)
     return -1;
   }
 
+  if(str_len == -1)
+    str_len = strlen(str);
+
   m_subject = str;
-  int rc = pcre_exec(m_re, NULL, str, strlen(str), startoffset, 0, m_iOvector, OVECCOUNT);
+  int rc = pcre_exec(m_re, NULL, str, str_len, startoffset, 0, m_iOvector, OVECCOUNT);
 
   if (rc<1)
   {
@@ -228,7 +231,7 @@ char* CRegExp::GetReplaceString( const char* sReplaceExp )
 
 std::string CRegExp::GetMatch(int iSub /* = 0 */)
 {
-  if (iSub < 0 || iSub > m_iMatchCount)
+  if (iSub < 0 || iSub >= m_iMatchCount)
     return "";
 
   int pos = m_iOvector[(iSub*2)];

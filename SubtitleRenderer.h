@@ -47,7 +47,7 @@ class SubtitleRenderer {
 		~SubtitleRenderer();
 
 		void prepare(Subtitle &sub);
-		void prepare(vector<string> &lines);
+		void prepare(string &lines);
 		void show_next();
 		void hide();
 		void unprepare();
@@ -67,13 +67,14 @@ class SubtitleRenderer {
 				cairo_glyph_t *glyphs = NULL;
 				int num_glyphs = -1;
 
-				SubtitleText(string t, int f, int c)
-				: text(t), font(f), color(c)
+				SubtitleText(const char *t, int l, int f, int c)
+				: font(f), color(c)
 				{
+				    text.assign(t, l);
 				};
 		};
 
-		void parse_lines(vector<string> &text_lines);
+		void parse_lines(const char *text, int lines_length);
 		void make_subtitle_image(vector<vector<SubtitleText> > &parsed_lines);
 		void make_subtitle_image(Subtitle &sub);
 		int hex2int(const char *hex);

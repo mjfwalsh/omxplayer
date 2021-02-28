@@ -39,7 +39,7 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 {
 	// Subtitle tag parser regexes
 	m_tags = new CRegExp(true);
-	m_tags->RegComp("(<[^>]*>|\\{\\\\[^\\}]*\\})");
+	m_tags->RegComp("(\\n|<[^>]*>|\\{\\\\[^\\}]*\\})");
 
 	m_font_color_html = new CRegExp(true);
 	m_font_color_html->RegComp("color[ \\t]*=[ \\t\"']*#?([a-f0-9]{6})");
@@ -212,14 +212,14 @@ void SubtitleRenderer::prepare(Subtitle &sub)
 	if(sub.isImage)
 		make_subtitle_image(sub);
 	else
-		parse_lines(sub.text_lines);
+		parse_lines(sub.text.lines, sub.text.length);
 }
 
-void SubtitleRenderer::prepare(vector<string> &lines)
+void SubtitleRenderer::prepare(string &lines)
 {
     unprepare();
 
-    parse_lines(lines);
+    parse_lines(lines.c_str(), lines.length());
 }
 
 void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed_lines)
@@ -254,7 +254,8 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 					cairo_get_scaled_font(m_cr),
 					cursor_x_position + m_padding,
 					cursor_y_position - (m_padding / 4),
-					parsed_lines[i][j].text.c_str(), -1,
+					parsed_lines[i][j].text.data(),
+					parsed_lines[i][j].text.length(),
 					&parsed_lines[i][j].glyphs,
 					&parsed_lines[i][j].num_glyphs,
 					NULL, NULL, NULL);
@@ -351,7 +352,7 @@ void SubtitleRenderer::make_subtitle_image(Subtitle &sub)
 
 	for(int j = 0; j < sub.image.rect.height; j++) {
 		mem_set(sub.image.rect.x);
-		mem_copy(sub.image.data.data() + (j * sub.image.rect.width), sub.image.rect.width);
+		mem_copy(sub.image.data + (j * sub.image.rect.width), sub.image.rect.width);
 		mem_set(right_padding);
 	}
 
@@ -401,59 +402,58 @@ void SubtitleRenderer::unprepare()
 }
 
 // Tag parser functions
-void SubtitleRenderer::parse_lines(vector<string> &text_lines)
+void SubtitleRenderer::parse_lines(const char *text, int lines_length)
 {
-	vector<vector<SubtitleText> > formatted_lines(text_lines.size());
+	vector<vector<SubtitleText> > formatted_lines(1);
 
 	bool bold = false, italic = false;
 	int color = -1;
 
-	for(uint i=0; i < text_lines.size(); i++) {
-		boost::algorithm::trim(text_lines[i]);
+    int pos = 0, old_pos = 0;
+    while (pos < lines_length) {
+        pos = m_tags->RegFind(text, pos, lines_length);
+        string fullTag = m_tags->GetMatch(0);
 
-		int pos = 0, old_pos = 0;
+        //parse text
+        if(pos != old_pos || fullTag == "\n") {
+            int l = pos == -1 ? lines_length - old_pos : pos - old_pos;
 
-		int line_length = text_lines[i].length();
-		while (pos < line_length) {
-			pos = m_tags->RegFind(text_lines[i].c_str(), pos);
+            if(l > 0) {
+                int font = italic ? ITALIC_FONT : (bold ? BOLD_FONT : NORMAL_FONT);
+                formatted_lines.back().emplace_back(text + old_pos, l, font, color);
+            }
+        }
 
-			//parse text
-			if(pos != old_pos) {
-				string t = text_lines[i].substr(old_pos, pos - old_pos);
-				int font = italic ? ITALIC_FONT : (bold ? BOLD_FONT : NORMAL_FONT);
-				formatted_lines[i].emplace_back(move(t), font, color);
-			}
+        // No more tags found
+        if(pos < 0) break;
 
-			// No more tags found
-			if(pos < 0) break;
+        // Parse Tag
+        boost::algorithm::to_lower(fullTag);
+        pos += fullTag.length();
+        old_pos = pos;
 
-			// Parse Tag
-			string fullTag = m_tags->GetMatch(0);
-			boost::algorithm::to_lower(fullTag);
-			pos += fullTag.length();
-			old_pos = pos;
-
-			if (fullTag == "<b>" || fullTag == "{\\b1}") {
-				bold = true;
-			} else if ((fullTag == "</b>" || fullTag == "{\\b0}") && bold) {
-				bold = false;
-			} else if (fullTag == "<i>" || fullTag == "{\\i1}") {
-				italic = true;
-			} else if ((fullTag == "</i>" || fullTag == "{\\i0}") && italic) {
-				italic = false;
-			} else if ((fullTag == "</font>" || fullTag == "{\\c}") && color != -1) {
-				color = -1;
-			} else if (fullTag.substr(0,5) == "<font") {
-				if(m_font_color_html->RegFind(fullTag.c_str(), 5) >= 0) {
-					color = hex2int(m_font_color_html->GetMatch(1).c_str());
-				}
-			} else if(m_font_color_curly->RegFind(fullTag.c_str(), 0) >= 0) {
-				string t = m_font_color_curly->GetMatch(3) + m_font_color_curly->GetMatch(2)
-					+ m_font_color_curly->GetMatch(1);
-				color = hex2int(t.c_str());
-			}
-		}
-	}
+        if (fullTag == "\n" ) {
+            formatted_lines.emplace_back();
+        } else if (fullTag == "<b>" || fullTag == "{\\b1}") {
+            bold = true;
+        } else if ((fullTag == "</b>" || fullTag == "{\\b0}") && bold) {
+            bold = false;
+        } else if (fullTag == "<i>" || fullTag == "{\\i1}") {
+            italic = true;
+        } else if ((fullTag == "</i>" || fullTag == "{\\i0}") && italic) {
+            italic = false;
+        } else if ((fullTag == "</font>" || fullTag == "{\\c}") && color != -1) {
+            color = -1;
+        } else if (fullTag.substr(0,5) == "<font") {
+            if(m_font_color_html->RegFind(fullTag.c_str(), 5) >= 0) {
+                color = hex2int(m_font_color_html->GetMatch(1).c_str());
+            }
+        } else if(m_font_color_curly->RegFind(fullTag.c_str(), 0) >= 0) {
+            string t = m_font_color_curly->GetMatch(3) + m_font_color_curly->GetMatch(2)
+                + m_font_color_curly->GetMatch(1);
+            color = hex2int(t.c_str());
+        }
+    }
 
 	make_subtitle_image(formatted_lines);
 }

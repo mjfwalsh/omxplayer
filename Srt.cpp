@@ -27,58 +27,54 @@
 #include "Srt.h"
 #include "Subtitle.h"
 
+#include <istream>
 #include <fstream>
-#include <utility>
 
-namespace {
-  unsigned int timecode_to_milliseconds(unsigned int h,
-                                        unsigned int m,
-                                        unsigned int s,
-                                        unsigned int f)
-  {
-    return h*3600000 +
-           m*60000 +
-           s*1000 +
-           f;
-  }
-}
-
-template <typename T, typename U>
-T& getline(T&& input, U&& str) {
-  std::getline(std::forward<T>(input), std::forward<U>(str));
-  if (!str.empty() && str.back() == '\r') {
-    str.resize(str.size()-1);
-  }
-  return input;
+static int timecode_to_milliseconds(int h, int m, int s, int f)
+{
+    return (h * 3600000) + (m * 60000) + (s * 1000) + f;
 }
 
 bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
   std::ifstream srt(filename);
   if (!srt) return false;
 
-  for (std::string line; getline(srt, line);) {
-    unsigned int h, m, s, f, h2, m2, s2, f2;
+  std::string text_lines;
+  text_lines.reserve(1024);
+  int h, m, s, f, h2, m2, s2, f2;
 
-    if (sscanf(line.c_str(), "%u:%u:%u,%u --> %u:%u:%u,%u",
+  std::string line;
+  line.reserve(100);
+
+  while(std::getline(srt, line)) {
+    if (sscanf(line.c_str(), "%2u:%2u:%2u,%3u --> %2u:%2u:%2u,%3u",
                &h, &m, &s, &f, &h2, &m2, &s2, &f2)
         != 8)
     {
       continue;
     }
 
-    auto start = (int) timecode_to_milliseconds(h, m, s, f);
-    auto stop = (int) timecode_to_milliseconds(h2, m2, s2 ,f2);
+    int start = timecode_to_milliseconds(h, m, s, f);
+    int stop = timecode_to_milliseconds(h2, m2, s2 ,f2);
 
-    std::vector<std::string> text_lines;
-    while (getline(srt, line)) {
-      if (line.empty()) break;
-      text_lines.push_back(std::move(line));
-    }
-
-    if (!subtitles.empty() && subtitles.back().stop > stop)
+    if(!subtitles.empty() && subtitles.back().stop > stop)
       continue;
 
-    subtitles.emplace_back(start, stop, text_lines);
+    text_lines.clear();
+    while(std::getline(srt, line)) {
+      if(line.back() == '\r')
+        line.pop_back();
+
+      if(line.empty()) break;
+
+      text_lines.append(line);
+      text_lines.append("\n");
+    }
+
+    if(text_lines.empty()) continue;
+
+    // deduct one to delete the training newline
+    subtitles.emplace_back(start, stop, text_lines.data(), text_lines.length() - 1);
   }
 
   return true;

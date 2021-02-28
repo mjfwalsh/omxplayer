@@ -461,50 +461,38 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
   {
     int nFieldCount = 8;
     while (nFieldCount > 0 && start < end)
-    {
-      if (*start == ',')
+      if (*(start++) == ',')
         nFieldCount--;
-
-      start++;
-    }
   }
 
-  // split lines on '\N'
-  char *p, *current_line;
-  current_line = p = start;
+  // allocate space
+  sub.alloc_text(pkt->size);
 
-  while (p < end - 1)
+  // replace literal '\N' with newlines, ignore form feeds
+  char *r = start;
+  char *w = sub.text.lines;
+
+  while (r < end - 1)
   {
-    if(*p == '\\' && *(p + 1) == 'N')
-    {
-      *p = '\0';
-
-      if(*current_line != '\0') // ignore blank lines
-        sub.text_lines.push_back(current_line);
-
-      p += 2;
-      current_line = p;
-    }
-    else if(*p == '\n')
-    {
-      *p = '\0';
-
-	  if(p > current_line && *(p - 1) == '\r') *(p - 1) = '\0';
-
-      if(*current_line != '\0') // ignore blank lines
-        sub.text_lines.push_back(current_line);
-
-      p++;
-      current_line = p;
+    if(*r == '\\' && *(r + 1) == 'N') {
+      *(w++) = '\n';
+      r += 2;
+    } else if(*r == '\r') {
+      r++;
     } else {
-      p++;
+      *(w++) = *(r++);
     }
   }
 
-  if(*current_line != '\0') // ignore blank lines
-    sub.text_lines.push_back(current_line);
+  // last char
+  if(*r != '\r' && *r != '\n')
+    *(w++) = *r;
 
-  return !sub.text_lines.empty();
+  *w = '\0';
+
+  sub.text.length = w - sub.text.lines;
+
+  return true;
 }
 
 bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
@@ -521,7 +509,9 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 
   // Fix time
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
-  sub.image.data.assign(s.rects[0]->data[0], s.rects[0]->linesize[0] * s.rects[0]->h);
+
+  // assign data
+  sub.assign_image(s.rects[0]->data[0], s.rects[0]->linesize[0] * s.rects[0]->h);
   sub.image.rect = {s.rects[0]->x, s.rects[0]->y, s.rects[0]->w, s.rects[0]->h};
 
   avsubtitle_free(&s);
@@ -575,7 +565,5 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
 
 void OMXPlayerSubtitles::DisplayText(const std::string& text, int duration) BOOST_NOEXCEPT
 {
-  vector<string> text_lines;
-  split(text_lines, text, is_any_of("\n"));
-  SendToRenderer(Message::DisplayText{std::move(text_lines), duration});
+  SendToRenderer(Message::DisplayText{std::move(text), duration});
 }
