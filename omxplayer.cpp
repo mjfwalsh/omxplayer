@@ -76,7 +76,7 @@ long              m_Amplification       = 0;
 bool              m_NativeDeinterlace   = false;
 bool              m_HWDecode            = false;
 bool              m_osd                 = true;
-bool              m_no_keys             = false;
+bool              m_keys                = true;
 std::string       m_external_subtitles_path;
 bool              m_has_external_subtitles = false;
 std::string       m_dbus_name           = "org.mpris.MediaPlayer2.omxplayer";
@@ -94,7 +94,6 @@ OMXAudioConfig    m_config_audio;
 OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
 bool              m_no_hdmi_clock_sync  = false;
-bool              m_stop                = false;
 int               m_subtitle_index      = -1;
 OMXPlayerVideo    m_player_video;
 OMXPlayerAudio    m_player_audio;
@@ -141,7 +140,7 @@ void print_version()
 }
 
 // Exit macros for main function
-#define ExitGently() { g_abort = true; goto do_exit; }
+#define ExitGently() { g_abort = true; goto end_of_play_loop; }
 #define ExitGentlyOnError() ExitGentlyWithMessage("Error: omxplayer.cpp line: " + to_string(__LINE__))
 #define ExitGentlyWithMessage(msg) { \
 	user_message(msg, true); \
@@ -552,6 +551,18 @@ int main(int argc, char *argv[])
   int                    m_next_prev_file      = 0;
   char                   m_audio_lang[4]       = "\0";
   char                   m_subtitle_lang[4]    = "\0";
+  std::string            m_replacement_filename;
+
+  auto ExitFileNotFound = [&](const std::string& path)
+  {
+    user_message(strprintf("File \"%s\" not found.", path.c_str()), true);
+    m_player_subtitles.DeInit();
+    m_av_clock->OMXStop();
+    m_av_clock->OMXStateIdle();
+    bcm_host_deinit();
+    g_OMX.Deinitialize();
+    return EXIT_FAILURE;
+  };
 
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
@@ -809,7 +820,7 @@ int main(int argc, char *argv[])
         m_osd = false;
         break;
       case no_keys_opt:
-        m_no_keys = true;
+        m_keys = false;
         break;
       case font_size_opt:
         {
@@ -1010,35 +1021,56 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
+  DISPLAY_TEXT_LONG("Loading...");
+
+  int gpu_mem = get_mem_gpu();
+  int min_gpu_mem = 64;
+  if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
+    printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
+
+  int control_err = m_omxcontrol.init(
+    m_av_clock,
+    &m_player_audio,
+    &m_player_subtitles,
+    &m_omx_reader,
+    m_dbus_name
+  );
+
   // get filename
   m_filename = argv[optind];
 
   // disable keys when using stdin for input
   if(m_filename == "pipe:" || m_filename == "pipe:0")
-    m_no_keys = true;
+    m_keys = false;
 
   // Build default keymap
-  if(!m_no_keys && keymap.empty())
+  if(m_keys && keymap.empty())
     KeyConfig::buildDefaultKeymap(keymap);
 
-  // strip off file://
-  if(m_filename.substr(0, 7) == "file://" )
-    m_filename.replace(0, 7, "");
+  if(m_keys)
+  {
+    m_keyboard = new Keyboard();
+    if(m_keyboard)
+    {
+      m_keyboard->setKeymap(keymap);
+      m_keyboard->setDbusName(m_dbus_name);
+    }
+  }
 
   // Disable seeking when reading from a pipe
   if(IsPipe(m_filename))
     m_config_audio.is_live = true;
 
-  auto ExitFileNotFound = [&](const std::string& path)
-  {
-    user_message(strprintf("File \"%s\" not found.", path.c_str()), true);
-    m_player_subtitles.DeInit();
-    m_av_clock->OMXStop();
-    m_av_clock->OMXStateIdle();
-    bcm_host_deinit();
-    g_OMX.Deinitialize();
-    return EXIT_FAILURE;
-  };
+  // check if command line provided subtitles file exists
+  if(m_has_external_subtitles && !Exists(m_external_subtitles_path))
+    return ExitFileNotFound(m_external_subtitles_path);
+
+  // we jump here when is provided with a new file
+  change_file:
+
+  // strip off file://
+  if(m_filename.substr(0, 7) == "file://" )
+    m_filename.replace(0, 7, "");
 
   bool is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
@@ -1065,7 +1097,7 @@ int main(int argc, char *argv[])
     }
   }
 
-	// m_filename may have changed
+  // m_filename may have changed
   if(is_local_file)
   {
     // Are we dealing with a DVD VIDEO_TS folder or a device file
@@ -1102,34 +1134,8 @@ int main(int argc, char *argv[])
     }
   }
 
-  if(m_has_external_subtitles && !Exists(m_external_subtitles_path))
-    return ExitFileNotFound(m_external_subtitles_path);
-
-  DISPLAY_TEXT_LONG("Loading...");
-
-  int gpu_mem = get_mem_gpu();
-  int min_gpu_mem = 64;
-  if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
-    printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
-
-  int control_err = m_omxcontrol.init(
-    m_av_clock,
-    &m_player_audio,
-    &m_player_subtitles,
-    &m_omx_reader,
-    m_dbus_name
-  );
-  if (!m_no_keys)
-  {
-    m_keyboard = new Keyboard();
-    if(m_keyboard)
-    {
-      m_keyboard->setKeymap(keymap);
-      m_keyboard->setDbusName(m_dbus_name);
-    }
-  }
-
-  change_file:
+  // we jump here when playing the next item in an auto generated playlist
+  change_playlist_item:
 
   if(m_filename.substr(m_filename.size()-4, 4) == ".iso"
 	  || m_filename.substr(m_filename.size()-4, 4) == ".dmg")
@@ -1185,6 +1191,7 @@ int main(int argc, char *argv[])
     }
   }
 
+  // we jump here when playing the next track in a dvd
   change_track:
 
   if(!m_omx_reader.Open(m_filename, IsURL(m_filename), m_dump_format, m_config_audio.is_live, m_timeout, m_cookie, m_user_agent, m_lavfdopts, m_avdict, m_DvdPlayer))
@@ -1383,11 +1390,8 @@ int main(int argc, char *argv[])
   // forget seek time fo all files being played
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
 
-  while(!m_stop)
+  while(!g_abort)
   {
-    if(g_abort)
-      goto do_exit;
-
     int64_t now = OMXClock::GetAbsoluteClock();
     bool update = false;
     m_chapter_seek = false;
@@ -1406,13 +1410,17 @@ int main(int argc, char *argv[])
     switch(result.getKey())
     {
      case KeyConfig::ACTION_CHANGE_FILE:
-        FlushStreams(AV_NOPTS_VALUE);
-        m_omx_reader.Close();
-        m_player_subtitles.Close();
-        m_player_video.Close();
-        m_player_audio.Close();
-        m_filename = result.getWinArg();
-        goto change_file;
+        m_replacement_filename = result.getWinArg();
+
+        // Entering a pipe: would make no sense here
+        if(IsPipe(m_replacement_filename))
+        {
+          m_replacement_filename.clear();
+          CLog::Log(LOGDEBUG, "Providing a pipe via dbus is not supported.");
+          break;
+        }
+
+        goto end_of_play_loop;
         break;
       case KeyConfig::ACTION_SHOW_INFO:
         m_tv_show_info = !m_tv_show_info;
@@ -1505,9 +1513,9 @@ int main(int argc, char *argv[])
 
             if(current_chapter == 0)
             {
-              m_send_eos = 1;
+              m_send_eos = true;
               m_next_prev_file = -1;
-              goto do_exit;
+              goto end_of_play_loop;
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
@@ -1534,9 +1542,9 @@ int main(int argc, char *argv[])
 
             if(go_to_ch >= total_chapters)
             {
-              m_send_eos = 1;
+              m_send_eos = true;
               m_next_prev_file = 1;
-              goto do_exit;
+              goto end_of_play_loop;
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
@@ -1553,14 +1561,12 @@ int main(int argc, char *argv[])
         }
         break;
       case KeyConfig::ACTION_PREVIOUS_FILE:
-        m_send_eos = 1;
         m_next_prev_file = -1;
-        goto do_exit;
+        goto end_of_play_loop;
         break;
       case KeyConfig::ACTION_NEXT_FILE:
-        m_send_eos = 1;
         m_next_prev_file = 1;
-        goto do_exit;
+        goto end_of_play_loop;
         break;
       case KeyConfig::ACTION_PREVIOUS_SUBTITLE:
         if(m_has_subtitle)
@@ -1654,8 +1660,8 @@ int main(int argc, char *argv[])
         }
         break;
       case KeyConfig::ACTION_EXIT:
-        m_stop = true;
-        goto do_exit;
+        g_abort = true;
+        goto end_of_play_loop;
         break;
       case KeyConfig::ACTION_SEEK_BACK_SMALL:
         if(m_omx_reader.CanSeek()) m_incr = -30;
@@ -1798,7 +1804,7 @@ int main(int argc, char *argv[])
       sentStarted = false;
 
       if (m_omx_reader.IsEof())
-        goto do_exit;
+        goto end_of_play_loop;
 
       // Quick reset to reduce delay during loop & seek.
       if (m_has_video && !m_player_video.Reset())
@@ -2024,7 +2030,7 @@ int main(int argc, char *argv[])
     }
   }
 
-do_exit:
+end_of_play_loop:
   if (m_stats)
     puts("");
 
@@ -2040,7 +2046,7 @@ do_exit:
   {
     // Try to catch instances where m_send_eos has been set but we haven't
     // actually reached the end of the current file.
-    if(m_send_eos && m_next_prev_file == 0 && (dur - t) > 2)
+    if(m_send_eos && (dur - t) > 2)
       m_send_eos = false;
 
     // and instances where we're stopping after the end a file
@@ -2061,7 +2067,7 @@ do_exit:
 
   if(m_loop) {
     // nothing
-  } else if(!m_stop && !g_abort && m_send_eos) {
+  } else if(!g_abort && (m_send_eos || m_next_prev_file != 0)) {
     // default to playing next track file
     if(m_next_prev_file == 0) m_next_prev_file = 1;
 
@@ -2086,13 +2092,32 @@ do_exit:
         && Exists(m_filename)) {
       m_firstfile = false;
       m_next_prev_file = 0;
-      goto change_file;
+      goto change_playlist_item;
     }
   } else if(!m_firstfile || t > 5) {
     if(m_is_dvd_device)
       m_dvd_store.remember(m_track, (int)t);
     else
 	  m_file_store.remember(m_filename, m_track, (int)t);
+  }
+
+  if(!g_abort && !m_replacement_filename.empty()) {
+    // we've received a new file to play via dbus
+    if(m_is_dvd) {
+      m_is_dvd = false;
+      delete m_DvdPlayer;
+      m_DvdPlayer = NULL;
+    }
+
+    m_filename = m_replacement_filename;
+    m_replacement_filename.clear();
+
+    m_has_external_subtitles = false;
+    m_external_subtitles_path.clear();
+
+    m_firstfile = true;
+
+    goto change_file;
   }
 
   if (m_NativeDeinterlace)
@@ -2142,7 +2167,7 @@ do_exit:
 
   // exit status OMXPlayer defined value on user quit
   // (including a stop caused by SIGTERM or SIGINT)
-  if (m_stop || g_abort) {
+  if (g_abort) {
     puts("Stopped before end of file");
     return 3;
   }
