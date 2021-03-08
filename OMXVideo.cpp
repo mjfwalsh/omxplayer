@@ -834,10 +834,10 @@ void COMXVideo::SetVideoRect()
   configDisplay.noaspect   = m_config.aspectMode == 3 ? OMX_TRUE : OMX_FALSE;
   configDisplay.mode       = m_config.aspectMode == 2 ? OMX_DISPLAY_MODE_FILL : OMX_DISPLAY_MODE_LETTERBOX;
 
-  configDisplay.src_rect.x_offset   = (int)(m_config.src_rect.x1+0.5f);
-  configDisplay.src_rect.y_offset   = (int)(m_config.src_rect.y1+0.5f);
-  configDisplay.src_rect.width      = (int)(m_config.src_rect.Width()+0.5f);
-  configDisplay.src_rect.height     = (int)(m_config.src_rect.Height()+0.5f);
+  configDisplay.src_rect.x_offset   = m_config.src_rect.x1;
+  configDisplay.src_rect.y_offset   = m_config.src_rect.y1;
+  configDisplay.src_rect.width      = m_config.src_rect.Width();
+  configDisplay.src_rect.height     = m_config.src_rect.Height();
 
   if (m_config.dst_rect.x2 > m_config.dst_rect.x1 && m_config.dst_rect.y2 > m_config.dst_rect.y1) {
     configDisplay.set        = (OMX_DISPLAYSETTYPE)(configDisplay.set | OMX_DISPLAY_SET_DEST_RECT);
@@ -847,10 +847,10 @@ void COMXVideo::SetVideoRect()
       configDisplay.noaspect = OMX_TRUE;
     }
 
-    configDisplay.dest_rect.x_offset  = (int)(m_config.dst_rect.x1+0.5f);
-    configDisplay.dest_rect.y_offset  = (int)(m_config.dst_rect.y1+0.5f);
-    configDisplay.dest_rect.width     = (int)(m_config.dst_rect.Width()+0.5f);
-    configDisplay.dest_rect.height    = (int)(m_config.dst_rect.Height()+0.5f);
+    configDisplay.dest_rect.x_offset  = m_config.dst_rect.x1;
+    configDisplay.dest_rect.y_offset  = m_config.dst_rect.y1;
+    configDisplay.dest_rect.width     = m_config.dst_rect.Width();
+    configDisplay.dest_rect.height    = m_config.dst_rect.Height();
   } else {
     configDisplay.fullscreen = OMX_TRUE;
   }
