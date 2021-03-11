@@ -103,12 +103,12 @@ static int interrupt_cb(void *unused)
   int ret = 0;
   if (g_abort)
   {
-    CLog::Log(LOGERROR, "COMXPlayer::interrupt_cb - Told to abort");
+    CLogLog(LOGERROR, "COMXPlayer::interrupt_cb - Told to abort");
     ret = 1;
   }
   else if (timeout_duration && OMXClock::CurrentHostCounter() - timeout_start > timeout_duration)
   {
-    CLog::Log(LOGERROR, "COMXPlayer::interrupt_cb - Timed out");
+    CLogLog(LOGERROR, "COMXPlayer::interrupt_cb - Timed out");
     ret = 1;
   }
   return ret;
@@ -190,7 +190,7 @@ bool OMXReader::Open(
 
   if (result < 0)
   {
-    CLog::Log(LOGERROR, "COMXPlayer::OpenFile - invalid lavfdopts %s ", lavfdopts.c_str());
+    CLogLog(LOGERROR, "COMXPlayer::OpenFile - invalid lavfdopts %s ", lavfdopts.c_str());
     Close();
     return false;
   }
@@ -200,7 +200,7 @@ bool OMXReader::Open(
 
   if (result < 0)
   {
-    CLog::Log(LOGERROR, "COMXPlayer::OpenFile - invalid avdict %s ", avdict.c_str());
+    CLogLog(LOGERROR, "COMXPlayer::OpenFile - invalid avdict %s ", avdict.c_str());
     Close();
     return false;
   }
@@ -213,7 +213,7 @@ bool OMXReader::Open(
 
   if(m_DvdPlayer)
   {
-    CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", m_filename.c_str());
+    CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", m_filename.c_str());
 
     buffer = (unsigned char*)av_malloc(FFMPEG_FILE_BUFFER_SIZE);
     m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
@@ -222,7 +222,7 @@ bool OMXReader::Open(
 
     if(!iformat)
     {
-      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - av_probe_input_buffer %s ", m_filename.c_str());
+      CLogLog(LOGERROR, "COMXPlayer::OpenFile - av_probe_input_buffer %s ", m_filename.c_str());
       Close();
       return false;
     }
@@ -267,23 +267,23 @@ bool OMXReader::Open(
       }
     }
 
-    CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
+    CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s", m_filename.c_str());
     result = avformat_open_input(&m_pFormatContext, m_filename.c_str(), iformat, &d);
     
     if(live)
     {
-       CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input disabled SEEKING ");
+       CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input disabled SEEKING");
        m_pFormatContext->pb->seekable = 0;
     }
     else if(av_dict_count(d) == 0 && m_filename.substr(0,7) == "http://")
     {
-       CLog::Log(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input enabled SEEKING ");
+       CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input enabled SEEKING");
        m_pFormatContext->pb->seekable = AVIO_SEEKABLE_NORMAL;
     }
     av_dict_free(&d);
     if(result < 0)
     {
-      CLog::Log(LOGERROR, "COMXPlayer::OpenFile - avformat_open_input %s ", m_filename.c_str());
+      CLogLog(LOGERROR, "COMXPlayer::OpenFile - avformat_open_input %s", m_filename.c_str());
       Close();
       return false;
     }
@@ -362,7 +362,7 @@ bool OMXReader::Close()
   {
     if (m_ioContext && m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
     {
-      CLog::Log(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
+      CLogLog(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
       m_ioContext = m_pFormatContext->pb;
     }
     avformat_close_input(&m_pFormatContext);
@@ -446,7 +446,7 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
     ret = 0;
   }
 
-  CLog::Log(LOGDEBUG, "OMXReader::SeekTime(%f) - seek ended up on time %d",time,(int)(m_iCurrentPts / AV_TIME_BASE * 1000));
+  CLogLog(LOGDEBUG, "OMXReader::SeekTime(%f) - seek ended up on time %d",time,(int)(m_iCurrentPts / AV_TIME_BASE * 1000));
 
   UnLock();
 
@@ -484,7 +484,7 @@ OMXPacket *OMXReader::Read()
     // XXX, in some cases ffmpeg returns a negative packet size
     if(m_pFormatContext->pb && !m_pFormatContext->pb->eof_reached)
     {
-      CLog::Log(LOGERROR, "OMXReader::Read no valid packet");
+      CLogLog(LOGERROR, "OMXReader::Read no valid packet");
       //FlushRead();
     }
 

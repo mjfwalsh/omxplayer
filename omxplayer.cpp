@@ -102,7 +102,6 @@ int               m_tv_show_info        = 0;
 bool              m_has_video           = false;
 bool              m_has_audio           = false;
 bool              m_has_subtitle        = false;
-char              *m_gen_log;
 bool              m_loop                = false;
 RecentFileStore   m_file_store;
 RecentDVDStore    m_dvd_store;
@@ -300,7 +299,7 @@ void SetVideoMode(int width, int height, int fpsrate, int fpsscale, FORMAT_3D_T 
     num_modes = vc_tv_hdmi_get_supported_modes_new(group,
         supported_modes, max_supported_modes, &prefer_group, &prefer_mode);
 
-    CLog::Log(LOGDEBUG, "EGL get supported modes (%d) = %d, prefer_group=%x, prefer_mode=%x\n",
+    CLogLog(LOGDEBUG, "EGL get supported modes (%d) = %d, prefer_group=%x, prefer_mode=%x",
         group, num_modes, prefer_group, prefer_mode);
   }
 
@@ -685,16 +684,7 @@ int main(int argc, char *argv[])
         m_refresh = true;
         break;
       case 'g':
-        if(optarg)
-        {
-          m_gen_log = (char *)malloc(strlen(optarg) + 1);
-          strcpy(m_gen_log, optarg);
-        }
-        else
-        {
-          m_gen_log = (char *)malloc(16);
-          strcpy(m_gen_log, "./omxplayer.log");
-        }
+        CLogInit(LOGDEBUG, optarg ? optarg : "./omxplayer.log");
         break;
       case 'y':
         m_config_video.hdmi_clock_sync = true;
@@ -981,22 +971,6 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  // Init logging
-  if(!m_gen_log)
-  {
-    CLog::Init(LOGNONE, m_gen_log);
-  }
-  else if(strcasecmp(m_gen_log, "stdout") == 0)
-  {
-    CLog::Init(LOGWARNING, m_gen_log);
-    free(m_gen_log);
-  }
-  else
-  {
-    CLog::Init(LOGDEBUG, m_gen_log);
-    free(m_gen_log);
-  }
-
   // start the clock
   m_av_clock = new OMXClock();
 
@@ -1250,7 +1224,7 @@ int main(int argc, char *argv[])
 
   if (m_audio_extension)
   {
-    CLog::Log(LOGWARNING, "%s - Ignoring video in audio filetype:%s", __FUNCTION__, m_filename.c_str());
+    CLogLog(LOGWARNING, "%s - Ignoring video in audio filetype:%s", __FUNCTION__, m_filename.c_str());
     m_has_video = false;
   }
 
@@ -1416,7 +1390,7 @@ int main(int argc, char *argv[])
         if(IsPipe(m_replacement_filename))
         {
           m_replacement_filename.clear();
-          CLog::Log(LOGDEBUG, "Providing a pipe via dbus is not supported.");
+          CLogLog(LOGDEBUG, "Providing a pipe via dbus is not supported.");
           break;
         }
 
@@ -1810,7 +1784,7 @@ int main(int argc, char *argv[])
       if (m_has_video && !m_player_video.Reset())
         ExitGentlyOnError();
 
-      CLog::Log(LOGDEBUG, "Seeked %.0f %lld %lld\n", seek_pos, startpts, m_av_clock->OMXMediaTime());
+      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", seek_pos, startpts, m_av_clock->OMXMediaTime());
 
       m_av_clock->OMXPause();
 
@@ -1830,7 +1804,7 @@ int main(int argc, char *argv[])
 
       m_omx_reader.SeekTime(seek_pos, m_av_clock->OMXPlaySpeed() < 0, &startpts);
 
-      CLog::Log(LOGDEBUG, "Seeked %.0f %lld %lld\n", seek_pos, startpts, m_av_clock->OMXMediaTime());
+      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", seek_pos, startpts, m_av_clock->OMXMediaTime());
 
       //unsigned t = (unsigned)(startpts*1e-6);
       unsigned t = (unsigned)(pts*1e-6);
@@ -1897,7 +1871,7 @@ int main(int argc, char *argv[])
         video_fifo_low = m_has_video && video_fifo < threshold;
         video_fifo_high = !m_has_video || video_fifo > m_threshold;
       }
-      CLog::Log(LOGDEBUG, "Normal M:%lld (A:%lld V:%lld) P:%d A:%.2f V:%.2f/T:%.2f (%d,%d,%d,%d) A:%d%% V:%d%% (%.2f,%.2f)\n", stamp, audio_pts, video_pts, m_av_clock->OMXIsPaused(), 
+      CLogLog(LOGDEBUG, "Normal M:%lld (A:%lld V:%lld) P:%d A:%.2f V:%.2f/T:%.2f (%d,%d,%d,%d) A:%d%% V:%d%% (%.2f,%.2f)", stamp, audio_pts, video_pts, m_av_clock->OMXIsPaused(),
         audio_pts == AV_NOPTS_VALUE ? 0.0:audio_fifo, video_pts == AV_NOPTS_VALUE ? 0.0:video_fifo, m_threshold, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high,
         m_player_audio.GetLevel(), m_player_video.GetLevel(), m_player_audio.GetDelay(), (float)m_player_audio.GetCacheTotal());
 
@@ -1915,7 +1889,7 @@ int main(int argc, char *argv[])
           {
             if (latency > m_threshold)
             {
-              CLog::Log(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p\n", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
+              CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
               m_av_clock->OMXResume();
               m_latency = latency;
             }
@@ -1935,7 +1909,7 @@ int main(int argc, char *argv[])
 
             m_av_clock->OMXSetSpeed(S(speed));
             m_av_clock->OMXSetSpeed(S(speed), true, true);
-            CLog::Log(LOGDEBUG, "Live: %.2f (%.2f) S:%.3f T:%.2f\n", m_latency, latency, speed, m_threshold);
+            CLogLog(LOGDEBUG, "Live: %.2f (%.2f) S:%.3f T:%.2f", m_latency, latency, speed, m_threshold);
           }
         }
       }
@@ -1943,7 +1917,7 @@ int main(int argc, char *argv[])
       {
         if (m_av_clock->OMXIsPaused())
         {
-          CLog::Log(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p\n", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
+          CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
           m_av_clock->OMXResume();
         }
       }
@@ -1953,14 +1927,14 @@ int main(int argc, char *argv[])
         {
           if (!m_Pause)
             m_threshold = std::min(2.0f*m_threshold, 16.0f);
-          CLog::Log(LOGDEBUG, "Pause %.2f,%.2f (%d,%d,%d,%d) %.2f\n", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_threshold);
+          CLogLog(LOGDEBUG, "Pause %.2f,%.2f (%d,%d,%d,%d) %.2f", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_threshold);
           m_av_clock->OMXPause();
         }
       }
     }
     if (!sentStarted)
     {
-      CLog::Log(LOGDEBUG, "COMXPlayer::HandleMessages - player started RESET");
+      CLogLog(LOGDEBUG, "COMXPlayer::HandleMessages - player started RESET");
       m_av_clock->OMXReset(m_has_video, m_has_audio);
       sentStarted = true;
     }

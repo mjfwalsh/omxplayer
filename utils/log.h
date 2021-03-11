@@ -22,7 +22,6 @@
  */
 
 #include <stdio.h>
-#include <string>
 
 #define LOGNONE    0
 #define LOGFATAL   1
@@ -40,14 +39,9 @@
 #define ATTRIB_LOG_FORMAT
 #endif
 
-class CLog
-{
-public:
-  CLog();
-  virtual ~CLog(void);
-  static void Close();
-  static void Log(int loglevel, const char *format, ... ) ATTRIB_LOG_FORMAT;
-  static void MemDump(char *pData, int length);
-  static bool Init(int level, const char* path);
-  static void SetLogLevel(int level);
-};
+extern bool logging_enabled;
+
+void _CLogLog(int loglevel, const char *format, ... ) ATTRIB_LOG_FORMAT;
+bool CLogInit(int level, const char* path);
+
+#define CLogLog(...) { if(logging_enabled) { _CLogLog(__VA_ARGS__); } }

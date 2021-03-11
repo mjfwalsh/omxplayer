@@ -279,7 +279,7 @@ void CPCMRemap::ResolveChannels()
   if (!m_ignoreLayout && m_inChannels == 1 && m_inMap[0] == PCM_FRONT_CENTER
       && m_useable[PCM_FRONT_LEFT] && m_useable[PCM_FRONT_RIGHT])
   {
-    CLog::Log(LOGDEBUG, "CPCMRemap: Mapping mono audio to front left and front right");
+    CLogLog(LOGDEBUG, "CPCMRemap: Mapping mono audio to front left and front right");
     m_useable[PCM_FRONT_CENTER] = false;
     m_useable[PCM_FRONT_LEFT_OF_CENTER] = false;
     m_useable[PCM_FRONT_RIGHT_OF_CENTER] = false;
@@ -305,7 +305,7 @@ void CPCMRemap::ResolveChannels()
   /* if our input has side, and not back channels, and our output doesnt have side channels */
   if (hasSide && !hasBack && (!m_useable[PCM_SIDE_LEFT] || !m_useable[PCM_SIDE_RIGHT]))
   {
-    CLog::Log(LOGDEBUG, "CPCMRemap: Forcing side channel map to back channels");
+    CLogLog(LOGDEBUG, "CPCMRemap: Forcing side channel map to back channels");
     for(in_ch = 0; in_ch < m_inChannels; ++in_ch)
            if (m_inMap[in_ch] == PCM_SIDE_LEFT ) m_inMap[in_ch] = PCM_BACK_LEFT;
       else if (m_inMap[in_ch] == PCM_SIDE_RIGHT) m_inMap[in_ch] = PCM_BACK_RIGHT;   
@@ -358,7 +358,7 @@ void CPCMRemap::BuildMap()
 
   /* see if we need to normalize the levels */
   bool dontnormalize = m_dontnormalize;
-  CLog::Log(LOGDEBUG, "CPCMRemap: Downmix normalization is %s", (dontnormalize ? "disabled" : "enabled"));
+  CLogLog(LOGDEBUG, "CPCMRemap: Downmix normalization is %s", (dontnormalize ? "disabled" : "enabled"));
 
   ResolveChannels();
 
@@ -412,7 +412,7 @@ void CPCMRemap::BuildMap()
       f.Format("%s(%f%s) ",  PCMChannelStr(dst->channel).c_str(), dst->level, dst->copy ? "*" : "");
       s += f;
     }
-    CLog::Log(LOGDEBUG, "CPCMRemap: %s = %s\n", PCMChannelStr(m_outMap[out_ch]).c_str(), s.c_str());
+    CLogLog(LOGDEBUG, "CPCMRemap: %s = %s", PCMChannelStr(m_outMap[out_ch]).c_str(), s.c_str());
   }
 }
 
@@ -420,7 +420,7 @@ void CPCMRemap::DumpMap(CStdString info, unsigned int channels, enum PCMChannels
 {
   if (channelMap == NULL)
   {
-    CLog::Log(LOGINFO, "CPCMRemap: %s channel map: NULL", info.c_str());
+    CLogLog(LOGINFO, "CPCMRemap: %s channel map: NULL", info.c_str());
     return;
   }
 
@@ -428,7 +428,7 @@ void CPCMRemap::DumpMap(CStdString info, unsigned int channels, enum PCMChannels
   for(unsigned int i = 0; i < channels; ++i)
     mapping += ((i == 0) ? "" : ",") + PCMChannelStr(channelMap[i]);
 
-  CLog::Log(LOGINFO, "CPCMRemap: %s channel map: %s\n", info.c_str(), mapping.c_str());
+  CLogLog(LOGINFO, "CPCMRemap: %s channel map: %s", info.c_str(), mapping.c_str());
 }
 
 void CPCMRemap::Reset()

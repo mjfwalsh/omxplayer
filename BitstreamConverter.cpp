@@ -444,7 +444,7 @@ bool CBitstreamConverter::Open(enum AVCodecID codec, uint8_t *in_extradata, int 
     case AV_CODEC_ID_H264:
       if (in_extrasize < 7 || in_extradata == NULL)
       {
-        CLog::Log(LOGERROR, "CBitstreamConverter::Open avcC data too small or missing\n");
+        CLogLog(LOGERROR, "CBitstreamConverter::Open avcC data too small or missing");
         return false;
       }
       // valid avcC data (bitstream) always starts with the value 1 (version)
@@ -452,7 +452,7 @@ bool CBitstreamConverter::Open(enum AVCodecID codec, uint8_t *in_extradata, int 
       {
         if ( *(char*)in_extradata == 1 )
         {
-          CLog::Log(LOGINFO, "CBitstreamConverter::Open bitstream to annexb init\n");
+          CLogLog(LOGINFO, "CBitstreamConverter::Open bitstream to annexb init");
           m_convert_bitstream = BitstreamConvertInit(in_extradata, in_extrasize);
           return true;
         }
@@ -464,7 +464,7 @@ bool CBitstreamConverter::Open(enum AVCodecID codec, uint8_t *in_extradata, int 
         {
           if (in_extradata[0] == 0 && in_extradata[1] == 0 && in_extradata[2] == 0 && in_extradata[3] == 1)
           {
-            CLog::Log(LOGINFO, "CBitstreamConverter::Open annexb to bitstream init\n");
+            CLogLog(LOGINFO, "CBitstreamConverter::Open annexb to bitstream init");
             // video content is from x264 or from bytestream h264 (AnnexB format)
             // NAL reformating to bitstream format needed
             AVIOContext *pb;
@@ -487,7 +487,7 @@ bool CBitstreamConverter::Open(enum AVCodecID codec, uint8_t *in_extradata, int 
           }
           else
           {
-            CLog::Log(LOGNOTICE, "CBitstreamConverter::Open invalid avcC atom data");
+            CLogLog(LOGNOTICE, "CBitstreamConverter::Open invalid avcC atom data");
             return false;
           }
         }
@@ -495,7 +495,7 @@ bool CBitstreamConverter::Open(enum AVCodecID codec, uint8_t *in_extradata, int 
         {
           if (in_extradata[4] == 0xFE)
           {
-            CLog::Log(LOGINFO, "CBitstreamConverter::Open annexb to bitstream init 3 byte to 4 byte nal\n");
+            CLogLog(LOGINFO, "CBitstreamConverter::Open annexb to bitstream init 3 byte to 4 byte nal");
             // video content is from so silly encoder that think 3 byte NAL sizes
             // are valid, setup to convert 3 byte NAL sizes to 4 byte.
 
@@ -590,7 +590,7 @@ bool CBitstreamConverter::Convert(uint8_t *pData, int iSize)
             Close();
             m_inputBuffer = pData;
             m_inputSize   = iSize;
-            CLog::Log(LOGERROR, "CBitstreamConverter::Convert error converting. disable converter\n");
+            CLogLog(LOGERROR, "CBitstreamConverter::Convert error converting. disable converter");
           }
         }
         else

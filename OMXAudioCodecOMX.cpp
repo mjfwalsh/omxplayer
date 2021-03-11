@@ -69,7 +69,7 @@ bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
   pCodec = avcodec_find_decoder(hints.codec);
   if (!pCodec)
   {
-    CLog::Log(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to find codec %d", hints.codec);
+    CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to find codec %d", hints.codec);
     return false;
   }
 
@@ -104,7 +104,7 @@ bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
     }
   }
   if (m_pCodecContext->request_channel_layout)
-    CLog::Log(LOGNOTICE,"COMXAudioCodecOMX::Open() Requesting channel layout of %x", (unsigned)m_pCodecContext->request_channel_layout);
+    CLogLog(LOGNOTICE,"COMXAudioCodecOMX::Open() Requesting channel layout of %x", (unsigned)m_pCodecContext->request_channel_layout);
 
   if(m_pCodecContext->bits_per_coded_sample == 0)
     m_pCodecContext->bits_per_coded_sample = 16;
@@ -118,7 +118,7 @@ bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
 
   if (avcodec_open2(m_pCodecContext, pCodec, NULL) < 0)
   {
-    CLog::Log(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to open codec");
+    CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to open codec");
     Dispose();
     return false;
   }
@@ -164,7 +164,7 @@ bool COMXAudioCodecOMX::SendPacket(OMXPacket *pkt)
   int result = avcodec_send_packet(m_pCodecContext, pkt);
 
   if (result && m_bFirstFrame)
-    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::SendPacket(%p,%d)", pkt->data, pkt->size);
+    CLogLog(LOGDEBUG, "COMXAudioCodecOMX::SendPacket(%p,%d)", pkt->data, pkt->size);
 
   return result == 0;
 }
@@ -184,7 +184,7 @@ bool COMXAudioCodecOMX::GetFrame()
 
     if (m_bFirstFrame)
     {
-      CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::GetFrame format=%d(%d) chan=%d samples=%d size=%d data=%p,%p,%p,%p,%p,%p,%p,%p",
+      CLogLog(LOGDEBUG, "COMXAudioCodecOMX::GetFrame format=%d(%d) chan=%d samples=%d size=%d data=%p,%p,%p,%p,%p,%p,%p,%p",
                m_pCodecContext->sample_fmt, m_desiredSampleFormat, m_pCodecContext->channels, m_pFrame1->nb_samples,
                m_pFrame1->linesize[0],
                m_pFrame1->data[0], m_pFrame1->data[1], m_pFrame1->data[2], m_pFrame1->data[3], m_pFrame1->data[4], m_pFrame1->data[5], m_pFrame1->data[6], m_pFrame1->data[7]
@@ -198,7 +198,7 @@ bool COMXAudioCodecOMX::GetFrame()
   }
   else
   {
-    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::GetFrame error=%d", result);
+    CLogLog(LOGDEBUG, "COMXAudioCodecOMX::GetFrame error=%d", result);
     Reset();
     return false;
   }
@@ -216,7 +216,7 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
 
   if (!m_bNoConcatenate && m_iBufferOutputUsed && (int)m_frameSize != outputSize)
   {
-    CLog::Log(LOGERROR, "COMXAudioCodecOMX::GetData Unexpected change of size (%d->%d)", m_frameSize, outputSize);
+    CLogLog(LOGERROR, "COMXAudioCodecOMX::GetData Unexpected change of size (%d->%d)", m_frameSize, outputSize);
     m_bNoConcatenate = true;
   }
 
@@ -261,7 +261,7 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
 
       if(!m_pConvert || swr_init(m_pConvert) < 0)
       {
-        CLog::Log(LOGERROR, "COMXAudioCodecOMX::Decode - Unable to initialise convert format %d to %d", m_pCodecContext->sample_fmt, m_desiredSampleFormat);
+        CLogLog(LOGERROR, "COMXAudioCodecOMX::Decode - Unable to initialise convert format %d to %d", m_pCodecContext->sample_fmt, m_desiredSampleFormat);
         return 0;
       }
     }
@@ -271,7 +271,7 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
     if(av_samples_fill_arrays(out_planes, NULL, m_pBufferOutput + m_iBufferOutputUsed, m_pCodecContext->channels, m_pFrame1->nb_samples, m_desiredSampleFormat, 1) < 0 ||
        swr_convert(m_pConvert, out_planes, m_pFrame1->nb_samples, (const uint8_t **)m_pFrame1->data, m_pFrame1->nb_samples) < 0)
     {
-      CLog::Log(LOGERROR, "COMXAudioCodecOMX::Decode - Unable to convert format %d to %d", (int)m_pCodecContext->sample_fmt, m_desiredSampleFormat);
+      CLogLog(LOGERROR, "COMXAudioCodecOMX::Decode - Unable to convert format %d to %d", (int)m_pCodecContext->sample_fmt, m_desiredSampleFormat);
       outputSize = 0;
     }
   }
@@ -289,7 +289,7 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
 
   if (m_bFirstFrame)
   {
-    CLog::Log(LOGDEBUG, "COMXAudioCodecOMX::GetData size=%d/%d line=%d/%d buf=%p, desired=%d", inputSize, outputSize, inLineSize, outLineSize, m_pBufferOutput, desired_size);
+    CLogLog(LOGDEBUG, "COMXAudioCodecOMX::GetData size=%d/%d line=%d/%d buf=%p, desired=%d", inputSize, outputSize, inLineSize, outLineSize, m_pBufferOutput, desired_size);
     m_bFirstFrame = false;
   }
   m_iBufferOutputUsed += outputSize;
@@ -347,7 +347,7 @@ uint64_t COMXAudioCodecOMX::GetChannelMap()
     layout = m_pCodecContext->channel_layout;
   else
   {
-    CLog::Log(LOGINFO, "COMXAudioCodecOMX::GetChannelMap - FFmpeg reported %d channels, but the layout contains %d ignoring", m_pCodecContext->channels, bits);
+    CLogLog(LOGINFO, "COMXAudioCodecOMX::GetChannelMap - FFmpeg reported %d channels, but the layout contains %d ignoring", m_pCodecContext->channels, bits);
     layout = av_get_default_channel_layout(m_pCodecContext->channels);
   }
 

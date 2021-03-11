@@ -89,7 +89,7 @@ CRegExp* CRegExp::RegComp(const char *re)
   if (!m_re)
   {
     m_pattern.clear();
-    CLog::Log(LOGERROR, "PCRE: %s. Compilation failed at offset %d in expression '%s'",
+    CLogLog(LOGERROR, "PCRE: %s. Compilation failed at offset %d in expression '%s'",
               errMsg, errOffset, re);
     return NULL;
   }
@@ -106,13 +106,13 @@ int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
 
   if (!m_re)
   {
-    CLog::Log(LOGERROR, "PCRE: Called before compilation");
+    CLogLog(LOGERROR, "PCRE: Called before compilation");
     return -1;
   }
 
   if (!str)
   {
-    CLog::Log(LOGERROR, "PCRE: Called without a string to match");
+    CLogLog(LOGERROR, "PCRE: Called without a string to match");
     return -1;
   }
 
@@ -130,11 +130,11 @@ int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
       return -1;
 
     case PCRE_ERROR_MATCHLIMIT:
-      CLog::Log(LOGERROR, "PCRE: Match limit reached");
+      CLogLog(LOGERROR, "PCRE: Match limit reached");
       return -1;
 
     default:
-      CLog::Log(LOGERROR, "PCRE: Unknown error: %d", rc);
+      CLogLog(LOGERROR, "PCRE: Unknown error: %d", rc);
       return -1;
     }
   }
@@ -265,5 +265,5 @@ void CRegExp::DumpOvector(int iLog /* = LOGDEBUG */)
     str += t;
   }
   str += "}";
-  CLog::Log(iLog, "regexp ovector=%s", str.c_str());
+  CLogLog(iLog, "regexp ovector=%s", str.c_str());
 }

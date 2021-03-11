@@ -50,7 +50,7 @@ bool OMXThread::StopThread()
 {
   if(!m_running)
   {
-    CLog::Log(LOGDEBUG, "%s::%s - No thread running\n", CLASSNAME, __func__);
+    CLogLog(LOGDEBUG, "%s::%s - No thread running", CLASSNAME, __func__);
     return false;
   }
 
@@ -60,7 +60,7 @@ bool OMXThread::StopThread()
 
   m_thread = 0;
 
-  CLog::Log(LOGDEBUG, "%s::%s - Thread stopped\n", CLASSNAME, __func__);
+  CLogLog(LOGDEBUG, "%s::%s - Thread stopped", CLASSNAME, __func__);
   return true;
 }
 
@@ -68,7 +68,7 @@ bool OMXThread::Create()
 {
   if(m_running)
   {
-    CLog::Log(LOGERROR, "%s::%s - Thread already running\n", CLASSNAME, __func__);
+    CLogLog(LOGERROR, "%s::%s - Thread already running", CLASSNAME, __func__);
     return false;
   }
 
@@ -77,7 +77,7 @@ bool OMXThread::Create()
 
   pthread_create(&m_thread, &m_tattr, &OMXThread::Run, this);
 
-  CLog::Log(LOGDEBUG, "%s::%s - Thread with id %d started\n", CLASSNAME, __func__, (int)m_thread);
+  CLogLog(LOGDEBUG, "%s::%s - Thread with id %d started", CLASSNAME, __func__, (int)m_thread);
   return true;
 }
 
@@ -96,7 +96,7 @@ void *OMXThread::Run(void *arg)
   OMXThread *thread = static_cast<OMXThread *>(arg);
   thread->Process();
 
-  CLog::Log(LOGDEBUG, "%s::%s - Exited thread with  id %d\n", CLASSNAME, __func__, (int)thread->ThreadHandle());
+  CLogLog(LOGDEBUG, "%s::%s - Exited thread with  id %d", CLASSNAME, __func__, (int)thread->ThreadHandle());
   pthread_exit(NULL);
 }
 
@@ -104,7 +104,7 @@ void OMXThread::Lock()
 {
   if(!m_running)
   {
-    CLog::Log(LOGDEBUG, "%s::%s - No thread running\n", CLASSNAME, __func__);
+    CLogLog(LOGDEBUG, "%s::%s - No thread running", CLASSNAME, __func__);
     return;
   }
 
@@ -115,7 +115,7 @@ void OMXThread::UnLock()
 {
   if(!m_running)
   {
-    CLog::Log(LOGDEBUG, "%s::%s - No thread running\n", CLASSNAME, __func__);
+    CLogLog(LOGDEBUG, "%s::%s - No thread running", CLASSNAME, __func__);
     return;
   }
 

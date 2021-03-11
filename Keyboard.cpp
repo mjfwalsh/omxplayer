@@ -33,11 +33,11 @@ Keyboard::Keyboard()
 
   if (dbus_connect() < 0)
   {
-    CLog::Log(LOGWARNING, "Keyboard: DBus connection failed");
+    CLogLog(LOGWARNING, "Keyboard: DBus connection failed");
   } 
   else 
   {
-    CLog::Log(LOGDEBUG, "Keyboard: DBus connection succeeded");
+    CLogLog(LOGDEBUG, "Keyboard: DBus connection succeeded");
   }
 
   dbus_threads_init_default();
@@ -96,7 +96,7 @@ void Keyboard::Process()
     if (chnum > 1) ch[0] = ch[chnum - 1] | (ch[chnum - 2] << 8);
 
     if (chnum > 0)
-      CLog::Log(LOGDEBUG, "Keyboard: character %c (0x%x)", ch[0], ch[0]);
+      CLogLog(LOGDEBUG, "Keyboard: character %c (0x%x)", ch[0], ch[0]);
 
     if (m_keymap[ch[0]] != 0)
           send_action(m_keymap[ch[0]]);
@@ -127,7 +127,7 @@ void Keyboard::send_action(int action)
                                               OMXPLAYER_DBUS_INTERFACE_PLAYER,
                                               "Action"))) 
   {
-    CLog::Log(LOGWARNING, "Keyboard: DBus error 1");
+    CLogLog(LOGWARNING, "Keyboard: DBus error 1");
     goto fail;
   }
 
@@ -174,7 +174,7 @@ int Keyboard::dbus_connect()
   dbus_error_init(&error);
   if (!(conn = dbus_bus_get_private(DBUS_BUS_SESSION, &error))) 
   {
-    CLog::Log(LOGWARNING, "dbus_bus_get_private(): %s", error.message);
+    CLogLog(LOGWARNING, "dbus_bus_get_private(): %s", error.message);
         goto fail;
   }
 

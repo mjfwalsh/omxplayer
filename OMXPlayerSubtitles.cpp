@@ -138,12 +138,12 @@ void OMXPlayerSubtitles::Process()
   {
     if(!e.user_friendly_what().empty())
       printf("Error: %s\n", e.user_friendly_what().c_str());
-    CLog::Log(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
+    CLogLog(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
               typeid(e).name(), e.what());
   }
   catch(std::exception& e)
   {
-    CLog::Log(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
+    CLogLog(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
               typeid(e).name(), e.what());
   }
   m_thread_stopped.store(true, memory_order_relaxed);

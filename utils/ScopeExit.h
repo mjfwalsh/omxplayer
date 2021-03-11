@@ -57,7 +57,7 @@ public:
     try {
       fun_();
     } catch (std::exception& e) {
-      CLog::Log(LOGSEVERE, "Scope_guard exit function threw %s (%s)",
+      CLogLog(LOGSEVERE, "Scope_guard exit function threw %s (%s)",
                 typeid(e).name(), e.what());
 #ifndef NDEBUG
       printf("Scope_guard exit function threw %s (%s)\n",
@@ -65,9 +65,9 @@ public:
       abort();
 #endif
     } catch (...) {
-      CLog::Log(LOGSEVERE, "Scope_guard exit function threw an object unrelated to std::exception");
+      CLogLog(LOGSEVERE, "Scope_guard exit function threw an object unrelated to std::exception");
 #ifndef NDEBUG
-      printf("Scope_guard exit function threw an object unrelated to std::exception\n");
+      puts("Scope_guard exit function threw an object unrelated to std::exception");
       abort();
 #endif
     }

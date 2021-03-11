@@ -49,7 +49,7 @@ void ToURI(const std::string& str, char *uri)
 
 void deprecatedMessage()
 {
-  CLog::Log(LOGWARNING, "DBus property access through direct method is deprecated. Use Get/Set methods instead.");
+  CLogLog(LOGWARNING, "DBus property access through direct method is deprecated. Use Get/Set methods instead.");
 }
 
 
@@ -101,7 +101,7 @@ int OMXControl::init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPl
 
   if (dbus_connect(dbus_name) < 0)
   {
-    CLog::Log(LOGWARNING, "DBus connection failed, trying alternate");
+    CLogLog(LOGWARNING, "DBus connection failed, trying alternate");
     dbus_disconnect();
     std::stringstream ss;
     ss << getpid();
@@ -109,17 +109,17 @@ int OMXControl::init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPl
     dbus_name += ss.str();
     if (dbus_connect(dbus_name) < 0)
     {
-      CLog::Log(LOGWARNING, "DBus connection failed, alternate failed, will continue without DBus");
+      CLogLog(LOGWARNING, "DBus connection failed, alternate failed, will continue without DBus");
       dbus_disconnect();
       ret = -1;
     } else {
-      CLog::Log(LOGDEBUG, "DBus connection succeeded");
+      CLogLog(LOGDEBUG, "DBus connection succeeded");
       dbus_threads_init_default();
     }
   }
   else
   {
-    CLog::Log(LOGDEBUG, "DBus connection succeeded");
+    CLogLog(LOGDEBUG, "DBus connection succeeded");
     dbus_threads_init_default();
   }
   return ret;
@@ -138,7 +138,7 @@ int OMXControl::dbus_connect(std::string& dbus_name)
   dbus_error_init(&error);
   if (!(bus = dbus_bus_get_private(DBUS_BUS_SESSION, &error)))
   {
-    CLog::Log(LOGWARNING, "dbus_bus_get_private(): %s", error.message);
+    CLogLog(LOGWARNING, "dbus_bus_get_private(): %s", error.message);
         goto fail;
   }
 
@@ -152,11 +152,11 @@ int OMXControl::dbus_connect(std::string& dbus_name)
   {
         if (dbus_error_is_set(&error))
         {
-            CLog::Log(LOGWARNING, "dbus_bus_request_name(): %s", error.message);
+            CLogLog(LOGWARNING, "dbus_bus_request_name(): %s", error.message);
             goto fail;
         }
 
-        CLog::Log(LOGWARNING, "Failed to acquire D-Bus name '%s'", dbus_name.c_str());
+        CLogLog(LOGWARNING, "Failed to acquire D-Bus name '%s'", dbus_name.c_str());
         goto fail;
     }
 
@@ -197,7 +197,7 @@ OMXControlResult OMXControl::getEvent()
   if (m == NULL)
     return KeyConfig::ACTION_BLANK;
 
-  CLog::Log(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+  CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
   OMXControlResult result = handle_event(m);
   dbus_message_unref(m);
 
@@ -277,7 +277,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
       else
       {
         //Error
-        CLog::Log(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
         dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
         return KeyConfig::ACTION_BLANK;
       }
@@ -437,7 +437,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
       else
       {
         //Error
-        CLog::Log(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
         dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
         return KeyConfig::ACTION_BLANK;
       }
@@ -446,7 +446,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     else
     {
         //Error
-        CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
         dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
         return KeyConfig::ACTION_BLANK;
     }
@@ -471,8 +471,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
 			dbus_message_iter_get_basic (&args, &interface);
 		else
 		{
-			printf("setE1\n");
-			CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+			puts("setE1");
+			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 			dbus_error_free(&error);
 			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
 			return KeyConfig::ACTION_BLANK;
@@ -482,7 +482,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
 			dbus_message_iter_get_basic (&args, &property);
 		else
 		{
-			CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 			dbus_error_free(&error);
 			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
 			return KeyConfig::ACTION_BLANK;
@@ -507,7 +507,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
 			}
 			else
 			{
-				CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+				CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 				dbus_error_free(&error);
 				dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
 				return KeyConfig::ACTION_BLANK;
@@ -516,7 +516,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
 	}
     if ( dbus_error_is_set(&error) )
     {
-        CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
         dbus_error_free(&error);
         dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
         return KeyConfig::ACTION_BLANK;
@@ -566,7 +566,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
       else
       {
         //Error
-        CLog::Log(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
         dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
         return KeyConfig::ACTION_BLANK;
       }
@@ -575,7 +575,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     else
     {
         //Error
-        CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
         dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
         return KeyConfig::ACTION_BLANK;
     }
@@ -815,7 +815,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Make sure a value is sent for seeking
     if (dbus_error_is_set(&error))
     {
-       CLog::Log(LOGWARNING, "Seek D-Bus Error: %s", error.message );
+       CLogLog(LOGWARNING, "Seek D-Bus Error: %s", error.message );
        dbus_error_free(&error);
        dbus_respond_ok(m);
        return KeyConfig::ACTION_BLANK;
@@ -838,7 +838,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Make sure a value is sent for setting position
     if (dbus_error_is_set(&error))
     {
-      CLog::Log(LOGWARNING, "SetPosition D-Bus Error: %s", error.message );
+      CLogLog(LOGWARNING, "SetPosition D-Bus Error: %s", error.message );
       dbus_error_free(&error);
       dbus_respond_ok(m);
       return KeyConfig::ACTION_BLANK;
@@ -861,7 +861,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Make sure a value is sent for setting alpha
     if (dbus_error_is_set(&error))
     {
-      CLog::Log(LOGWARNING, "SetAlpha D-Bus Error: %s", error.message );
+      CLogLog(LOGWARNING, "SetAlpha D-Bus Error: %s", error.message );
       dbus_error_free(&error);
       dbus_respond_ok(m);
       return KeyConfig::ACTION_BLANK;
@@ -883,7 +883,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Make sure a value is sent for setting layer
     if (dbus_error_is_set(&error))
     {
-      CLog::Log(LOGWARNING, "SetLayer D-Bus Error: %s", error.message );
+      CLogLog(LOGWARNING, "SetLayer D-Bus Error: %s", error.message );
       dbus_error_free(&error);
       dbus_respond_ok(m);
       return KeyConfig::ACTION_BLANK;
@@ -906,7 +906,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Make sure a value is sent for setting aspect mode
     if (dbus_error_is_set(&error))
     {
-      CLog::Log(LOGWARNING, "SetAspectMode D-Bus Error: %s", error.message );
+      CLogLog(LOGWARNING, "SetAspectMode D-Bus Error: %s", error.message );
       dbus_error_free(&error);
       dbus_respond_ok(m);
       return KeyConfig::ACTION_BLANK;
@@ -1085,7 +1085,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
 
     if (dbus_error_is_set(&error))
     {
-      CLog::Log(LOGWARNING, "Change file D-Bus Error: %s", error.message );
+      CLogLog(LOGWARNING, "Change file D-Bus Error: %s", error.message );
       dbus_error_free(&error);
       dbus_respond_ok(m);
       return KeyConfig::ACTION_BLANK;
@@ -1118,7 +1118,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   }
   //----------------------------------------------------------------------------
   else {
-    CLog::Log(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
     if (dbus_message_get_type(m) == DBUS_MESSAGE_TYPE_METHOD_CALL)
       dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
   }
@@ -1164,7 +1164,7 @@ DBusHandlerResult OMXControl::dbus_respond_string(DBusMessage *m, const char *te
 
   if (!reply)
   {
-    CLog::Log(LOGWARNING, "Failed to allocate message");
+    CLogLog(LOGWARNING, "Failed to allocate message");
     return DBUS_HANDLER_RESULT_NEED_MEMORY;
   }
 
@@ -1183,7 +1183,7 @@ DBusHandlerResult OMXControl::dbus_respond_int64(DBusMessage *m, int64_t i)
 
   if (!reply)
   {
-    CLog::Log(LOGWARNING, "Failed to allocate message");
+    CLogLog(LOGWARNING, "Failed to allocate message");
     return DBUS_HANDLER_RESULT_NEED_MEMORY;
   }
 
@@ -1202,7 +1202,7 @@ DBusHandlerResult OMXControl::dbus_respond_double(DBusMessage *m, double d)
 
   if (!reply) 
   {
-    CLog::Log(LOGWARNING, "Failed to allocate message");
+    CLogLog(LOGWARNING, "Failed to allocate message");
     return DBUS_HANDLER_RESULT_NEED_MEMORY;
   }
 
@@ -1221,7 +1221,7 @@ DBusHandlerResult OMXControl::dbus_respond_boolean(DBusMessage *m, int b)
 
   if (!reply)
   {
-    CLog::Log(LOGWARNING, "Failed to allocate message");
+    CLogLog(LOGWARNING, "Failed to allocate message");
     return DBUS_HANDLER_RESULT_NEED_MEMORY;
   }
 
@@ -1240,7 +1240,7 @@ DBusHandlerResult OMXControl::dbus_respond_array(DBusMessage *m, const char *arr
 
   if (!reply)
   {
-    CLog::Log(LOGWARNING, "Failed to allocate message");
+    CLogLog(LOGWARNING, "Failed to allocate message");
     return DBUS_HANDLER_RESULT_NEED_MEMORY;
   }
 

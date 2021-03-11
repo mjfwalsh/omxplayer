@@ -144,7 +144,7 @@ private:
   {
     if(m_thread_stopped.load(std::memory_order_relaxed))
     {
-      CLog::Log(LOGERROR, "Subtitle rendering thread not running, message discarded");
+      CLogLog(LOGERROR, "Subtitle rendering thread not running, message discarded");
       return;
     }
     m_mailbox.send(std::forward<T>(msg));

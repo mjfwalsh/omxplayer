@@ -56,8 +56,8 @@ template <class X> static void omx_init(X &omx)
 #include <utils/log.h>
 #define CLOG(notice, comp, port, msg, ...) do { \
 	struct _GOMX_PORT *_port = (struct _GOMX_PORT *) port; \
-	if (_port) CLog::Log(notice ? LOGNOTICE : LOGDEBUG, "[%p port %d]: %s: " msg "\n", comp, _port->def.nPortIndex, __func__ , ##__VA_ARGS__); \
-	else CLog::Log(notice ? LOGNOTICE : LOGDEBUG, "[%p] %s: " msg "\n", comp, __func__ , ##__VA_ARGS__); \
+	if (_port) { CLogLog(notice ? LOGNOTICE : LOGDEBUG, "[%p port %d]: %s: " msg, comp, _port->def.nPortIndex, __func__ , ##__VA_ARGS__); } \
+	else { CLogLog(notice ? LOGNOTICE : LOGDEBUG, "[%p] %s: " msg, comp, __func__ , ##__VA_ARGS__); } \
 } while (0)
 
 #define CINFO(comp, port, msg, ...) CLOG(1, comp, port, msg , ##__VA_ARGS__)
