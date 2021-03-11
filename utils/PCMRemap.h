@@ -23,7 +23,7 @@
  */
 
 #include <vector>
-#include "StdString.h"
+#include <string>
 
 #define PCM_MAX_CH 18
 enum PCMChannels
@@ -116,10 +116,10 @@ protected:
   struct PCMMapInfo* ResolveChannel(enum PCMChannels channel, float level, bool ifExists, std::vector<enum PCMChannels> path, struct PCMMapInfo *tablePtr);
   void               ResolveChannels(); //!< Partial BuildMap(), just enough to see which output channels are active
   void               BuildMap();
-  void               DumpMap(CStdString info, int unsigned channels, enum PCMChannels *channelMap);
+  void               DumpMap(std::string info, int unsigned channels, enum PCMChannels *channelMap);
   void               Dispose();
-  CStdString         PCMChannelStr(enum PCMChannels ename);
-  CStdString         PCMLayoutStr(enum PCMLayout ename);
+  std::string        PCMChannelStr(enum PCMChannels ename);
+  std::string        PCMLayoutStr(enum PCMLayout ename);
 
   void               CheckBufferSize(int size);
   void               ProcessInput(void* data, void* out, unsigned int samples, float gain);

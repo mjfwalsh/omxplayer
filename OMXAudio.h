@@ -23,6 +23,8 @@
 #ifndef __OPENMAXAUDIORENDER_H__
 #define __OPENMAXAUDIORENDER_H__
 
+#include <string>
+
 #include "linux/PlatformDefs.h"
 #include "DllAvCodec.h"
 #include "utils/PCMRemap.h"
@@ -39,8 +41,8 @@ class OMXAudioConfig
 public:
   COMXStreamInfo hints;
   bool use_thread = true;
-  CStdString device;
-  CStdString subdevice;
+  std::string device;
+  std::string subdevice;
   enum PCMLayout layout = PCM_LAYOUT_2_0;
   bool boostOnDownmix = true;
   bool passthrough = false;

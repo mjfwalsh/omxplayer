@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "RegExp.h"
-#include "StdString.h"
+#include "Strprintf.h"
 #include "log.h"
 
 using namespace PCRE;
@@ -254,16 +254,13 @@ void CRegExp::DumpOvector(int iLog /* = LOGDEBUG */)
   if (iLog < LOGDEBUG || iLog > LOGNONE)
     return;
 
-  CStdString str = "{";
+  std::string str = "{";
   int size = GetSubCount(); // past the subpatterns is junk
   for (int i = 0; i <= size; i++)
   {
-    CStdString t;
-    t.Format("[%i,%i]", m_iOvector[(i*2)], m_iOvector[(i*2)+1]);
-    if (i != size)
-      t += ",";
-    str += t;
+    str += strprintf("[%i,%i],", m_iOvector[(i*2)], m_iOvector[(i*2)+1]);
   }
-  str += "}";
+  if(str.length() > 1)
+    str.back() = '}';
   CLogLog(iLog, "regexp ovector=%s", str.c_str());
 }

@@ -29,6 +29,7 @@
 
 #include "PCMRemap.h"
 #include "utils/log.h"
+#include "utils/Strprintf.h"
 
 static enum PCMChannels PCMLayoutMap[PCM_MAX_LAYOUT][PCM_MAX_CH + 1] =
 {
@@ -400,7 +401,7 @@ void CPCMRemap::BuildMap()
   /* adjust the channels that are too loud */
   for(out_ch = 0; out_ch < m_outChannels; ++out_ch)
   {
-    CStdString s = "", f;
+    std::string s = "", f;
     for(dst = m_lookupMap[m_outMap[out_ch]]; dst->channel != PCM_INVALID; ++dst)
     {
       if (hasLoudest && dst->copy)
@@ -409,14 +410,13 @@ void CPCMRemap::BuildMap()
         dst->copy  = false;
       }
 
-      f.Format("%s(%f%s) ",  PCMChannelStr(dst->channel).c_str(), dst->level, dst->copy ? "*" : "");
-      s += f;
+      s += strprintf("%s(%f%s) ",  PCMChannelStr(dst->channel).c_str(), dst->level, dst->copy ? "*" : "");
     }
     CLogLog(LOGDEBUG, "CPCMRemap: %s = %s", PCMChannelStr(m_outMap[out_ch]).c_str(), s.c_str());
   }
 }
 
-void CPCMRemap::DumpMap(CStdString info, unsigned int channels, enum PCMChannels *channelMap)
+void CPCMRemap::DumpMap(std::string info, unsigned int channels, enum PCMChannels *channelMap)
 {
   if (channelMap == NULL)
   {
@@ -424,7 +424,7 @@ void CPCMRemap::DumpMap(CStdString info, unsigned int channels, enum PCMChannels
     return;
   }
 
-  CStdString mapping;
+  std::string mapping;
   for(unsigned int i = 0; i < channels; ++i)
     mapping += ((i == 0) ? "" : ",") + PCMChannelStr(channelMap[i]);
 
@@ -497,7 +497,7 @@ void CPCMRemap::SetOutputFormat(unsigned int channels, enum PCMChannels *channel
   m_holdCounter = 0;
 }
 
-CStdString CPCMRemap::PCMChannelStr(enum PCMChannels ename)
+std::string CPCMRemap::PCMChannelStr(enum PCMChannels ename)
 {
   const char* PCMChannelName[] =
   {
@@ -522,10 +522,10 @@ CStdString CPCMRemap::PCMChannelStr(enum PCMChannels ename)
   };
 
   int namepos = (int)ename;
-  CStdString namestr;
+  std::string namestr;
 
   if (namepos < 0 || namepos >= (int)(sizeof(PCMChannelName) / sizeof(const char*)))
-    namestr.Format("UNKNOWN CHANNEL:%i", namepos);
+    namestr = "UNKNOWN CHANNEL:" + std::to_string(namepos);
   else
     namestr = PCMChannelName[namepos];
 
