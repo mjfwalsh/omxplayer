@@ -563,7 +563,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
   }
 }
 
-void OMXPlayerSubtitles::DisplayText(const std::string& text, int duration) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::DisplayText(const char *text, int duration) BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::DisplayText{std::move(text), duration});
+  SendToRenderer(Message::DisplayText{text, duration});
 }

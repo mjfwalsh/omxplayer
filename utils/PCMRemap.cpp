@@ -29,7 +29,6 @@
 
 #include "PCMRemap.h"
 #include "utils/log.h"
-#include "utils/Strprintf.h"
 
 static enum PCMChannels PCMLayoutMap[PCM_MAX_LAYOUT][PCM_MAX_CH + 1] =
 {
@@ -401,7 +400,7 @@ void CPCMRemap::BuildMap()
   /* adjust the channels that are too loud */
   for(out_ch = 0; out_ch < m_outChannels; ++out_ch)
   {
-    std::string s = "", f;
+    std::string s;
     for(dst = m_lookupMap[m_outMap[out_ch]]; dst->channel != PCM_INVALID; ++dst)
     {
       if (hasLoudest && dst->copy)
@@ -410,9 +409,13 @@ void CPCMRemap::BuildMap()
         dst->copy  = false;
       }
 
-      s += strprintf("%s(%f%s) ",  PCMChannelStr(dst->channel).c_str(), dst->level, dst->copy ? "*" : "");
+      if(logging_enabled)
+      {
+        s += PCMChannelStr(dst->channel);
+        s += "(" + std::to_string(dst->level) + (dst->copy ? "*" : "") + ") ";
+      }
     }
-    CLogLog(LOGDEBUG, "CPCMRemap: %s = %s", PCMChannelStr(m_outMap[out_ch]).c_str(), s.c_str());
+    CLogLog(LOGDEBUG, "CPCMRemap: %s = %s", PCMChannelStr(m_outMap[out_ch]), s.c_str());
   }
 }
 
@@ -425,8 +428,14 @@ void CPCMRemap::DumpMap(std::string info, unsigned int channels, enum PCMChannel
   }
 
   std::string mapping;
-  for(unsigned int i = 0; i < channels; ++i)
-    mapping += ((i == 0) ? "" : ",") + PCMChannelStr(channelMap[i]);
+  if(channels > 0)
+    mapping += PCMChannelStr(channelMap[0]);
+
+  for(unsigned int i = 1; i < channels; i++)
+  {
+    mapping += ",";
+    mapping += PCMChannelStr(channelMap[i]);
+  }
 
   CLogLog(LOGINFO, "CPCMRemap: %s channel map: %s", info.c_str(), mapping.c_str());
 }
@@ -497,39 +506,29 @@ void CPCMRemap::SetOutputFormat(unsigned int channels, enum PCMChannels *channel
   m_holdCounter = 0;
 }
 
-std::string CPCMRemap::PCMChannelStr(enum PCMChannels ename)
+const char *CPCMRemap::PCMChannelStr(enum PCMChannels ename)
 {
-  const char* PCMChannelName[] =
-  {
-    "FL",
-    "FR",
-    "CE",
-    "LFE",
-    "BL",
-    "BR",
-    "FLOC",
-    "FROC",
-    "BC",
-    "SL",
-    "SR",
-    "TFL",
-    "TFR",
-    "TFC",
-    "TC",
-    "TBL",
-    "TBR",
-    "TBC"
-  };
-
-  int namepos = (int)ename;
-  std::string namestr;
-
-  if (namepos < 0 || namepos >= (int)(sizeof(PCMChannelName) / sizeof(const char*)))
-    namestr = "UNKNOWN CHANNEL:" + std::to_string(namepos);
-  else
-    namestr = PCMChannelName[namepos];
-
-  return namestr;
+  switch(ename) {
+    case 0:     return "FL";
+    case 1:     return "FR";
+    case 2:     return "CE";
+    case 3:     return "LFE";
+    case 4:     return "BL";
+    case 5:     return "BR";
+    case 6:     return "FLOC";
+    case 7:     return "FROC";
+    case 8:     return "BC";
+    case 9:     return "SL";
+    case 10:    return "SR";
+    case 11:    return "TFL";
+    case 12:    return "TFR";
+    case 13:    return "TFC";
+    case 14:    return "TC";
+    case 15:    return "TBL";
+    case 16:    return "TBR";
+    case 17:    return "TBC";
+    default:    return "???";
+  }
 }
 
 

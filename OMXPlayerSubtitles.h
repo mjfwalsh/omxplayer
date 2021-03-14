@@ -90,7 +90,7 @@ public:
     return m_use_external_subtitles;
   }
 
-  void DisplayText(const std::string& text, int duration) BOOST_NOEXCEPT;
+  void DisplayText(const char *text, int duration) BOOST_NOEXCEPT;
 
   void AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT;
 

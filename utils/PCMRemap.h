@@ -118,8 +118,8 @@ protected:
   void               BuildMap();
   void               DumpMap(std::string info, int unsigned channels, enum PCMChannels *channelMap);
   void               Dispose();
-  std::string        PCMChannelStr(enum PCMChannels ename);
-  std::string        PCMLayoutStr(enum PCMLayout ename);
+  const char*        PCMChannelStr(enum PCMChannels ename);
+  const char*        PCMLayoutStr(enum PCMLayout ename);
 
   void               CheckBufferSize(int size);
   void               ProcessInput(void* data, void* out, unsigned int samples, float gain);
