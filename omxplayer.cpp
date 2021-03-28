@@ -565,6 +565,7 @@ int main(int argc, char *argv[])
   char                   m_audio_lang[4]       = "\0";
   char                   m_subtitle_lang[4]    = "\0";
   std::string            m_replacement_filename;
+  bool                   m_playlist_enabled    = true;
 
   auto ExitFileNotFound = [&](const std::string& path)
   {
@@ -643,6 +644,7 @@ int main(int argc, char *argv[])
     { "sid",          required_argument,  NULL,          't' },
     { "pos",          required_argument,  NULL,          'l' },    
     { "blank",        optional_argument,  NULL,          'b' },
+    { "no-playlist",  no_argument,        NULL,          'a' },
     { "font-size",    required_argument,  NULL,          font_size_opt },
     { "align",        required_argument,  NULL,          align_opt },
     { "no-ghost-box", no_argument,        NULL,          no_ghost_box_opt },
@@ -690,7 +692,7 @@ int main(int argc, char *argv[])
   // Empty keymap
   map<int, int> keymap;
 
-  while ((c = getopt_long(argc, argv, "wiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
+  while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
     switch (c) 
     {
@@ -820,6 +822,9 @@ int main(int argc, char *argv[])
             m_loop_from = m_incr;
         }
         break;
+      case 'a':
+        m_playlist_enabled = false;
+        break;
       case no_osd_opt:
         m_osd = false;
         break;
@@ -923,6 +928,7 @@ int main(int argc, char *argv[])
         if(m_incr > 0)
             m_loop_from = m_incr;
         m_loop = true;
+        m_playlist_enabled = false;
         break;
       case 'b':
         m_blank_background = optarg ? strtoul(optarg, NULL, 0) : 0xff000000;
@@ -1045,9 +1051,12 @@ int main(int argc, char *argv[])
     }
   }
 
-  // Disable seeking when reading from a pipe
+  // Disable seeking and playlists when reading from a pipe
   if(IsPipe(m_filename))
+  {
     m_config_audio.is_live = true;
+    m_playlist_enabled = false;
+  }
 
   // check if command line provided subtitles file exists
   if(m_has_external_subtitles && !Exists(m_external_subtitles_path))
@@ -1105,7 +1114,7 @@ int main(int argc, char *argv[])
   }
 
   // read the relevant recent files/dvd store
-  if(!m_dump_format_exit && !m_loop)
+  if(!m_dump_format_exit && m_playlist_enabled)
   {
     if(m_is_dvd_device)
     {
@@ -2062,40 +2071,40 @@ end_of_play_loop:
   m_seek_flush = false;
   m_incr = 0;
 
-  if(m_loop) {
-    // nothing
-  } else if(!g_abort && (m_send_eos || m_next_prev_file != 0)) {
-    // default to playing next track file
-    if(m_next_prev_file == 0) m_next_prev_file = 1;
+  if(m_playlist_enabled && !m_exit_with_error) {
+    if(!g_abort && (m_send_eos || m_next_prev_file != 0)) {
+      // default to playing next track file
+      if(m_next_prev_file == 0) m_next_prev_file = 1;
 
-    // if this is a DVD look for next track
-    if(m_is_dvd) {
-      if(m_DvdPlayer->ChangeTrack(m_next_prev_file, m_track))
-      {
-        m_firstfile = false;
-        m_next_prev_file = 0;
-        goto change_track;
+      // if this is a DVD look for next track
+      if(m_is_dvd) {
+        if(m_DvdPlayer->ChangeTrack(m_next_prev_file, m_track))
+        {
+          m_firstfile = false;
+          m_next_prev_file = 0;
+          goto change_track;
+        }
+
+        // no more tracks to play, exit DVD mode
+        m_is_dvd = false;
+        delete m_DvdPlayer;
+        m_DvdPlayer = NULL;
       }
 
-      // no more tracks to play, exit DVD mode
-      m_is_dvd = false;
-      delete m_DvdPlayer;
-      m_DvdPlayer = NULL;
+      // Play next file in playlist if there is one...
+      // 'Exists' checks if file is readable
+      if(!m_is_dvd_device && m_playlist.ChangeFile(m_next_prev_file, m_filename)
+          && Exists(m_filename)) {
+        m_firstfile = false;
+        m_next_prev_file = 0;
+        goto change_playlist_item;
+      }
+    } else if(!m_firstfile || t > 5) {
+      if(m_is_dvd_device)
+        m_dvd_store.remember(m_track, (int)t);
+      else
+        m_file_store.remember(m_filename, m_track, (int)t);
     }
-
-    // Play next file in playlist if there is one...
-    // 'Exists' checks if file is readable
-    if(!m_is_dvd_device && m_playlist.ChangeFile(m_next_prev_file, m_filename)
-        && Exists(m_filename)) {
-      m_firstfile = false;
-      m_next_prev_file = 0;
-      goto change_playlist_item;
-    }
-  } else if(!m_firstfile || t > 5) {
-    if(m_is_dvd_device)
-      m_dvd_store.remember(m_track, (int)t);
-    else
-	  m_file_store.remember(m_filename, m_track, (int)t);
   }
 
   if(!g_abort && !m_replacement_filename.empty()) {
@@ -2147,7 +2156,7 @@ end_of_play_loop:
   bcm_host_deinit();
 
   // save recent files
-  if(!m_loop) {
+  if(m_playlist_enabled) {
     if(m_is_dvd_device) m_dvd_store.saveStore();
     else m_file_store.saveStore();
   }

@@ -89,6 +89,7 @@ Usage: omxplayer [OPTIONS] [FILE]
         --track n               Play a DVD track (natural number, default 1)
     -b  --blank[=0xAARRGGBB]    Set the video background color to black (or optional ARGB value)
         --loop                  Loop file. Ignored if file not seekable
+    -a  --no-playlist           Disable playlist and remember position funcctionality
         --no-boost-on-downmix   Don't boost volume when downmixing
         --vol n                 set initial volume in millibels (default 0)
         --amp n                 set initial amplification in millibels (default 0)
