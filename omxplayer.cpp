@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
   bool                  m_is_dvd              = false;
   bool                  m_is_dvd_device       = false;
   OMXDvdPlayer          *m_DvdPlayer          = NULL;
-  int                   m_incr                = 0;
+  int                   m_incr                = -1;
   int                   m_loop_from           = 0;
   COMXCore              g_OMX;
   bool                  m_stats               = false;
@@ -920,7 +920,7 @@ int main(int argc, char *argv[])
         m_dbus_name = optarg;
         break;
       case loop_opt:
-        if(m_incr != 0)
+        if(m_incr > 0)
             m_loop_from = m_incr;
         m_loop = true;
         break;
@@ -1116,9 +1116,8 @@ int main(int argc, char *argv[])
       m_file_store.readStore();
 
       // find seek position
-      if(!IsPipe(m_filename) && m_incr == 0) {
+      if(m_incr == -1)
         m_incr = m_file_store.getTime(m_filename, m_track);
-      }
     }
   }
 
@@ -1140,7 +1139,7 @@ int main(int argc, char *argv[])
     m_DvdPlayer->enableHeuristicTrackSelection();
 
 	// Was DVD played before?
-    if(!m_dump_format_exit && m_is_dvd_device && m_incr == 0)
+    if(!m_dump_format_exit && m_is_dvd_device && m_incr == -1)
       m_incr = m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track);
 
 	// If m_track is set to -1, look for the first enabled track
@@ -1184,6 +1183,10 @@ int main(int argc, char *argv[])
       }
     }
   }
+
+  // Start from beginning
+  if(m_incr == -1)
+    m_incr = 0;
 
   // we jump here when playing the next track in a dvd
   change_track:
