@@ -560,7 +560,6 @@ int main(int argc, char *argv[])
   std::string            m_user_agent;
   std::string            m_lavfdopts;
   std::string            m_avdict;
-  bool                   m_audio_extension     = false;
   int                    m_next_prev_file      = 0;
   char                   m_audio_lang[4]       = "\0";
   char                   m_subtitle_lang[4]    = "\0";
@@ -1140,7 +1139,6 @@ int main(int argc, char *argv[])
   if(m_is_dvd)
   {
     m_has_external_subtitles = false;
-    m_audio_extension = false;
     m_DvdPlayer = new OMXDvdPlayer();
     if(!m_DvdPlayer->Open(m_filename))
       ExitGentlyOnError();
@@ -1171,24 +1169,6 @@ int main(int argc, char *argv[])
       {
         m_external_subtitles_path = subtitles_path;
         m_has_external_subtitles = true;
-      }
-    }
-
-    m_audio_extension = false;
-    const string m_musicExtensions = "|nsv|m4a|flac|aac|strm|pls|rm|rma|mpa|wav|wma|ogg|mp3|mp2|m3u|mod|amf|669|dmf|dsm|far|gdm|"
-                   "imf|it|m15|med|okt|s3m|stm|sfx|ult|uni|xm|sid|ac3|dts|cue|aif|aiff|wpl|ape|mac|mpc|mp+|mpp|shn|zip|rar|"
-                   "wv|nsf|spc|gym|adx|dsp|adp|ymf|ast|afc|hps|xsp|xwav|waa|wvs|wam|gcm|idsp|mpdsp|mss|spt|rsd|mid|kar|sap|"
-                   "cmc|cmr|dmc|mpt|mpd|rmt|tmc|tm8|tm2|oga|url|pxml|tta|rss|cm3|cms|dlt|brstm|mka|";
-    if (m_filename.find_last_of(".") != string::npos)
-    {
-      string extension = "|" + m_filename.substr(m_filename.find_last_of(".") + 1) + "|";
-      if(!extension.empty())
-      {
-        for (char &c : extension)
-          c = tolower(c);
-
-        if(m_musicExtensions.find(extension) != string::npos)
-          m_audio_extension = true;
       }
     }
   }
@@ -1253,12 +1233,6 @@ int main(int argc, char *argv[])
   m_has_audio     = m_audio_index == -2 ? false : m_omx_reader.AudioStreamCount();
   m_has_subtitle  = m_has_external_subtitles || m_omx_reader.SubtitleStreamCount();
   m_loop          = m_loop && m_omx_reader.CanSeek();
-
-  if (m_audio_extension)
-  {
-    CLogLog(LOGWARNING, "%s - Ignoring video in audio filetype:%s", __FUNCTION__, m_filename.c_str());
-    m_has_video = false;
-  }
 
   if(m_filename.find("3DSBS") != string::npos || m_filename.find("HSBS") != string::npos)
     m_3d = CONF_FLAGS_FORMAT_SBS;
