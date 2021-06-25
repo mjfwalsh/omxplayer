@@ -403,7 +403,7 @@ void OMXDvdPlayer::read_title_name()
 void OMXDvdPlayer::read_disc_checksum()
 {
 	unsigned char buf[16];
-	if (DVDDiscID(dvd_device, buf) == -1) return;
+	if (DVDDiscID(dvd_device, &buf[0]) == -1) return;
 
 	char hex[33];
 	for (int i = 0; i < 16; i++)
