@@ -136,27 +136,17 @@ void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio,
 	// Calculate position of view port
 	Rectangle view_port {.width = screen.width, .height = screen.height};
 	float screen_aspect_ratio = (float)screen.width / screen.height;
-	if(aspect_mode != 3 && video_aspect_ratio != screen_aspect_ratio) {
-		if(aspect_mode == 2) {
-			// stretch to fill window without changing aspect ratio
-			if(video_aspect_ratio > screen_aspect_ratio) {
-				view_port.width = screen.height * video_aspect_ratio;
-			} else {
-				view_port.height = screen.width * video_aspect_ratio;
-			}
+	if((aspect_mode == 1 || aspect_mode == 0) && video_aspect_ratio != screen_aspect_ratio) {
+		if(video_aspect_ratio > screen_aspect_ratio) {
+			view_port.height = screen.width * video_aspect_ratio;
 		} else {
-			// shrink to fill window without changing aspect ratio
-			if(video_aspect_ratio > screen_aspect_ratio) {
-				view_port.height = screen.width / video_aspect_ratio;
-			} else {
-				view_port.width = screen.height / video_aspect_ratio;
-			}
+			view_port.width = screen.height * video_aspect_ratio;
 		}
 	}
 
 	// adjust width and height so they are divisible by 16
-	view_port.width = view_port.width & ~15;
-	view_port.height = view_port.height & ~15;
+	view_port.width = (view_port.width + 8) & ~15;
+	view_port.height = (view_port.height + 8) & ~15;
 	view_port.x = (screen.width - view_port.width) / 2;
 	view_port.y = (screen.height - view_port.height) / 2;
 
