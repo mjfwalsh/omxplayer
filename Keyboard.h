@@ -6,8 +6,8 @@
 #include <map>
 #include <termios.h>
 
- class Keyboard : public OMXThread
- {
+class Keyboard : public OMXThread
+{
  protected:
   struct termios orig_termios;
   int orig_fl;
@@ -29,4 +29,4 @@
   void send_action(int action);
   int dbus_connect();
   void dbus_disconnect();
- };
+};

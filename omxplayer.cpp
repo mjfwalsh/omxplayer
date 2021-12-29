@@ -170,7 +170,7 @@ void _user_message(bool to_stdout, int duration, bool sleep, char *msg)
 	  puts(msg);
 
 	// useful when we want to display some osd before exiting the program
-    if(m_osd && sleep) m_av_clock->OMXSleep(3000);
+    if(m_osd && sleep) m_av_clock->OMXSleep(duration);
 }
 
 static void UpdateRaspicastMetaData(string msg)
@@ -565,9 +565,14 @@ int main(int argc, char *argv[])
   auto ExitFileNotFound = [&](const std::string& path)
   {
     user_message_on_close("File \"%s\" not found.", path.c_str());
+    if(m_keyboard != NULL)
+      delete m_keyboard;
+
     m_player_subtitles.DeInit();
-    m_av_clock->OMXStop();
-    m_av_clock->OMXStateIdle();
+
+    if (m_av_clock)
+      delete m_av_clock;
+
     bcm_host_deinit();
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
@@ -1021,8 +1026,8 @@ int main(int argc, char *argv[])
                                 m_subtitle_lines,
                                 m_av_clock))
   {
-    m_av_clock->OMXStop();
-    m_av_clock->OMXStateIdle();
+    if (m_av_clock)
+      delete m_av_clock;
     bcm_host_deinit();
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
@@ -2079,18 +2084,12 @@ end_of_play_loop:
   }
 
   m_player_subtitles.DeInit();
-  m_av_clock->OMXStop();
-  m_av_clock->OMXStateIdle();
 
-  m_av_clock->OMXDeinitialize();
-  if (m_av_clock)
-    delete m_av_clock;
+  delete m_av_clock;
 
   // not playing anything else, so shutdown
-  if (NULL != m_keyboard)
-  {
-    m_keyboard->Close();
-  }
+  if(NULL != m_keyboard)
+    delete m_keyboard;
 
   vc_tv_show_info(0);
 

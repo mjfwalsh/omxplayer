@@ -40,6 +40,8 @@ OMXClock::OMXClock()
 
 OMXClock::~OMXClock()
 {
+  OMXStop();
+  OMXStateIdle();
   OMXDeinitialize();
   pthread_mutex_destroy(&m_lock);
 }
