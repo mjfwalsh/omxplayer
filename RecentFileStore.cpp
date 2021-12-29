@@ -21,9 +21,9 @@
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <map>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <cstring>
 
 #include "utils/RegExp.h"
 #include "RecentFileStore.h"
@@ -53,25 +53,15 @@ bool RecentFileStore::readStore()
         return false;
     }
 
-	string uri;
-	int time;
-	int track;
-
 	vector<string> recents = getRecentFileList();
 	sort(recents.begin(), recents.end());
+	uint size = recents.size();
 
-	int count = 0;
-	for(uint i=0; i < recents.size(); i++) {
-		ifstream s(recents[i]);
+	store.resize(size);
 
-		if(getline(s, uri) && s >> time) {
-			if(s >> track) {
-				store[uri] = {time, track, ++count};
-			} else {
-				store[uri] = {time, -1, ++count};
-			}
-		}
-		s.close();
+	for(uint i = 0; i < size; i++) {
+		store[i].url = recents[i];
+		readlink(&store[i]);
 	}
 
 	m_init = true;
@@ -80,24 +70,83 @@ bool RecentFileStore::readStore()
 
 bool RecentFileStore::checkIfRecentFile(string &filename)
 {
-	if(filename.length() > recent_dir.length()
-			&& filename.substr(0, recent_dir.length()) == recent_dir) {
-		ifstream s(filename);
+    int start_point = filename.length() - 4;
+    if(start_point > 0 &&
+            filename.substr(start_point) == ".url") {
+        return true;
+    }
 
-		string uri;
-		bool r = (bool)getline(s, uri);
-		s.close();
-		
-		if(r) {
-			filename = uri;
-			return true;
-		} else {
-			filename = ""; // error
-			return false;
-		}
+    if(filename.length() > recent_dir.length() &&
+            filename.substr(0, recent_dir.length()) == recent_dir) {
+        return true;
+    }
+
+    return false;
+}
+
+bool split(string &line, string &key, string &val)
+{
+    string::size_type n = line.find("=");
+    if(n == string::npos)
+        return false;
+
+    key = line.substr(0, n);
+    val = line.substr(n + 1);
+    return true;
+}
+
+bool RecentFileStore::readlink(string &filename, int &track, int &pos, char *audio, char *subtitle_lang, bool &sub_track)
+{
+	string line;
+	ifstream s(filename);
+
+	if(getline(s, line)) {
+	    filename = line;
 	} else {
+		filename = "";
 		return false;
 	}
+
+    string key;
+    string val;
+	while(getline(s, line) && split(line, key, val)) {
+        if(key == "pos") {
+            if(pos == -1)
+                pos = atoi(val.c_str());
+        } else if(key == "dvd_track") {
+            if(track == -1)
+                track = atoi(val.c_str());
+        } else if(key == "audio_lang") {
+            if(audio[0] == '\0')
+                strncpy(audio, val.c_str(), 3);
+        } else if(key == "subtitle_lang") {
+            if(subtitle_lang[0] == '\0')
+                strncpy(subtitle_lang, val.c_str(), 3);
+        }  else if(key == "subtitle_extern" && val == "1") {
+            sub_track = true;
+        }
+	}
+
+	// backward compatibility
+    if(line[0] >= '0' && line[0] <= '9') {
+        if(pos == -1) {
+            pos = atoi(line.c_str());
+        }
+
+        if(getline(s, line) && line[0] >= '0' && line[0] <= '9') {
+            if(track == -1) {
+                track = atoi(line.c_str());
+            }
+        }
+	}
+
+	s.close();
+	return true;
+}
+
+bool RecentFileStore::readlink(fileInfo *f)
+{
+	return readlink(f->url, f->dvd_track, f->time, f->audio_lang, f->subtitle_lang, f->subtitle_extern);
 }
 
 vector<string> RecentFileStore::getRecentFileList()
@@ -124,30 +173,33 @@ vector<string> RecentFileStore::getRecentFileList()
 
 void RecentFileStore::forget(string &key)
 {
-	store.erase(key);
+	for(auto i = store.begin(); i != store.end(); i++) {
+		if(i->url == key) {
+			store.erase(i);
+			break;
+		}
+	}
 }
 
-int RecentFileStore::getTime(string &key, int &track)
+void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audio, char *subtitle, bool &subtitle_extern)
 {
-	if(store.find(key) == store.end()) {
-		return 0;
-	}
+	fileInfo newFile;
 
-	if(track == -1) {
-		track = store[key].track;
-		return store[key].time;
-	}
+	newFile.url = url;
 
-	if(track == store[key].track) {
-		return store[key].time;
-	}
+	if(pos > 0)
+		newFile.time = pos;
+	if(dvd_track > 0)
+		newFile.dvd_track = dvd_track;
+	if(audio[0] != '\0')
+		strncpy(newFile.audio_lang, audio, 3);
 
-	return 0;
-}
+	if(subtitle[0] != '\0')
+		strncpy(newFile.subtitle_lang, subtitle, 3);
+	else if(subtitle_extern)
+	    newFile.subtitle_extern = true;
 
-void RecentFileStore::remember(string key, int track, int time)
-{
-	store[key] = {time, track, -1};
+	store.insert(store.begin(), newFile);
 }
 
 void RecentFileStore::clearRecents()
@@ -156,11 +208,6 @@ void RecentFileStore::clearRecents()
 
 	for(uint i=0; i < old_recents.size(); i++)
 		std::remove(old_recents[i].c_str());
-}
-
-bool RecentFileStore::fileinfoCmp(pair<string, fileInfo> const &a, pair<string, fileInfo> const &b)
-{
-	return a.second.pos < b.second.pos;
 }
 
 void RecentFileStore::saveStore()
@@ -172,17 +219,12 @@ void RecentFileStore::saveStore()
 
 	// set up some regexes
 	CRegExp link_file = CRegExp(true);
-	link_file.RegComp("/([^/]+)$");
+	link_file.RegComp("/([^/]+?)(\\.[^\\.]{1,4}|)$");
 
 	CRegExp link_stream = CRegExp(true);
 	link_stream.RegComp("://([^/]+)/");
 
-	// create a sorted vector
-	vector<pair<string, fileInfo> > vector_store;
-	vector_store.assign(store.begin(), store.end());
-	sort(vector_store.begin(), vector_store.end(), fileinfoCmp);
-
-	int size = vector_store.size();
+	int size = store.size();
 	if(size > 20) size = 20; // to to twenty files
 	for(int i = 0; i < size; i++) {
 		// make link name
@@ -191,18 +233,30 @@ void RecentFileStore::saveStore()
 		if(i < 9) link += '0';
 		link += to_string(i+1) + " - ";
 
-		if(link_file.RegFind(vector_store[i].first, 0) > -1) {
-			link += link_file.GetMatch(1);
-		} else if(link_stream.RegFind(vector_store[i].first, 0) > -1) {
-			link += link_stream.GetMatch(1) + ".ts";
+		if(link_file.RegFind(store[i].url, 0) > -1) {
+			link += link_file.GetMatch(1) + ".url";
+		} else if(link_stream.RegFind(store[i].url, 0) > -1) {
+			link += link_stream.GetMatch(1) + ".url";
 		} else {
-			link += "stream.ts";
+			link += "stream.url";
 		}
 
 		// write link file
 		ofstream s(recent_dir + link);
-		s << vector_store[i].first << '\n' << vector_store[i].second.time << "\n";
-		if(vector_store[i].second.track > 0) s << vector_store[i].second.track << "\n";
+		s << store[i].url << '\n';
+
+		if(store[i].time > 0)
+			s << "pos=" << store[i].time << "\n";
+		if(store[i].dvd_track > 0)
+			s << "dvd_track=" << store[i].dvd_track << "\n";
+		if(store[i].audio_lang[0] != '\0')
+			s << "audio_lang=" << store[i].audio_lang << "\n";
+
+		if(store[i].subtitle_lang[0] != '\0')
+			s << "subtitle_lang=" << store[i].subtitle_lang << "\n";
+		else if(store[i].subtitle_extern)
+			s << "subtitle_extern=1\n";
+
 		s.close();
 	}
 }

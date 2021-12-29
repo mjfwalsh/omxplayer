@@ -28,20 +28,20 @@ class RecentDVDStore
 public:
 	RecentDVDStore();
 	void readStore();
-	int setCurrentDVD(const string &key, int &track);
-	void remember(int track, int time);
+	void setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle);
+	void remember(int &track, int &time, char *audio, char *subtitle);
 	void saveStore();
 
 private:
 	struct DVDInfo {
-		int time;
-		int track;
-		int pos;
+		string key;
+		int time = -1;
+		int track = -1;
+		string audio;
+		string subtitle;
 	};
 
-	static bool DVDInfoCmp(pair<string, DVDInfo> const &a, pair<string, DVDInfo> const &b);
-
-	map<string, DVDInfo> store;
+	vector<DVDInfo> store;
 	string recent_dvd_file;
 	string current_dvd;
 	bool m_init = false;

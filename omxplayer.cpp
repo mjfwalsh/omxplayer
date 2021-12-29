@@ -1101,10 +1101,18 @@ int main(int argc, char *argv[])
     m_filename = fp;
     free(fp);
 
-    // check if this is a "link" in the recent file folder
-    // if it's a file check it exists
+    // check if this is a link file
+    // if it's a link file, rerun some file checks
     if(m_file_store.checkIfRecentFile(m_filename))
     {
+      // change default values to those provided by the link file
+      bool show_extern_subs = false;
+      m_file_store.readlink(m_filename, m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0],
+        show_extern_subs);
+
+      if(m_subtitle_index == -1 && show_extern_subs && m_subtitle_lang[0] == '\0')
+        m_subtitle_index = 0;
+
       is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
       if(is_local_file && !Exists(m_filename))
@@ -1141,10 +1149,6 @@ int main(int argc, char *argv[])
     else
     {
       m_playlist_enabled = m_file_store.readStore();
-
-      // find seek position
-      if(m_playlist_enabled && m_incr == -1)
-        m_incr = m_file_store.getTime(m_filename, m_track);
     }
   }
 
@@ -1166,7 +1170,7 @@ int main(int argc, char *argv[])
 
 	// Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_incr == -1)
-      m_incr = m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track);
+      m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
 
 	// If m_track is set to -1, look for the first enabled track
 	if(m_track == -1)
@@ -2007,6 +2011,9 @@ end_of_play_loop:
       m_send_eos = true;
   }
 
+  // remember this for later
+  bool ext_subs_showing = m_has_external_subtitles && m_player_subtitles.GetVisible();
+
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
   m_omx_reader.Close();
@@ -2048,9 +2055,10 @@ end_of_play_loop:
       }
     } else if(!m_firstfile || t > 5) {
       if(m_is_dvd_device)
-        m_dvd_store.remember(m_track, (int)t);
+        m_dvd_store.remember(m_track, t, &m_audio_lang[0], &m_subtitle_lang[0]);
       else
-        m_file_store.remember(m_filename, m_track, (int)t);
+        m_file_store.remember(m_filename, m_track, t, &m_audio_lang[0], &m_subtitle_lang[0],
+            ext_subs_showing);
     }
   }
 

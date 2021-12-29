@@ -19,10 +19,8 @@
 
 #include <string>
 #include <vector>
-#include <map>
 #include <fstream>
-#include <sstream>
-#include <algorithm>
+#include <cstring>
 
 #include "RecentDVDStore.h"
 
@@ -35,6 +33,25 @@ RecentDVDStore::RecentDVDStore()
 	recent_dvd_file += "/.omxplayer_dvd_store";
 }
 
+static vector<string> split(string text)
+{
+	int start = 0;
+	vector<string> tokens;
+
+	int s = text.size();
+	if(text[s-1] == '\n') s--;
+
+	int i = 0;
+	for(; i < s; i++) {
+		if(text[i] == '\t') {
+			tokens.push_back(text.substr(start, i - start));
+			start = i + 1;
+		}
+	}
+	tokens.push_back(text.substr(start, i - start));
+	return tokens;
+}
+
 void RecentDVDStore::readStore()
 {
 	m_init = true;
@@ -44,69 +61,82 @@ void RecentDVDStore::readStore()
 	if(!s.is_open()) return;
 
 	string line;
-	int pos = 0;
 	while(getline(s, line)) { 
-	   DVDInfo d;
-	   string key;
-	   
-	   istringstream is(line);
-	   if(is >> key >> d.track >> d.time) {
-		   d.pos = pos++;
-		   store[key] = move(d);
-	   }
+		DVDInfo d;
+
+		vector<string> tokens = split(line);
+
+		if(tokens.size() >= 3) {
+			d.key = tokens[0];
+			d.track = atoi(tokens[1].c_str());
+			d.time = atoi(tokens[2].c_str());
+		}
+
+		if(tokens.size() == 5) {
+			d.audio = tokens[3];
+			d.subtitle = tokens[4];
+		}
+
+		if(tokens.size() >= 3)
+			store.push_back(move(d));
 	}
 	s.close();
 }
 
-int RecentDVDStore::setCurrentDVD(const string &key, int &track)
+
+void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle)
 {
 	current_dvd = key;
-	int time = 0;
+	time = 0;
 
-	if(store.find(current_dvd) == store.end()) {
-		return 0;
+	for(auto i = store.begin(); i != store.end(); i++) {
+		if(i->key == key) {
+			if(track == -1) {
+				track = i->track;
+				time = i->time;
+			} else if(track == i->track) {
+				time = i->time;
+			}
+			if(audio[0] != '\0') {
+				strncpy(audio, i->audio.c_str(), 3);
+			}
+			if(subtitle[0] != '\0') {
+				strncpy(subtitle, i->subtitle.c_str(), 3);
+			}
+			store.erase(i);
+			return;
+		}
 	}
-
-	if(track == -1) {
-		track = store[current_dvd].track;
-		time = store[current_dvd].time;
-	} else if(track == store[current_dvd].track) {
-		time = store[current_dvd].time;
-	}
-
-	store.erase(current_dvd);
-	return time;
 }
 
 
-void RecentDVDStore::remember(int track, int time)
+void RecentDVDStore::remember(int &track, int &time, char *audio, char *subtitle)
 {
-	store[current_dvd] = {time, track, -1};
-}
+	DVDInfo d;
+	d.key = current_dvd;
+	d.time = time;
+	d.track = track;
+	d.audio = audio;
+	d.subtitle = subtitle;
 
-bool RecentDVDStore::DVDInfoCmp(pair<string, DVDInfo> const &a, pair<string, DVDInfo> const &b)
-{
-	return a.second.pos < b.second.pos;
+	store.insert(store.begin(), d);
 }
 
 void RecentDVDStore::saveStore()
 {
 	if(!m_init) return;
 
-	// create a sorted vector
-	vector<pair<string, DVDInfo> > vector_store;
-	vector_store.assign(store.begin(), store.end());
-	sort(vector_store.begin(), vector_store.end(), DVDInfoCmp);
-
-	int size = vector_store.size();
+	int size = store.size();
 	if(size > 20) size = 20; // to to twenty files
 	
 	ofstream s(recent_dvd_file);
 	
 	for(int i = 0; i < size; i++) {
-		s << vector_store[i].first << '\t';
-		s << vector_store[i].second.track << '\t';
-		s << vector_store[i].second.time << "\n";
+		s << store[i].key << '\t';
+		s << store[i].track << '\t';
+		s << store[i].time << '\t';
+		s << store[i].audio << '\t';
+		s << store[i].subtitle << '\n';
 	}
 	
 	s.close();

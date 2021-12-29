@@ -29,23 +29,26 @@ public:
 	RecentFileStore();
 	bool readStore();
 	void forget(string &key);
-	int getTime(string &key, int &track);
-	void remember(string key, int track, int time);
+	void remember(string &url, int &dvd_track, int &pos, char *audio, char *subtitle, bool &subtitle_extern);
 	void saveStore();
 	bool checkIfRecentFile(string &filename);
+	bool readlink(string &filename, int &track, int &pos, char *audio, char *subtitle, bool &subtitle_extern);
 
 private:
 	struct fileInfo {
-		int time;
-		int track;
-		int pos;
+		string url;
+		int time = -1;
+		int dvd_track = -1;
+		char audio_lang[4] = "";
+		char subtitle_lang[4] = "";
+		bool subtitle_extern = false;
 	};
 
+	bool readlink(fileInfo *f);
 	vector<string> getRecentFileList();
 	void clearRecents();
-	static bool fileinfoCmp(pair<string, fileInfo> const &a, pair<string, fileInfo> const &b);
 
-	map<string, fileInfo> store;
+	vector<fileInfo> store;
 	string recent_dir;
 	bool m_init = false;
 };
