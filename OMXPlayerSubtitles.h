@@ -68,11 +68,13 @@ public:
     return m_visible;
   }
   
-  void SetActiveStream(size_t index) BOOST_NOEXCEPT;
+  void SetActiveStream(int index) BOOST_NOEXCEPT;
+
+  void SetActiveStreamDelta(int index) BOOST_NOEXCEPT;
 
   size_t GetActiveStream() BOOST_NOEXCEPT
   {
-    assert(!m_subtitle_buffers.empty());
+    assert(!m_subtitle_buffers.empty() || m_use_external_subtitles);
     return m_active_index;
   }
 
@@ -81,13 +83,6 @@ public:
   int GetDelay() BOOST_NOEXCEPT
   {
     return m_delay;
-  }
-
-  void SetUseExternalSubtitles(bool use) BOOST_NOEXCEPT;
-
-  bool GetUseExternalSubtitles() BOOST_NOEXCEPT
-  {
-    return m_use_external_subtitles;
   }
 
   void DisplayText(const char *text, int duration) BOOST_NOEXCEPT;
@@ -174,7 +169,8 @@ private:
           Message::Clear>                       m_mailbox;
   bool                                          m_visible;
   bool                                          m_use_external_subtitles;
-  size_t                                        m_active_index;
+  int                                           m_active_index;
+  int                                           m_stream_count;
   int                                           m_delay;
   std::atomic<bool>                             m_thread_stopped;
   float                                         m_font_size;

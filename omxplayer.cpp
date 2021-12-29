@@ -189,18 +189,14 @@ static void UpdateRaspicastMetaData(string msg)
 
 static void PrintSubtitleInfo()
 {
-  auto count = m_omx_reader.SubtitleStreamCount();
-  size_t index = 0;
+  int count = 0;
+  int index = 0;
 
-  if(m_has_external_subtitles)
-  {
-    ++count;
-    if(!m_player_subtitles.GetUseExternalSubtitles())
-      index = m_player_subtitles.GetActiveStream() + 1;
-  }
-  else if(m_has_subtitle)
-  {
-      index = m_player_subtitles.GetActiveStream();
+  if(m_has_external_subtitles) {
+    count = 1;
+  } else if(m_has_subtitle) {
+    count = m_omx_reader.SubtitleStreamCount();
+    index = m_player_subtitles.GetActiveStream();
   }
 
   printf("Subtitle count: %d, state: %s, index: %u, delay: %d\n",
@@ -575,6 +571,24 @@ int main(int argc, char *argv[])
     bcm_host_deinit();
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
+  };
+
+  auto ChangeSubtitle = [&](int delta)
+  {
+    m_player_subtitles.SetActiveStreamDelta(delta);
+    if(!m_player_subtitles.GetVisible()) {
+      m_subtitle_lang[0] = '\0';
+      show_short_osd_message("Subtitles Off");
+    } else {
+      int new_index = m_player_subtitles.GetActiveStream();
+      strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
+          new_index).c_str());
+      if(m_subtitle_lang[0] != '\0')
+          show_short_osd_message("Subtitle stream: %s", m_subtitle_lang);
+      else
+          show_short_osd_message("Subtitle stream: %d", new_index + 1);
+    }
+    PrintSubtitleInfo();
   };
 
   const int font_size_opt   = 0x101;
@@ -1312,20 +1326,10 @@ int main(int argc, char *argv[])
 
   if(m_has_subtitle)
   {
-    if(!m_has_external_subtitles)
-    {
-      if(m_subtitle_lang[0] != '\0')
-        m_subtitle_index = m_omx_reader.GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
+    if(!m_has_external_subtitles && m_subtitle_lang[0] != '\0')
+      m_subtitle_index = m_omx_reader.GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
-      if(m_subtitle_index > -1 && m_subtitle_index < m_omx_reader.SubtitleStreamCount())
-      {
-        m_player_subtitles.SetActiveStream(m_subtitle_index);
-      }
-      m_player_subtitles.SetUseExternalSubtitles(false);
-    }
-
-    if(m_subtitle_index == -1)
-      m_player_subtitles.SetVisible(false);
+    m_player_subtitles.SetActiveStream(m_subtitle_index);
   }
 
   m_omx_reader.GetHints(OMXSTREAM_AUDIO, m_config_audio.hints);
@@ -1550,63 +1554,25 @@ int main(int argc, char *argv[])
       case KeyConfig::ACTION_PREVIOUS_SUBTITLE:
         if(m_has_subtitle)
         {
-          if(!m_player_subtitles.GetUseExternalSubtitles())
-          {
-            if (m_player_subtitles.GetActiveStream() == 0)
-            {
-              if(m_has_external_subtitles)
-              {
-                unsigned int pos = m_external_subtitles_path.find_last_of('/');
-                pos = pos == string::npos ? 0 : pos + 1;
-
-                show_short_osd_message("Subtitle file:\n%s", m_external_subtitles_path.c_str() + pos);
-
-                m_player_subtitles.SetUseExternalSubtitles(true);
-              }
-            }
-            else
-            {
-              int new_index = m_player_subtitles.GetActiveStream() - 1;
-              if(new_index < 0) new_index = m_omx_reader.SubtitleStreamCount() - 1;
-              m_player_subtitles.SetActiveStream(new_index);
-              strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE, new_index).c_str());
-              show_short_osd_message("Subtitle stream: %d %s", new_index + 1, m_subtitle_lang);
-            }
-          }
-
-          m_player_subtitles.SetVisible(true);
-          PrintSubtitleInfo();
+          ChangeSubtitle(-1);
         }
         break;
       case KeyConfig::ACTION_NEXT_SUBTITLE:
         if(m_has_subtitle)
         {
-          if(m_player_subtitles.GetUseExternalSubtitles())
-          {
-            if(m_omx_reader.SubtitleStreamCount())
-            {
-              assert(m_player_subtitles.GetActiveStream() == 0);
-              show_short_osd_message("Subtitle stream: 1");
-              m_player_subtitles.SetUseExternalSubtitles(false);
-            }
-          }
-          else
-          {
-            int new_index = m_player_subtitles.GetActiveStream() + 1;
-            if(new_index >= m_omx_reader.SubtitleStreamCount()) new_index = 0;
-            m_player_subtitles.SetActiveStream(new_index);
-            strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE, new_index).c_str());
-            show_short_osd_message("Subtitle stream: %d %s", new_index + 1, m_subtitle_lang);
-          }
-
-          m_player_subtitles.SetVisible(true);
-          PrintSubtitleInfo();
+          ChangeSubtitle(+1);
         }
         break;
       case KeyConfig::ACTION_TOGGLE_SUBTITLE:
         if(m_has_subtitle)
         {
-          m_player_subtitles.SetVisible(!m_player_subtitles.GetVisible());
+          if(m_player_subtitles.GetVisible()) {
+            m_player_subtitles.SetVisible(false);
+            show_short_osd_message("Subtitles Off");
+          } else {
+            m_player_subtitles.SetVisible(true);
+            show_short_osd_message("Subtitles On");
+          }
           PrintSubtitleInfo();
         }
         break;
@@ -1614,6 +1580,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(false);
+          show_short_osd_message("Subtitles Off");
           PrintSubtitleInfo();
         }
         break;
@@ -1621,6 +1588,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(true);
+          show_short_osd_message("Subtitles On");
           PrintSubtitleInfo();
         }
         break;

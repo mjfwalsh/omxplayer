@@ -84,12 +84,18 @@ bool OMXPlayerSubtitles::Init(int display,
 bool OMXPlayerSubtitles::Open(size_t stream_count,
                               vector<Subtitle>&& external_subtitles) BOOST_NOEXCEPT
 {
-  m_subtitle_buffers.resize(stream_count, circular_buffer<Subtitle>(32));
-
   if(external_subtitles.size() > 0)
   {
+    m_subtitle_buffers.clear();
+
     SendToRenderer(Message::SendExternalSubs{std::move(external_subtitles)});
     m_use_external_subtitles = true;
+    m_stream_count = 1;
+  }
+  else
+  {
+    m_subtitle_buffers.resize(stream_count, circular_buffer<Subtitle>(32));
+    m_stream_count = stream_count;
   }
 
   return true;
@@ -112,6 +118,7 @@ void OMXPlayerSubtitles::Close() BOOST_NOEXCEPT
 {
   m_mailbox.clear();
   m_subtitle_buffers.clear();
+  m_stream_count = 0;
 }
 
 void OMXPlayerSubtitles::DeInit() BOOST_NOEXCEPT
@@ -357,9 +364,9 @@ RenderLoop(float font_size,
 
 void OMXPlayerSubtitles::FlushRenderer()
 {
-  assert(GetVisible());
+  assert(m_visible);
 
-  if(GetUseExternalSubtitles())
+  if(m_use_external_subtitles)
   {
     SendToRenderer(Message::ToggleExternalSubs{true});
   }
@@ -378,9 +385,9 @@ void OMXPlayerSubtitles::Flush() BOOST_NOEXCEPT
   for(auto& q : m_subtitle_buffers)
     q.clear();
 
-  if(GetVisible())
+  if(m_visible)
   {
-    if(GetUseExternalSubtitles())
+    if(m_use_external_subtitles)
       SendToRenderer(Message::Touch{});
     else
       SendToRenderer(Message::Flush{});
@@ -395,15 +402,6 @@ void OMXPlayerSubtitles::Resume() BOOST_NOEXCEPT
 void OMXPlayerSubtitles::Pause() BOOST_NOEXCEPT
 {
   SendToRenderer(Message::SetPaused{true});
-}
-
-void OMXPlayerSubtitles::SetUseExternalSubtitles(bool use) BOOST_NOEXCEPT
-{
-  assert(use || !m_subtitle_buffers.empty());
-
-  m_use_external_subtitles = use;
-  if(GetVisible())
-    FlushRenderer();
 }
 
 void OMXPlayerSubtitles::SetDelay(int value) BOOST_NOEXCEPT
@@ -441,13 +439,29 @@ void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
   }
 }
 
-void OMXPlayerSubtitles::SetActiveStream(size_t index) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::SetActiveStreamDelta(int delta) BOOST_NOEXCEPT
 {
-  assert(index < m_subtitle_buffers.size());
+  if(m_visible) {
+    SetActiveStream(m_active_index + delta);
+  } else if(delta == 1) {
+    SetActiveStream(0);
+  } else if(delta == -1) {
+    SetActiveStream(m_stream_count - 1);
+  }
+}
 
-  m_active_index = index;
-  if(!GetUseExternalSubtitles() && GetVisible())
-    FlushRenderer();
+void OMXPlayerSubtitles::SetActiveStream(int index) BOOST_NOEXCEPT
+{
+  if(m_stream_count == 1) {
+    SetVisible(index == 0);
+  } else if(index < 0 || index >= m_stream_count) {
+    SetVisible(false);
+  } else {
+    SetVisible(true);
+    m_active_index = index;
+    if(m_visible)
+      FlushRenderer();
+  }
 }
 
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
@@ -555,8 +569,8 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NO
 
   m_subtitle_buffers[stream_index].push_back(sub);
 
-  if(!GetUseExternalSubtitles() &&
-     GetVisible() &&
+  if(!m_use_external_subtitles &&
+     m_visible &&
      stream_index == GetActiveStream())
   {
     SendToRenderer(Message::Push{std::move(sub)});
