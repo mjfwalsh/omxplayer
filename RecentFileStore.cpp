@@ -35,16 +35,24 @@ RecentFileStore::RecentFileStore()
 	// recent dir
 	recent_dir = getenv("HOME");
 	recent_dir += "/OMXPlayerRecent/"; // note the trailing slash
-
-	// create recent dir if necessary
-    struct stat fileStat;
-    if ( stat(recent_dir.c_str(), &fileStat) || !S_ISDIR(fileStat.st_mode) ) {
-        mkdir(recent_dir.c_str(), 0777);
-    }
 }
 
-void RecentFileStore::readStore()
+bool RecentFileStore::readStore()
 {
+	// create recent dir if necessary
+    struct stat fileStat;
+    if(stat(recent_dir.c_str(), &fileStat) == 0) {
+        if(!S_ISDIR(fileStat.st_mode)) {
+            // file exists but is not a directory
+            puts("File blocking creation of recents directory: disabling playlist");
+            return false;
+        }
+    } else if(mkdir(recent_dir.c_str(), 0777) != 0) {
+        // file exists but is not a directory
+        puts("Failed to create recents directory: disabling playlist");
+        return false;
+    }
+
 	string uri;
 	int time;
 	int track;
@@ -67,6 +75,7 @@ void RecentFileStore::readStore()
 	}
 
 	m_init = true;
+	return true;
 }
 
 bool RecentFileStore::checkIfRecentFile(string &filename)

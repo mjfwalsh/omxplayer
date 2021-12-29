@@ -1121,10 +1121,10 @@ int main(int argc, char *argv[])
     }
     else
     {
-      m_file_store.readStore();
+      m_playlist_enabled = m_file_store.readStore();
 
       // find seek position
-      if(m_incr == -1)
+      if(m_playlist_enabled && m_incr == -1)
         m_incr = m_file_store.getTime(m_filename, m_track);
     }
   }

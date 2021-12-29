@@ -27,7 +27,7 @@ class RecentFileStore
 {
 public:
 	RecentFileStore();
-	void readStore();
+	bool readStore();
 	void forget(string &key);
 	int getTime(string &key, int &track);
 	void remember(string key, int track, int time);
