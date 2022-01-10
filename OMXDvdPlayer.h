@@ -24,13 +24,16 @@ class OMXDvdPlayer
 	int TotalChapters();
 	float GetChapterStartTime(int i);
 	int GetCurrentTrack() const { return current_track; }
-	void GetStreamInfo(OMXStream *stream);
+	void GetAudioStreamInfo(OMXStream *stream);
+	void GetSubtitleStreamInfo(OMXStream *stream);
 	bool MetaDataCheck(int audiostream_count, int subtitle_count);
 	std::string GetID() const { return disc_checksum; }
 	std::string GetTitle() const { return disc_title; }
 	void enableHeuristicTrackSelection();
 	int findNextEnabledTrack(int i);
 	int findPrevEnabledTrack(int i);
+	void MarkSubtitleAsFound(int id);
+	void InsertMissingSubs(AVFormatContext *s);
 
   private:
 	int dvdtime2msec(dvd_time_t *dt);
@@ -61,16 +64,19 @@ class OMXDvdPlayer
 		int chapter_count;
 		int *chapters;
 		int audiostream_count;
+		struct audio_stream_info {
+			int id; // as in the hex number in "Stream #0:2[0x85]:"
+			uint16_t lang; // lang code
+		} *audio_streams;
 		int subtitle_count;
-		struct stream_info {
-			int index;
-			int id;
-			uint16_t lang;
-		} *streams;
+		struct subtitle_stream_info {
+			int id; // as in the hex number in "Stream #0:2[0x85]:"
+			bool found; // whether discovered during probe
+			uint16_t lang; // lang code
+		} *subtitle_streams;
 		int first_sector;
 		int last_sector;
 	} *titles;
 
 	float frames_per_s[4] = {-1.0, 25.00, -1.0, 29.97};
-
 };

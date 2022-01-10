@@ -179,13 +179,6 @@ bool OMXReader::Open(
 
   m_pFormatContext     = avformat_alloc_context();
 
-  // the default size doesn't appear to be big enough for DVDs
-  if(m_DvdPlayer)
-  {
-    m_pFormatContext->probesize = 100000000;
-    m_pFormatContext->max_analyze_duration = 100000000;
-  }
-
   result = av_set_options_string(m_pFormatContext, lavfdopts.c_str(), ":", ",");
 
   if (result < 0)
@@ -581,13 +574,14 @@ bool OMXReader::GetStreams(bool dump_format)
       if(i != m_program)
         m_pFormatContext->programs[i]->discard = AVDISCARD_ALL;
     }
-      if(m_program != UINT_MAX)
-      {
-        // add streams from selected program
-        for (unsigned int i = 0; i < m_pFormatContext->programs[m_program]->nb_stream_indexes; i++)
-          AddStream(m_pFormatContext->programs[m_program]->stream_index[i]);
-      }
+
+    if(m_program != UINT_MAX)
+    {
+      // add streams from selected program
+      for (unsigned int i = 0; i < m_pFormatContext->programs[m_program]->nb_stream_indexes; i++)
+        AddStream(m_pFormatContext->programs[m_program]->stream_index[i]);
     }
+  }
 
   // if there were no programs or they were all empty, add all streams
   if (m_program == UINT_MAX)
@@ -596,14 +590,36 @@ bool OMXReader::GetStreams(bool dump_format)
       AddStream(i);
   }
 
-  // Add DVD meta data
   if(m_DvdPlayer)
   {
+    assert(m_program == UINT_MAX);
+
+    // Odds are we're haven't seen any dvd subs yet 
+    for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
+      if(m_streams[i].type == OMXSTREAM_SUBTITLE)
+        m_DvdPlayer->MarkSubtitleAsFound(m_streams[i].stream->id);
+  
+    // now fill in any missing subs
+    unsigned int old_nb_streams = m_pFormatContext->nb_streams;
+    m_DvdPlayer->InsertMissingSubs(m_pFormatContext);
+    for (unsigned int i = old_nb_streams; i < m_pFormatContext->nb_streams; i++)
+        AddStream(i);
+
+    // Now add DVD meta data    
     if(m_DvdPlayer->MetaDataCheck(m_audio_count, m_subtitle_count))
     {
-      for(int i = 0; i < MAX_STREAMS; i++)
-        if(m_streams[i].type == OMXSTREAM_AUDIO || m_streams[i].type == OMXSTREAM_SUBTITLE)
-          m_DvdPlayer->GetStreamInfo(&m_streams[i]);
+      for(unsigned i = 0; i < m_pFormatContext->nb_streams; i++) {
+        switch(m_streams[i].type) {
+        case OMXSTREAM_AUDIO:
+        	m_DvdPlayer->GetAudioStreamInfo(&m_streams[i]);
+        	break;
+        case OMXSTREAM_SUBTITLE:
+        	m_DvdPlayer->GetSubtitleStreamInfo(&m_streams[i]);
+        	break;
+        default:
+        	break;
+        }
+      }
     }
     else puts("DVD meta data mismatch");
   }
