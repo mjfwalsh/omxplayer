@@ -1009,11 +1009,17 @@ int main(int argc, char *argv[])
     return EXIT_SUCCESS;
   }
 
-  // start the clock
-  m_av_clock = new OMXClock();
-
   bcm_host_init();
   g_OMX.Initialize();
+
+  // start the clock
+  m_av_clock = new OMXClock();
+  if(!m_av_clock->OMXInitialize())
+  {
+    bcm_host_deinit();
+    g_OMX.Deinitialize();
+    return EXIT_FAILURE;
+  }
 
   blank_background(m_blank_background);
 
@@ -1047,6 +1053,23 @@ int main(int argc, char *argv[])
     &m_omx_reader,
     m_dbus_name
   );
+
+  // 3d modes don't work without switch hdmi mode
+  if (m_3d != CONF_FLAGS_FORMAT_NONE || m_NativeDeinterlace)
+    m_refresh = true;
+
+  // you really don't want want to match refresh rate without hdmi clock sync
+  if ((m_refresh || m_NativeDeinterlace) && !m_no_hdmi_clock_sync)
+    m_config_video.hdmi_clock_sync = true;
+
+  if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
+  {
+    if (m_av_clock)
+      delete m_av_clock;
+    bcm_host_deinit();
+    g_OMX.Deinitialize();
+    return EXIT_FAILURE;
+  }
 
   // get filename
   m_filename = argv[optind];
@@ -1085,7 +1108,7 @@ int main(int argc, char *argv[])
 
   // strip off file://
   if(m_filename.substr(0, 7) == "file://" )
-    m_filename.replace(0, 7, "");
+    m_filename.erase(0, 7);
 
   bool is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
@@ -1125,7 +1148,7 @@ int main(int argc, char *argv[])
   {
     // Are we dealing with a DVD VIDEO_TS folder or a device file
     CRegExp findvideots = CRegExp(true);
-    findvideots.RegComp("^(.*?/VIDEO_TS|/dev/.*$|.*?/disk[^/]*\\.dmg$)");
+    findvideots.RegComp("^(.*?/VIDEO_TS|/dev/.*$)");
     if(findvideots.RegFind(m_filename, 0) > -1)
     {
       m_is_dvd = true;
@@ -1143,18 +1166,15 @@ int main(int argc, char *argv[])
   if(!m_dump_format_exit && m_playlist_enabled)
   {
     if(m_is_dvd_device)
-    {
       m_dvd_store.readStore();
-    }
     else
-    {
       m_playlist_enabled = m_file_store.readStore();
-    }
   }
 
   // we jump here when playing the next item in an auto generated playlist
   change_playlist_item:
 
+  // a playlist item is a new file that could be an iso or a dmg files
   if(m_filename.substr(m_filename.size()-4, 4) == ".iso"
 	  || m_filename.substr(m_filename.size()-4, 4) == ".dmg")
 	m_is_dvd = true;
@@ -1232,22 +1252,19 @@ int main(int argc, char *argv[])
   {
     int audiostreamcount = m_omx_reader.AudioStreamCount();
 
-    if(audiostreamcount > 1)
+    for(int i=0; i < audiostreamcount; i++)
     {
-      for(int i=0; i < audiostreamcount; i++)
-      {
-        std::string lang = m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, i);
+      std::string lang = m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, i);
 
-        if(lang == "NAR")
-        {
-          printf("Avoiding audio description stream: %d\n", i + 1);
-        }
-        else
-        {
-          printf("Selecting audio stream: %d\n", i + 1);
-          m_audio_index = i;
-          break;
-        }
+      if(lang == "NAR")
+      {
+        printf("Avoiding audio description stream: %d\n", i + 1);
+      }
+      else
+      {
+        printf("Selecting audio stream: %d\n", i + 1);
+        m_audio_index = i;
+        break;
       }
     }
   }
@@ -1256,25 +1273,6 @@ int main(int argc, char *argv[])
   m_has_audio     = m_audio_index == -2 ? false : m_omx_reader.AudioStreamCount();
   m_has_subtitle  = m_has_external_subtitles || m_omx_reader.SubtitleStreamCount();
   m_loop          = m_loop && m_omx_reader.CanSeek();
-
-  if(m_filename.find("3DSBS") != string::npos || m_filename.find("HSBS") != string::npos)
-    m_3d = CONF_FLAGS_FORMAT_SBS;
-  else if(m_filename.find("3DTAB") != string::npos || m_filename.find("HTAB") != string::npos)
-    m_3d = CONF_FLAGS_FORMAT_TB;
-
-  // 3d modes don't work without switch hdmi mode
-  if (m_3d != CONF_FLAGS_FORMAT_NONE || m_NativeDeinterlace)
-    m_refresh = true;
-
-  // you really don't want want to match refresh rate without hdmi clock sync
-  if ((m_refresh || m_NativeDeinterlace) && !m_no_hdmi_clock_sync)
-    m_config_video.hdmi_clock_sync = true;
-
-  if(!m_av_clock->OMXInitialize())
-    ExitGentlyOnError();
-
-  if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
-    ExitGentlyOnError();
 
   m_av_clock->OMXStateIdle();
   m_av_clock->OMXStop();
@@ -1296,6 +1294,7 @@ int main(int argc, char *argv[])
 
     SetVideoMode(m_config_video.hints.width, m_config_video.hints.height, m_config_video.hints.fpsrate, m_config_video.hints.fpsscale, m_3d);
   }
+
   // get display aspect
   TV_DISPLAY_STATE_T current_tv_state;
   memset(&current_tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
@@ -1311,6 +1310,7 @@ int main(int argc, char *argv[])
 
   if (m_orientation >= 0)
     m_config_video.hints.orientation = m_orientation;
+
   if(m_has_video && !m_player_video.Open(m_av_clock, m_config_video))
     ExitGentlyOnError();
 
@@ -1357,6 +1357,7 @@ int main(int argc, char *argv[])
   if ((m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3) &&
       vc_tv_hdmi_audio_supported(EDID_AudioFormat_eAC3, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
     m_config_audio.passthrough = false;
+
   if (m_config_audio.hints.codec == AV_CODEC_ID_DTS &&
       vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
     m_config_audio.passthrough = false;
