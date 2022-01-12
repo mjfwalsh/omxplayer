@@ -24,6 +24,7 @@
 #include "utils/Enforce.h"
 #include "utils/ScopeExit.h"
 #include "utils/log.h"
+#include "Srt.h"
 
 #include <boost/algorithm/string.hpp>
 #include <utility>
@@ -82,13 +83,18 @@ bool OMXPlayerSubtitles::Init(int display,
 
 
 bool OMXPlayerSubtitles::Open(size_t stream_count,
-                              vector<Subtitle>&& external_subtitles) BOOST_NOEXCEPT
+                              string &subtitle_path) BOOST_NOEXCEPT
 {
-  if(external_subtitles.size() > 0)
+  if(subtitle_path.size() > 0)
   {
     m_subtitle_buffers.clear();
 
-    SendToRenderer(Message::SendExternalSubs{std::move(external_subtitles)});
+    vector<Subtitle> s;
+    if(!ReadSrt(subtitle_path, s))
+      return false;
+
+    SendToRenderer(Message::SendExternalSubs{std::move(s)});
+
     m_use_external_subtitles = true;
     m_stream_count = 1;
   }
@@ -271,8 +277,7 @@ RenderLoop(float font_size,
       },
       [&](Message::SendExternalSubs&& args)
       {
-        external_subtitles = std::move(args.subtitles);
-        subtitles.swap(external_subtitles);
+        subtitles.swap(args.subtitles);
         external_subtitles_enabled = true;
         prev_now = INT_MAX;
       },
@@ -287,7 +292,7 @@ RenderLoop(float font_size,
       },
       [&](Message::Flush&& args) // Sets or clears internal subs
       {
-        subtitles = std::move(args.subtitles);
+        subtitles.swap(args.subtitles);
         prev_now = INT_MAX;
       },
       [&](Message::Touch&&) // External subs

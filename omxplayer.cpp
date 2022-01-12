@@ -46,7 +46,6 @@ extern "C" {
 #include "OMXDvdPlayer.h"
 #include "OMXControl.h"
 #include "DllOMX.h"
-#include "Srt.h"
 #include "KeyConfig.h"
 #include "Keyboard.h"
 #include "utils/RegExp.h"
@@ -1316,12 +1315,10 @@ int main(int argc, char *argv[])
 
   if(m_has_subtitle || m_osd)
   {
-    std::vector<Subtitle> external_subtitles;
-    if(m_has_external_subtitles && !ReadSrt(m_external_subtitles_path, external_subtitles))
-       ExitGentlyWithMessage("Unable to read the subtitle file");
+    if(!m_has_external_subtitles) m_external_subtitles_path.clear();
 
     if(!m_player_subtitles.Open(m_omx_reader.SubtitleStreamCount(),
-                                std::move(external_subtitles)))
+                                m_external_subtitles_path))
       ExitGentlyOnError();
 
 	// sub_dim and sub_aspect asre passed through FindDVDSubs in case
