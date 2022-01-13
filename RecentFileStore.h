@@ -31,8 +31,9 @@ public:
 	void forget(string &key);
 	void remember(string &url, int &dvd_track, int &pos, char *audio, char *subtitle, bool &subtitle_extern);
 	void saveStore();
-	bool checkIfRecentFile(string &filename);
-	bool readlink(string &filename, int &track, int &pos, char *audio, char *subtitle, bool &subtitle_extern);
+	bool checkIfLink(string &filename);
+	void readlink(string &filename, int &track, int &pos, char *audio, char *subtitle, int &sub_track);
+	void retrieveRecentInfo(string &filename, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track);
 
 private:
 	struct fileInfo {
@@ -44,9 +45,10 @@ private:
 		bool subtitle_extern = false;
 	};
 
-	bool readlink(fileInfo *f);
+	void readlink(fileInfo *f);
 	vector<string> getRecentFileList();
 	void clearRecents();
+	void setDataFromStruct(fileInfo *store_item, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track);
 
 	vector<fileInfo> store;
 	string recent_dir;

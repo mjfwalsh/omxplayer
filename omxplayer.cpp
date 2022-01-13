@@ -1111,6 +1111,7 @@ int main(int argc, char *argv[])
 
   bool is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
+  bool started_from_link = false;
   if(is_local_file)
   {
     if(!Exists(m_filename))
@@ -1125,16 +1126,12 @@ int main(int argc, char *argv[])
 
     // check if this is a link file
     // if it's a link file, rerun some file checks
-    if(m_file_store.checkIfRecentFile(m_filename))
+    if(m_file_store.checkIfLink(m_filename))
     {
-      // change default values to those provided by the link file
-      bool show_extern_subs = false;
+      started_from_link = true;
       m_file_store.readlink(m_filename, m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0],
-        show_extern_subs);
-
-      if(m_subtitle_index == -1 && show_extern_subs && m_subtitle_lang[0] == '\0')
-        m_subtitle_index = 0;
-
+        m_subtitle_index);
+      
       is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
       if(is_local_file && !Exists(m_filename))
@@ -1164,10 +1161,15 @@ int main(int argc, char *argv[])
   // read the relevant recent files/dvd store
   if(!m_dump_format_exit && m_playlist_enabled)
   {
-    if(m_is_dvd_device)
+    if(m_is_dvd_device) {
       m_dvd_store.readStore();
-    else
+    } else {
       m_playlist_enabled = m_file_store.readStore();
+    
+      if(!started_from_link)
+        m_file_store.retrieveRecentInfo(m_filename, m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0],
+          m_subtitle_index);
+    }
   }
 
   // we jump here when playing the next item in an auto generated playlist
