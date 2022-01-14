@@ -402,7 +402,7 @@ bool OMXReader::Close()
   ff_read_frame_flush(m_pFormatContext);
 }*/
 
-bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
+bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
 {
   if(time < 0)
     time = 0;
@@ -417,7 +417,7 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
-  int64_t seek_pts = (int64_t)time * AV_TIME_BASE;
+  int64_t seek_pts = time;
   if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
     seek_pts += m_pFormatContext->start_time;
 
@@ -429,7 +429,7 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
 
   // in this case the start time is requested time
   if(startpts)
-    *startpts = DVD_SEC_TO_MICROSEC(time);
+    *startpts = time;
 
   // demuxer will return failure, if you seek to eof
   m_eof = false;
@@ -439,7 +439,7 @@ bool OMXReader::SeekTime(double time, bool backwords, int64_t *startpts)
     ret = 0;
   }
 
-  CLogLog(LOGDEBUG, "OMXReader::SeekTime(%f) - seek ended up on time %d",time,(int)(m_iCurrentPts / AV_TIME_BASE * 1000));
+  CLogLog(LOGDEBUG, "OMXReader::SeekTime(%f) - seek ended up on time %d", (double)time/AV_TIME_BASE,(int)(m_iCurrentPts / AV_TIME_BASE * 1000));
 
   UnLock();
 
@@ -656,9 +656,9 @@ bool OMXReader::GetStreams(bool dump_format)
       if(!chapter)
         continue;
 
-      m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num) / 1000000.0f;
+      m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
 
-      if(dump_format) printf("Chapter : \t%d \t%8.2f\n", i, m_chapters[i]);
+      if(dump_format) printf("Chapter : \t%d \t%8.2f\n", i, (double)m_chapters[i]/AV_TIME_BASE);
     }
   }
 #endif
@@ -992,7 +992,7 @@ int OMXReader::GetChapter()
     return -1;
 
   int i;
-  double cur_pos = (double)m_iCurrentPts / 1000000.0;
+  int64_t cur_pos = m_iCurrentPts;
   for(i = 0; i < m_chapter_count-1; i++)
     if(cur_pos >=   m_chapters[i] && cur_pos <  m_chapters[i+1])
       return i;

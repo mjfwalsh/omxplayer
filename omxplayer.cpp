@@ -549,7 +549,7 @@ int main(int argc, char *argv[])
   int m_orientation      = -1; // unset
   float m_fps            = 0.0f; // unset
   TV_DISPLAY_STATE_T   tv_state;
-  double last_seek_pos   = 0;
+  int64_t last_seek_pos   = 0;
   bool idle = false;
   std::string            m_cookie;
   std::string            m_user_agent;
@@ -1731,7 +1731,7 @@ int main(int argc, char *argv[])
 
     if(m_seek_flush || m_incr != 0)
     {
-      double seek_pos     = 0;
+      int64_t seek_pos     = 0;
       int64_t pts          = 0;
 
       if(m_has_subtitle)
@@ -1741,10 +1741,10 @@ int main(int argc, char *argv[])
       {
         pts = m_av_clock->OMXMediaTime();
 
-        seek_pos = (pts ? (double)pts / AV_TIME_BASE : last_seek_pos) + m_incr;
+        seek_pos = (pts ? pts : last_seek_pos) + (int64_t)m_incr * AV_TIME_BASE;
         last_seek_pos = seek_pos;
 
-        if(m_omx_reader.SeekTime(seek_pos, m_incr < 0.0f, &startpts))
+        if(m_omx_reader.SeekTime(seek_pos, m_incr < 0, &startpts))
         {
           unsigned t = (unsigned)(startpts*1e-6);
           int dur = m_omx_reader.GetStreamLengthSeconds();
@@ -1767,7 +1767,7 @@ int main(int argc, char *argv[])
       if (m_has_video && !m_player_video.Reset())
         ExitGentlyOnError();
 
-      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", seek_pos, startpts, m_av_clock->OMXMediaTime());
+      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
 
       m_av_clock->OMXPause();
 
@@ -1779,15 +1779,12 @@ int main(int argc, char *argv[])
     }
     else if(m_packet_after_seek && TRICKPLAY(m_av_clock->OMXPlaySpeed()))
     {
-      double seek_pos     = 0;
-      int64_t pts          = 0;
+      // this doesn't work!
+      int64_t pts = m_av_clock->OMXMediaTime();
 
-      pts = m_av_clock->OMXMediaTime();
-      seek_pos = (double)(pts / AV_TIME_BASE);
+      m_omx_reader.SeekTime(pts, m_av_clock->OMXPlaySpeed() < 0, &startpts);
 
-      m_omx_reader.SeekTime(seek_pos, m_av_clock->OMXPlaySpeed() < 0, &startpts);
-
-      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", seek_pos, startpts, m_av_clock->OMXMediaTime());
+      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)(pts / AV_TIME_BASE), startpts, m_av_clock->OMXMediaTime());
 
       //unsigned t = (unsigned)(startpts*1e-6);
       unsigned t = (unsigned)(pts*1e-6);
@@ -1944,7 +1941,8 @@ int main(int argc, char *argv[])
 
       if (m_loop)
       {
-        m_incr = m_loop_from - (m_av_clock->OMXMediaTime() ? m_av_clock->OMXMediaTime() / AV_TIME_BASE : last_seek_pos);
+        int64_t cur_pos = m_av_clock->OMXMediaTime();
+        m_incr = m_loop_from - (cur_pos ? cur_pos : last_seek_pos) / AV_TIME_BASE;
         continue;
       }
 

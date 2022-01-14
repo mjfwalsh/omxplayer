@@ -22,7 +22,7 @@ class OMXDvdPlayer
 	int64_t GetSizeInBytes();
 	int getCurrentTrackLength();
 	int TotalChapters();
-	float GetChapterStartTime(int i);
+	int64_t GetChapterStartTime(int i);
 	int GetCurrentTrack() const { return current_track; }
 	void GetAudioStreamInfo(OMXStream *stream);
 	void GetSubtitleStreamInfo(OMXStream *stream);

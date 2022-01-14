@@ -310,9 +310,9 @@ int OMXDvdPlayer::TotalChapters()
 	return titles[current_track].chapter_count;
 }
 
-float OMXDvdPlayer::GetChapterStartTime(int i)
+int64_t OMXDvdPlayer::GetChapterStartTime(int i)
 {
-	return (float)(titles[current_track].chapters[i] / 1000.0);
+	return titles[current_track].chapters[i] * 1000.0;
 }
 
 void OMXDvdPlayer::CloseTrack()
@@ -407,14 +407,14 @@ OMXDvdPlayer::~OMXDvdPlayer()
 
 int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)
 {
-	double fps = frames_per_s[(dt->frame_u & 0xc0) >> 6];
-	long   ms;
-	ms  = (((dt->hour &   0xf0) >> 3) * 5 + (dt->hour   & 0x0f)) * 3600000;
-	ms += (((dt->minute & 0xf0) >> 3) * 5 + (dt->minute & 0x0f)) * 60000;
-	ms += (((dt->second & 0xf0) >> 3) * 5 + (dt->second & 0x0f)) * 1000;
+	float fps = frames_per_s[(dt->frame_u & 0xc0) >> 6];
+
+	int ms  = (((dt->hour &   0xf0) >> 3) * 5 + (dt->hour   & 0x0f)) * 3600000;
+	ms     += (((dt->minute & 0xf0) >> 3) * 5 + (dt->minute & 0x0f)) * 60000;
+	ms     += (((dt->second & 0xf0) >> 3) * 5 + (dt->second & 0x0f)) * 1000;
 
 	if(fps > 0)
-	ms += (((dt->frame_u & 0x30) >> 3) * 5 + (dt->frame_u & 0x0f)) * 1000.0 / fps;
+		ms += (((dt->frame_u & 0x30) >> 3) * 5 + (dt->frame_u & 0x0f)) * 1000.0 / fps;
 
 	return ms;
 }

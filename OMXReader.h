@@ -94,7 +94,7 @@ protected:
   AVFormatContext           *m_pFormatContext;
   AVIOContext               *m_ioContext;
   bool                      m_eof;
-  double                    m_chapters[MAX_OMX_CHAPTERS];
+  int64_t                   m_chapters[MAX_OMX_CHAPTERS];
   OMXStream                 m_streams[MAX_STREAMS];
   int                       m_chapter_count;
   int64_t                   m_iCurrentPts;
@@ -120,7 +120,7 @@ public:
   void ClearStreams();
   bool Close();
   //void FlushRead();
-  bool SeekTime(double time, bool backwords, int64_t *startpts);
+  bool SeekTime(int64_t time, bool backwords, int64_t *startpts);
   OMXPacket *Read();
   bool GetStreams(bool dump_format = false);
   void AddStream(int id);
