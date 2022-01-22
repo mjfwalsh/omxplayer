@@ -1,10 +1,10 @@
 CFLAGS=-pipe -mfloat-abi=hard -mcpu=arm1176jzf-s -fomit-frame-pointer -mabi=aapcs-linux -mtune=arm1176jzf-s -mfpu=vfp -Wno-psabi -g
 CFLAGS+=-std=c++0x -D__STDC_CONSTANT_MACROS -D__STDC_LIMIT_MACROS -DTARGET_POSIX -DTARGET_LINUX -fPIC -DPIC -D_REENTRANT -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DHAVE_CMAKE_CONFIG -D__VIDEOCORE4__ -U_FORTIFY_SOURCE -Wall -DOMX_SKIP64BIT -ftree-vectorize
 
-LDFLAGS=-L$(SDKSTAGE)/opt/vc/lib/
-LDFLAGS+=-L./ -Lffmpeg_compiled/usr/local/lib/ -lc -lbcm_host -lopenmaxil -lz -lasound -ldvdread -lcairo
+LDFLAGS=-L$(SDKSTAGE)/opt/vc/lib -L./ -Lffmpeg_compiled/usr/local/lib
+LDFLAGS+=-lasound -lavcodec -lavformat -lavutil -lbcm_host -lbrcmEGL -lbrcmGLESv2 -lc -lcairo -ldbus-1 -ldvdread -lopenmaxil -lpcre -lpthread -lrt -lswresample -lswscale -lvchiq_arm -lvchostif -lvcos -lz
 
-INCLUDES+=-I./ -Ilinux -Iffmpeg_compiled/usr/local/include/ -I /usr/include/dbus-1.0 -I /usr/lib/arm-linux-gnueabihf/dbus-1.0/include -I/usr/include/cairo -isystem$(SDKSTAGE)/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads
+INCLUDES+=-I./ -Ilinux -Iffmpeg_compiled/usr/local/include -I /usr/include/dbus-1.0 -I /usr/lib/arm-linux-gnueabihf/dbus-1.0/include -I/usr/include/cairo -isystem$(SDKSTAGE)/opt/vc/include -isystem$(SDKSTAGE)/opt/vc/include/interface/vcos/pthreads
 
 DIST ?= omxplayer-dist
 STRIP ?= strip
@@ -53,7 +53,7 @@ version:
 	bash gen_version.sh > version.h 
 
 omxplayer.bin: version $(OBJS)
-	$(CXX) $(LDFLAGS) -o omxplayer.bin $(OBJS) -lvchiq_arm -lvchostif -lvcos -ldbus-1 -lrt -lpthread -lavutil -lavcodec -lavformat -lswscale -lswresample -lpcre
+	$(CXX) -o omxplayer.bin $(OBJS) $(LDFLAGS)
 
 help.h: README.md Makefile
 	awk '/SYNOPSIS/{p=1;print;next} p&&/KEY BINDINGS/{p=0};p' $< \
