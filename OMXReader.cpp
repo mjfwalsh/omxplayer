@@ -654,14 +654,20 @@ bool OMXReader::GetStreams(bool dump_format)
     {
       AVChapter *chapter = m_pFormatContext->chapters[i];
       if(!chapter)
-        continue;
+      {
+        m_chapter_count = i;
+        break;
+      }
 
       m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
-
-      if(dump_format) printf("Chapter : \t%d \t%8.2f\n", i, (double)m_chapters[i]/AV_TIME_BASE);
     }
   }
 #endif
+
+  // print chapter info
+  if(dump_format)
+    for(int i = 0; i < m_chapter_count; i++)
+      printf("Chapter : \t%d \t%8.2f\n", i, (double)m_chapters[i]/AV_TIME_BASE);
 
   return true;
 }
