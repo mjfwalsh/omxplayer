@@ -3,7 +3,7 @@
 #define OMXPLAYER_DBUS_INTERFACE_PLAYER "org.mpris.MediaPlayer2.Player"
 
 #include "OMXThread.h"
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <termios.h>
 
@@ -14,14 +14,14 @@ class Keyboard : public OMXThread
   int orig_fl;
   int m_action;
   DBusConnection *conn;
-  std::map<int,int> m_keymap;
+  std::unordered_map<int,int> m_keymap;
   std::string m_dbus_name;
  public:
   Keyboard();
   ~Keyboard();
   void Close();
   void Process();
-  void setKeymap(const std::map<int,int> &keymap);
+  void setKeymap(std::string &filename);
   void setDbusName(const std::string &dbus_name);
   void Sleep(unsigned int dwMilliSeconds);
   int getEvent();

@@ -727,9 +727,7 @@ int main(int argc, char *argv[])
   float m_latency = 0.0f;
   int c;
   std::string mode;
-
-  // Empty keymap
-  map<int, int> keymap;
+  std::string keymap_file;
 
   while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
@@ -973,7 +971,7 @@ int main(int argc, char *argv[])
         m_blank_background = optarg ? strtoul(optarg, NULL, 0) : 0xff000000;
         break;
       case key_config_opt:
-        KeyConfig::parseConfigFile(optarg, keymap);
+        keymap_file = optarg;
         break;
       case layer_opt:
         m_config_video.layer = atoi(optarg);
@@ -1101,14 +1099,10 @@ int main(int argc, char *argv[])
 
   if(m_keys)
   {
-    // Build default keymap
-    if(keymap.empty())
-      KeyConfig::buildDefaultKeymap(keymap);
-
     m_keyboard = new Keyboard();
     if(m_keyboard)
     {
-      m_keyboard->setKeymap(keymap);
+      m_keyboard->setKeymap(keymap_file);
       m_keyboard->setDbusName(m_dbus_name);
     }
   }

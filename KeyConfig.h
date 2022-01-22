@@ -1,4 +1,4 @@
-#include <map>
+#include <unordered_map>
 
 class KeyConfig
 {
@@ -52,6 +52,6 @@ class KeyConfig
     #define KEY_DOWN 0x5b42
     #define KEY_ESC 27
 
-    static void buildDefaultKeymap(std::map<int, int> &keymap);
-    static void parseConfigFile(char *filepath, std::map<int, int> &keymap);
+    static void buildDefaultKeymap(std::unordered_map<int, int> &keymap);
+    static void parseConfigFile(std::string &filepath, std::unordered_map<int, int> &keymap);
 };

@@ -7,6 +7,7 @@
 
 #include "utils/log.h"
 #include "Keyboard.h"
+#include "KeyConfig.h"
 
 Keyboard::Keyboard() 
 {
@@ -157,9 +158,13 @@ fail:
     dbus_message_unref(reply);
 }
 
-void Keyboard::setKeymap(const std::map<int,int> &keymap)
+void Keyboard::setKeymap(std::string &filename)
 {
-  m_keymap = std::move(keymap);
+  if(filename.empty()) {
+    KeyConfig::buildDefaultKeymap(m_keymap);
+  } else {
+    KeyConfig::parseConfigFile(filename, m_keymap);
+  }
 }
 
 void Keyboard::setDbusName(const std::string &dbus_name)

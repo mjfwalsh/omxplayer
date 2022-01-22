@@ -1,6 +1,7 @@
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <fstream>
+#include <iostream>
 #include <cstdlib>
 
 #include "KeyConfig.h"
@@ -92,7 +93,7 @@ bool getActionAndKeyFromString(string line, int &int_action, string &key)
 /* Returns a keymap consisting of the default
  *  keybinds specified with the -k option 
  */
-void KeyConfig::buildDefaultKeymap(map<int,int> &keymap)
+void KeyConfig::buildDefaultKeymap(unordered_map<int,int> &keymap)
 {
     keymap['<'] = ACTION_DECREASE_SPEED;
     keymap['>'] = ACTION_INCREASE_SPEED;
@@ -128,18 +129,16 @@ void KeyConfig::buildDefaultKeymap(map<int,int> &keymap)
 
 /* Parses the supplied config file and turns it into a map object.
  */
-void KeyConfig::parseConfigFile(char *filepath, map<int,int> &keymap)
+void KeyConfig::parseConfigFile(string &filepath, unordered_map<int, int> &keymap)
 {
-	// realpath helps parse tildas etc...
-    char *fp;
-    fp = realpath(filepath, NULL);
-    if(fp == NULL) {
-        free(fp);
+    ifstream config_file(filepath);
+
+    if(!config_file.is_open())
+    {
+        cerr << "Failed to open key config file: " << filepath << endl;
+        buildDefaultKeymap(keymap);
         return;
     }
-
-    ifstream config_file(fp);
-    free(fp);
 
     string line;
     int key_action;
