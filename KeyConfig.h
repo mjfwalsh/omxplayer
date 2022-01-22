@@ -8,8 +8,6 @@ class KeyConfig
     {
         ACTION_DECREASE_SPEED = 1,
         ACTION_INCREASE_SPEED = 2,
-        ACTION_REWIND = 3,
-        ACTION_FAST_FORWARD = 4,
         ACTION_SHOW_INFO = 5,
         ACTION_PREVIOUS_AUDIO = 6,
         ACTION_NEXT_AUDIO = 7,

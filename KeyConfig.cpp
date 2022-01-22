@@ -16,10 +16,6 @@ int convertStringToAction(const string &str_action)
         return KeyConfig::ACTION_DECREASE_SPEED;
     if(str_action == "INCREASE_SPEED")
         return KeyConfig::ACTION_INCREASE_SPEED;
-    if(str_action == "REWIND")
-        return KeyConfig::ACTION_REWIND;
-    if(str_action == "FAST_FORWARD")
-        return KeyConfig::ACTION_FAST_FORWARD;
     if(str_action == "SHOW_INFO")
         return KeyConfig::ACTION_SHOW_INFO;
     if(str_action == "PREVIOUS_AUDIO")
@@ -98,12 +94,10 @@ bool getActionAndKeyFromString(string line, int &int_action, string &key)
  */
 void KeyConfig::buildDefaultKeymap(map<int,int> &keymap)
 {
-    keymap['1'] = ACTION_DECREASE_SPEED;
-    keymap['2'] = ACTION_INCREASE_SPEED;
-    keymap['<'] = ACTION_REWIND;
-    keymap[','] = ACTION_REWIND;
-    keymap['>'] = ACTION_FAST_FORWARD;
-    keymap['.'] = ACTION_FAST_FORWARD;
+    keymap['<'] = ACTION_DECREASE_SPEED;
+    keymap['>'] = ACTION_INCREASE_SPEED;
+    keymap[','] = ACTION_DECREASE_SPEED;
+    keymap['.'] = ACTION_INCREASE_SPEED;
     keymap['z'] = ACTION_SHOW_INFO;
     keymap['j'] = ACTION_PREVIOUS_AUDIO;
     keymap['k'] = ACTION_NEXT_AUDIO;

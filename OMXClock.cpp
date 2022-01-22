@@ -22,7 +22,6 @@
 #include "utils/log.h"
 
 #define OMX_PRE_ROLL 200
-#define TP(speed) ((speed) < 0 || (speed) > 4*DVD_PLAYSPEED_NORMAL)
 
 OMXClock::OMXClock()
 {
@@ -477,10 +476,7 @@ bool OMXClock::OMXSetSpeed(int speed, bool lock /* = true */, bool pause_resume 
     OMX_TIME_CONFIG_SCALETYPE scaleType;
     OMX_INIT_STRUCTURE(scaleType);
 
-    if (TP(speed))
-      scaleType.xScale = 0; // for trickplay we just pause, and single step
-    else
-      scaleType.xScale = (speed << 16) / DVD_PLAYSPEED_NORMAL;
+    scaleType.xScale = (speed << 16) / DVD_PLAYSPEED_NORMAL;
     omx_err = m_omx_clock.SetConfig(OMX_IndexConfigTimeScale, &scaleType);
     if(omx_err != OMX_ErrorNone)
     {
