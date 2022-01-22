@@ -132,9 +132,9 @@ void print_version()
 #define ExitGently() { g_abort = true; goto end_of_play_loop; }
 #define ExitGentlyOnError() ExitGentlyWithMessage("Error: omxplayer.cpp line: %d", __LINE__)
 #define ExitGentlyWithMessage(...) { \
-	user_message_on_close(__VA_ARGS__); \
-	m_exit_with_error = true; \
-	ExitGently(); \
+  user_message_on_close(__VA_ARGS__); \
+  m_exit_with_error = true; \
+  ExitGently(); \
 }
 
 #define show_short_osd_message(...) _user_message(false, 1000, false, strprintf(__VA_ARGS__))
@@ -159,28 +159,28 @@ char *strprintf(const char* format, ...)
 
 void _user_message(bool to_stdout, int duration, bool sleep, char *msg)
 {
-	if(m_osd)
-	  m_player_subtitles.DisplayText(msg, duration);
+  if(m_osd)
+    m_player_subtitles.DisplayText(msg, duration);
 
-	if(to_stdout)
-	  puts(msg);
+  if(to_stdout)
+    puts(msg);
 
-	// useful when we want to display some osd before exiting the program
-    if(m_osd && sleep) m_av_clock->OMXSleep(duration);
+  // useful when we want to display some osd before exiting the program
+  if(m_osd && sleep) m_av_clock->OMXSleep(duration);
 }
 
 static void UpdateRaspicastMetaData(string msg)
 {
-	const char *file = "/dev/shm/.r_info";
+  const char *file = "/dev/shm/.r_info";
 
-	FILE *fp;
-	fp = fopen(file, "w");
-	if(fp == NULL) return;
+  FILE *fp;
+  fp = fopen(file, "w");
+  if(fp == NULL) return;
 
-	fputs("local\n", fp);
-	fputs(msg.c_str(), fp);
-	fputs("\n", fp);
-	fclose(fp);
+  fputs("local\n", fp);
+  fputs(msg.c_str(), fp);
+  fputs("\n", fp);
+  fclose(fp);
 }
 
 static void PrintSubtitleInfo()
@@ -284,7 +284,7 @@ static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t 
     sem_post(tv_synced);
     break;
   default:
-     break;
+    break;
   }
 }
 
@@ -463,11 +463,11 @@ bool IsPipe(const std::string& str)
 
 static int get_mem_gpu(void)
 {
-   char response[80] = "";
-   int gpu_mem = 0;
-   if (vc_gencmd(response, sizeof response, "get_mem gpu") == 0)
-      vc_gencmd_number_property(response, "gpu", &gpu_mem);
-   return gpu_mem;
+  char response[80] = "";
+  int gpu_mem = 0;
+  if (vc_gencmd(response, sizeof response, "get_mem gpu") == 0)
+    vc_gencmd_number_property(response, "gpu", &gpu_mem);
+  return gpu_mem;
 }
 
 static void blank_background(uint32_t rgba)
@@ -1156,7 +1156,7 @@ int main(int argc, char *argv[])
       m_dvd_store.readStore();
     } else {
       m_playlist_enabled = m_file_store.readStore();
-    
+
       if(!started_from_link)
         m_file_store.retrieveRecentInfo(m_filename, m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0],
           m_subtitle_index);
@@ -1168,8 +1168,8 @@ int main(int argc, char *argv[])
 
   // a playlist item is a new file that could be an iso or a dmg files
   if(m_filename.substr(m_filename.size()-4, 4) == ".iso"
-	  || m_filename.substr(m_filename.size()-4, 4) == ".dmg")
-	m_is_dvd = true;
+      || m_filename.substr(m_filename.size()-4, 4) == ".dmg")
+    m_is_dvd = true;
 
   if(m_is_dvd)
   {
@@ -1180,13 +1180,13 @@ int main(int argc, char *argv[])
 
     m_DvdPlayer->enableHeuristicTrackSelection();
 
-	// Was DVD played before?
+    // Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_incr == -1)
       m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
 
-	// If m_track is set to -1, look for the first enabled track
-	if(m_track == -1)
-		m_track = m_DvdPlayer->findNextEnabledTrack(-1);
+    // If m_track is set to -1, look for the first enabled track
+    if(m_track == -1)
+      m_track = m_DvdPlayer->findNextEnabledTrack(-1);
 
     if(!m_DvdPlayer->OpenTrack(m_track))
       ExitGentlyOnError();
@@ -1314,10 +1314,10 @@ int main(int argc, char *argv[])
                                 m_external_subtitles_path))
       ExitGentlyOnError();
 
-	// sub_dim and sub_aspect asre passed through FindDVDSubs in case
-	// the subtitles have a different size
-	Dimension sub_dim = {m_config_video.hints.width, m_config_video.hints.height};
-	float sub_aspect = m_config_video.hints.aspect;
+    // sub_dim and sub_aspect asre passed through FindDVDSubs in case
+    // the subtitles have a different size
+    Dimension sub_dim = {m_config_video.hints.width, m_config_video.hints.height};
+    float sub_aspect = m_config_video.hints.aspect;
     if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect)
         && !m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode))
       ExitGentlyOnError();
@@ -1385,15 +1385,15 @@ int main(int argc, char *argv[])
       m_last_check_time = now;
     }
 
-     if (update) {
-       OMXControlResult result = control_err
+    if (update) {
+      OMXControlResult result = control_err
                                ? (OMXControlResult)(m_keyboard ? m_keyboard->getEvent() : KeyConfig::ACTION_BLANK)
                                : m_omxcontrol.getEvent();
-       double oldPos, newPos;
+      double oldPos, newPos;
 
-    switch(result.getKey())
-    {
-     case KeyConfig::ACTION_CHANGE_FILE:
+      switch(result.getKey())
+      {
+      case KeyConfig::ACTION_CHANGE_FILE:
         m_replacement_filename = result.getWinArg();
 
         // Entering a pipe: would make no sense here
@@ -1597,19 +1597,19 @@ int main(int argc, char *argv[])
         if(m_omx_reader.CanSeek()) m_incr = -600;
         break;
       case KeyConfig::ACTION_SEEK_RELATIVE:
-          m_incr = result.getArg() * 1e-6;
-          break;
+        m_incr = result.getArg() * 1e-6;
+        break;
       case KeyConfig::ACTION_SEEK_ABSOLUTE:
-          newPos = result.getArg() * 1e-6;
-          oldPos = m_av_clock->OMXMediaTime()*1e-6;
-          m_incr = newPos - oldPos;
-          break;
+        newPos = result.getArg() * 1e-6;
+        oldPos = m_av_clock->OMXMediaTime()*1e-6;
+        m_incr = newPos - oldPos;
+        break;
       case KeyConfig::ACTION_SET_ALPHA:
-          m_player_video.SetAlpha(result.getArg());
-          break;
+        m_player_video.SetAlpha(result.getArg());
+        break;
       case KeyConfig::ACTION_SET_LAYER:
-          m_player_video.SetLayer(result.getArg());
-          break;
+        m_player_video.SetLayer(result.getArg());
+        break;
       case KeyConfig::ACTION_PLAY:
         m_Pause=false;
         goto play_pause;
@@ -1681,7 +1681,7 @@ int main(int argc, char *argv[])
         break;
       default:
         break;
-    }
+      }
     }
 
     if(m_seek_flush || m_incr != 0)
@@ -1752,7 +1752,7 @@ int main(int argc, char *argv[])
       {
         static int count;
         if ((count++ & 7) == 0)
-           printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %6.02fs/%6.02fs Cv:%6uk Ca:%6uk                            \r", stamp,
+          printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %6.02fs/%6.02fs Cv:%6uk Ca:%6uk                            \r", stamp,
                video_fifo, (m_player_video.GetDecoderBufferSize()-m_player_video.GetDecoderFreeSpace())>>10, m_player_video.GetDecoderBufferSize()>>10,
                audio_fifo, m_player_audio.GetDelay(), m_player_audio.GetCacheTotal(),
                m_player_video.GetCached()>>10, m_player_audio.GetCached()>>10);
@@ -2028,6 +2028,7 @@ end_of_play_loop:
     char response[80];
     vc_gencmd(response, sizeof response, "hvs_update_fields %d", 0);
   }
+
   if(m_has_video && m_refresh && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
   {
     vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
