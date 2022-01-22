@@ -99,6 +99,11 @@ AutoPlaylist      m_playlist;
 bool              m_firstfile           = true;
 bool              m_exit_with_error    = false;
 
+#define S(x) (int)(DVD_PLAYSPEED_NORMAL*(x))
+int playspeeds[] = {S(0), S(1/16.0), S(1/8.0), S(1/4.0), S(1/2.0), S(0.975), S(1.0), S(1.125), S(2.0), S(4.0)};
+const int playspeed_max = 9, playspeed_normal = 6;
+int playspeed_current = playspeed_normal;
+
 enum{ERROR=-1,SUCCESS,ONEBYTE};
 
 void sig_handler(int s)
@@ -167,6 +172,12 @@ void _user_message(bool to_stdout, int duration, bool sleep, char *msg)
 
   // useful when we want to display some osd before exiting the program
   if(m_osd && sleep) m_av_clock->OMXSleep(duration);
+}
+
+void show_progress_message(const char *msg, int pos, int dur)
+{
+  show_long_osd_message("%s\n%02d:%02d:%02d / %02d:%02d:%02d",
+    msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
 
 static void UpdateRaspicastMetaData(string msg)
@@ -586,6 +597,30 @@ int main(int argc, char *argv[])
     PrintSubtitleInfo();
   };
 
+  auto PlayPause = [&](bool new_status)
+  {
+    m_Pause = new_status;
+
+    if (m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_NORMAL &&
+        m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
+    {
+      puts("resume");
+      playspeed_current = playspeed_normal;
+      SetSpeed(playspeeds[playspeed_current]);
+      m_seek_flush = true;
+    }
+
+    if(m_has_subtitle)
+    {
+      if(m_Pause) m_player_subtitles.Pause();
+      else m_player_subtitles.Resume();
+    }
+
+    int t = m_av_clock->OMXMediaTime() * 1e-6;
+    int dur = m_omx_reader.GetStreamLengthSeconds();
+    show_progress_message(m_Pause ? "Pause" : "Play", t, dur);
+  };
+
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
   const int no_ghost_box_opt = 0x203;
@@ -688,10 +723,6 @@ int main(int argc, char *argv[])
     { 0, 0, 0, 0 }
   };
 
-  #define S(x) (int)(DVD_PLAYSPEED_NORMAL*(x))
-  int playspeeds[] = {S(0), S(1/16.0), S(1/8.0), S(1/4.0), S(1/2.0), S(0.975), S(1.0), S(1.125), S(2.0), S(4.0)};
-  const int playspeed_max = 9, playspeed_normal = 6;
-  int playspeed_current = playspeed_normal;
   int64_t m_last_check_time = 0;
   float m_latency = 0.0f;
   int c;
@@ -1068,12 +1099,12 @@ int main(int argc, char *argv[])
   if(m_filename == "pipe:" || m_filename == "pipe:0")
     m_keys = false;
 
-  // Build default keymap
-  if(m_keys && keymap.empty())
-    KeyConfig::buildDefaultKeymap(keymap);
-
   if(m_keys)
   {
+    // Build default keymap
+    if(keymap.empty())
+      KeyConfig::buildDefaultKeymap(keymap);
+
     m_keyboard = new Keyboard();
     if(m_keyboard)
     {
@@ -1109,8 +1140,7 @@ int main(int argc, char *argv[])
       return ExitFileNotFound(m_filename);
 
     // get realpath for file
-    char *fp;
-    fp = realpath(m_filename.c_str(), NULL);
+    char *fp = realpath(m_filename.c_str(), NULL);
     assert(fp != NULL);
     m_filename = fp;
     free(fp);
@@ -1197,8 +1227,7 @@ int main(int argc, char *argv[])
 
     if(m_osd && !m_has_external_subtitles && !IsURL(m_filename))
     {
-      auto subtitles_path = m_filename.substr(0, m_filename.find_last_of(".")) +
-                            ".srt";
+      std::string subtitles_path = m_filename.substr(0, m_filename.find_last_of(".")) + ".srt";
 
       if(Exists(subtitles_path))
       {
@@ -1389,7 +1418,6 @@ int main(int argc, char *argv[])
       OMXControlResult result = control_err
                                ? (OMXControlResult)(m_keyboard ? m_keyboard->getEvent() : KeyConfig::ACTION_BLANK)
                                : m_omxcontrol.getEvent();
-      double oldPos, newPos;
 
       switch(result.getKey())
       {
@@ -1428,7 +1456,7 @@ int main(int argc, char *argv[])
         m_av_clock->OMXStep();
         puts("Step");
         {
-          auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
+          unsigned t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
           int dur = m_omx_reader.GetStreamLengthSeconds();
           show_short_osd_message("Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
               (t/3600000), (t/60000)%60, (t/1000)%60, t%1000,
@@ -1522,16 +1550,10 @@ int main(int argc, char *argv[])
         goto end_of_play_loop;
         break;
       case KeyConfig::ACTION_PREVIOUS_SUBTITLE:
-        if(m_has_subtitle)
-        {
-          ChangeSubtitle(-1);
-        }
+        if(m_has_subtitle) ChangeSubtitle(-1);
         break;
       case KeyConfig::ACTION_NEXT_SUBTITLE:
-        if(m_has_subtitle)
-        {
-          ChangeSubtitle(+1);
-        }
+        if(m_has_subtitle) ChangeSubtitle(+1);
         break;
       case KeyConfig::ACTION_TOGGLE_SUBTITLE:
         if(m_has_subtitle)
@@ -1565,7 +1587,7 @@ int main(int argc, char *argv[])
       case KeyConfig::ACTION_DECREASE_SUBTITLE_DELAY:
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
-          auto new_delay = m_player_subtitles.GetDelay() - 250;
+          int new_delay = m_player_subtitles.GetDelay() - 250;
           show_short_osd_message("Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
@@ -1574,7 +1596,7 @@ int main(int argc, char *argv[])
       case KeyConfig::ACTION_INCREASE_SUBTITLE_DELAY:
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
-          auto new_delay = m_player_subtitles.GetDelay() + 250;
+          int new_delay = m_player_subtitles.GetDelay() + 250;
           show_short_osd_message("Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
@@ -1600,9 +1622,7 @@ int main(int argc, char *argv[])
         m_incr = result.getArg() * 1e-6;
         break;
       case KeyConfig::ACTION_SEEK_ABSOLUTE:
-        newPos = result.getArg() * 1e-6;
-        oldPos = m_av_clock->OMXMediaTime()*1e-6;
-        m_incr = newPos - oldPos;
+        m_incr = (result.getArg() - m_av_clock->OMXMediaTime()) * 1e-6;
         break;
       case KeyConfig::ACTION_SET_ALPHA:
         m_player_video.SetAlpha(result.getArg());
@@ -1611,42 +1631,13 @@ int main(int argc, char *argv[])
         m_player_video.SetLayer(result.getArg());
         break;
       case KeyConfig::ACTION_PLAY:
-        m_Pause=false;
-        goto play_pause;
+        PlayPause(false);
+        break;
       case KeyConfig::ACTION_PAUSE:
-        m_Pause=true;
-        goto play_pause;
+        PlayPause(true);
+        break;
       case KeyConfig::ACTION_PLAYPAUSE:
-        m_Pause = !m_Pause;
-
-        play_pause:
-        if (m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_NORMAL && m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
-        {
-          puts("resume");
-          playspeed_current = playspeed_normal;
-          SetSpeed(playspeeds[playspeed_current]);
-          m_seek_flush = true;
-        }
-        if(m_Pause)
-        {
-          if(m_has_subtitle)
-            m_player_subtitles.Pause();
-
-          auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-6);
-          int dur = m_omx_reader.GetStreamLengthSeconds();
-          show_long_osd_message("Pause\n%02d:%02d:%02d / %02d:%02d:%02d",
-            (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60);
-        }
-        else
-        {
-          if(m_has_subtitle)
-            m_player_subtitles.Resume();
-
-          auto t = (unsigned) (m_av_clock->OMXMediaTime()*1e-6);
-          int dur = m_omx_reader.GetStreamLengthSeconds();
-          show_long_osd_message("Play\n%02d:%02d:%02d / %02d:%02d:%02d",
-            (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60);
-        }
+        PlayPause(!m_Pause);
         break;
       case KeyConfig::ACTION_HIDE_VIDEO:
         // set alpha to minimum
@@ -1701,13 +1692,9 @@ int main(int argc, char *argv[])
 
         if(m_omx_reader.SeekTime(seek_pos, m_incr < 0, &startpts))
         {
-          unsigned t = (unsigned)(startpts*1e-6);
+          int t = (int)(startpts*1e-6);
           int dur = m_omx_reader.GetStreamLengthSeconds();
-          string m = strprintf("%02d:%02d:%02d / %02d:%02d:%02d",
-              (t/3600), (t/60)%60, t%60, (dur/3600), (dur/60)%60, dur%60);
-
-          show_short_osd_message("Seek\n%s", m.c_str());
-          printf("Seek to: %s\n", m.c_str());
+          show_progress_message("Seek", t, dur);
 
           FlushStreams(startpts);
         }
