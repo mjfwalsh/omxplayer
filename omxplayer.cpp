@@ -1204,9 +1204,15 @@ int main(int argc, char *argv[])
 
     m_DvdPlayer->enableHeuristicTrackSelection();
 
-    // Was DVD played before?
-    if(!m_dump_format_exit && m_is_dvd_device && m_incr == -1)
-      m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
+	// Was DVD played before?
+    if(!m_dump_format_exit && m_is_dvd_device && m_playlist_enabled)
+    {
+      // check we have a valid dvd id
+      if(m_DvdPlayer->GetID().empty())
+        m_playlist_enabled = false;
+      else
+        m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
+	}
 
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)

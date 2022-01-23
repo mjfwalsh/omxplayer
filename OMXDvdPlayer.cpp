@@ -459,13 +459,50 @@ void OMXDvdPlayer::read_title_name()
 void OMXDvdPlayer::read_disc_checksum()
 {
 	unsigned char buf[16];
-	if (DVDDiscID(dvd_device, &buf[0]) == -1) return;
+	if (DVDDiscID(dvd_device, &buf[0]) == -1) {
+		read_disc_serial_number(); // fallback
+		return;
+	}
 
 	char hex[33];
 	for (int i = 0; i < 16; i++)
 		sprintf(hex + 2 * i, "%02x", buf[i]);
 
 	disc_checksum = hex;
+}
+
+/*
+ *  The following method is based on code from vobcopy, by Robos, with thanks.
+ *  Modified to also read serial number and alternative title based on
+ *  libdvdnav's src/vm/vm.c
+ */
+void OMXDvdPlayer::read_disc_serial_number()
+{
+	char serial_no[9];
+    char buffer[2048];
+
+	FILE *fh = fopen(device_path.c_str(), "r");
+	if(!fh) {
+		fprintf(stderr, "Failed to open %s\n", device_path.c_str());
+		return;
+	}
+
+	if(fseek(fh, 65536, SEEK_SET) || fread(buffer, 1, 2048, fh) != 2048) {
+		fclose(fh);
+		fprintf(stderr, "IO Error on %s\n", device_path.c_str());
+		return;
+	}
+
+	fclose (fh);
+
+	int i = 0;
+	while(i < 8 && isprint(buffer[i + 73])) {
+		serial_no[i] = buffer[i + 73];
+		i++;
+	}
+	serial_no[i] = '\0';
+
+	disc_checksum = serial_no;
 }
 
 //enable heuristic track skip

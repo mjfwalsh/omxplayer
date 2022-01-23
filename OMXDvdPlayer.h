@@ -40,6 +40,7 @@ class OMXDvdPlayer
 	const char* convertLangCode(uint16_t lang);
 	void read_title_name();
 	void read_disc_checksum();
+	void read_disc_serial_number();
 
 	bool m_open = false;
 	bool m_allocated = false;
