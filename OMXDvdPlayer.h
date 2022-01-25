@@ -44,8 +44,7 @@ class OMXDvdPlayer
 
 	bool m_open = false;
 	bool m_allocated = false;
-	volatile int pos = 0;
-	bool pos_locked = false;
+	int pos = 0;
 	int pos_byte_offset = 0;
 
 	dvd_reader_t *dvd_device = NULL;

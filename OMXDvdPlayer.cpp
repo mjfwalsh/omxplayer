@@ -220,7 +220,6 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 
 	// seek to beginning to track
 	pos = 0;
-	pos_locked = false;
 
 	// blocks for this track
 	total_blocks = titles[current_track].last_sector - titles[current_track].first_sector + 1;
@@ -244,15 +243,11 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 	if(!m_open)
 		return 0;
 
-	// capture pos in cpos to avoid it changing midway through read
-	int cpos = pos;
-	pos_locked = false;
-
 	// read in block in whole numbers
-	int blocks_to_read = uiBufSize / 2048;
+	int blocks_to_read = uiBufSize / DVD_VIDEO_LB_LEN;
 
-	if(cpos + blocks_to_read > total_blocks) {
-		blocks_to_read = total_blocks - cpos;
+	if(pos + blocks_to_read > total_blocks) {
+		blocks_to_read = total_blocks - pos;
 
 		if(blocks_to_read < 1)
 			return 0;
@@ -261,17 +256,21 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 	int read_blocks;
 	if(pos_byte_offset > 0) {
 		unsigned char *buffer;
-		buffer = (unsigned char *)malloc(uiBufSize);
-		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + cpos, blocks_to_read, buffer);
-		memcpy(lpBuf, buffer + pos_byte_offset, (read_blocks * 2048) - pos_byte_offset);
+		buffer = (unsigned char *)malloc(blocks_to_read * DVD_VIDEO_LB_LEN);
+		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + pos, blocks_to_read, buffer);
+		memcpy(lpBuf, buffer + pos_byte_offset, (read_blocks * DVD_VIDEO_LB_LEN) - pos_byte_offset);
 		pos_byte_offset = 0;
 		free(buffer);
 	} else {
-		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + cpos, blocks_to_read, lpBuf);
+		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + pos, blocks_to_read, lpBuf);
 	}
 
-	if(!pos_locked) pos = cpos + read_blocks;
-	return read_blocks * 2048;
+	if(read_blocks > 0) {
+		pos += read_blocks;
+		return read_blocks * DVD_VIDEO_LB_LEN;
+	} else {
+		return read_blocks;
+	}
 }
 
 int OMXDvdPlayer::getCurrentTrackLength()
@@ -285,16 +284,15 @@ int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
 		return -1;
 
 	// seek in blocks
-	pos_locked = true;
-	pos = iFilePosition / 2048;
-	pos_byte_offset = iFilePosition % 2048;
+	pos = iFilePosition / DVD_VIDEO_LB_LEN;
+	pos_byte_offset = iFilePosition % DVD_VIDEO_LB_LEN;
 
 	return 0;
 }
 
 int64_t OMXDvdPlayer::GetSizeInBytes()
 {
-	return (int64_t)total_blocks * 2048;
+	return (int64_t)total_blocks * DVD_VIDEO_LB_LEN;
 }
 
 bool OMXDvdPlayer::IsEOF()
@@ -460,6 +458,7 @@ void OMXDvdPlayer::read_disc_checksum()
 {
 	unsigned char buf[16];
 	if (DVDDiscID(dvd_device, &buf[0]) == -1) {
+		fprintf(stderr, "Failed to get DVD checksum");
 		read_disc_serial_number(); // fallback
 		return;
 	}
@@ -479,7 +478,7 @@ void OMXDvdPlayer::read_disc_checksum()
 void OMXDvdPlayer::read_disc_serial_number()
 {
 	char serial_no[9];
-    char buffer[2048];
+    char buffer[DVD_VIDEO_LB_LEN];
 
 	FILE *fh = fopen(device_path.c_str(), "r");
 	if(!fh) {
@@ -487,7 +486,7 @@ void OMXDvdPlayer::read_disc_serial_number()
 		return;
 	}
 
-	if(fseek(fh, 65536, SEEK_SET) || fread(buffer, 1, 2048, fh) != 2048) {
+	if(fseek(fh, 65536, SEEK_SET) || fread(buffer, 1, DVD_VIDEO_LB_LEN, fh) != DVD_VIDEO_LB_LEN) {
 		fclose(fh);
 		fprintf(stderr, "IO Error on %s\n", device_path.c_str());
 		return;

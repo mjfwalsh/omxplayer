@@ -208,8 +208,8 @@ bool OMXReader::Open(
   {
     CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", m_filename.c_str());
 
-    buffer = (unsigned char*)av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
+    buffer = (unsigned char*)av_malloc(DVD_VIDEO_LB_LEN);
+    m_ioContext = avio_alloc_context(buffer, DVD_VIDEO_LB_LEN, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
 
     av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
 
