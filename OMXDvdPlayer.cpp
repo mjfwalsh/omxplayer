@@ -28,7 +28,15 @@
 
 bool OMXDvdPlayer::Open(const std::string &filename)
 {
-	static int audio_id[7] = {0x80, 0, 0xC0, 0xC0, 0xA0, 0, 0x88};
+	const int audio_id[7] = {0x80, 0, 0xC0, 0xC0, 0xA0, 0, 0x88};
+
+	const yuv2rgb_matrix cmatrix = {{
+		{1.1643f,  0.0000f,  1.5960f},
+		{1.1643f, -0.3917f, -0.8129f},
+		{1.1643f,  2.0172f,  0.0000f},
+	},
+	{-222.9215f, 135.5752f, -276.8358f}};
+
 	device_path = filename;
 
 	// Open DVD device or file
@@ -51,12 +59,8 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 	}
 
 	ifo = new ifo_handle_t*[ifo_zero->vts_atrt->nr_of_vtss + 1];
-	if(ifo == NULL) {
-		fputs("Out of memory\n", stderr);
-		return false;
-	}
 
-	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
+	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
 		ifo[i] = ifoOpen(dvd_device, i);
 		if ( !ifo[i] && i == 0 ) {
 			fprintf( stderr, "Can't open ifo %d!\n", i);
@@ -64,43 +68,37 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		}
 	}
 
-	// loop through title sets
-	title_count = ifo_zero->tt_srpt->nr_of_srpts;
-	titles = new title_info[title_count];
-	if(titles == NULL) {
-		fputs("Out of memory\n", stderr);
-		return false;
-	}
+	// alloc space for tracks
+	int read_track_count = track_count = ifo_zero->tt_srpt->nr_of_srpts;
+	tracks = new track_info[read_track_count];
 
-	for (int j=0, h=0; j < title_count; j++, h++) {
-		int title_set_nr = ifo_zero->tt_srpt->title[j].title_set_nr;
-		int vts_ttn = ifo_zero->tt_srpt->title[j].vts_ttn;
+	int write_track = -1;
+	for(int read_track = 0; read_track < read_track_count; read_track++) {
+		int title_set_num = ifo_zero->tt_srpt->title[read_track].title_set_nr;
+		int vts_ttn = ifo_zero->tt_srpt->title[read_track].vts_ttn;
 
-		if (!ifo[title_set_nr]->vtsi_mat) {
-			h--;
-			title_count--;
+		if (!ifo[title_set_num]->vtsi_mat) {
+			track_count--;
 			continue;
 		}
 
-		pgcit_t    *vts_pgcit  = ifo[title_set_nr]->vts_pgcit;
-		vtsi_mat_t *vtsi_mat   = ifo[title_set_nr]->vtsi_mat;
-		pgc_t      *pgc        = vts_pgcit->pgci_srp[ifo[title_set_nr]->vts_ptt_srpt->title[vts_ttn - 1].ptt[0].pgcn - 1].pgc;
+		pgcit_t    *vts_pgcit  = ifo[title_set_num]->vts_pgcit;
+		vtsi_mat_t *vtsi_mat   = ifo[title_set_num]->vtsi_mat;
+		pgc_t      *pgc        = vts_pgcit->pgci_srp[ifo[title_set_num]->vts_ptt_srpt->title[vts_ttn - 1].ptt[0].pgcn - 1].pgc;
 
 		if(pgc->cell_playback == NULL || pgc->program_map == NULL) {
-			h--;
-			title_count--;
+			track_count--;
 			continue;
 		}
 
-		titles[h].enabled = true;
-		titles[h].vts = title_set_nr;
-		titles[h].length = dvdtime2msec(&pgc->playback_time);
-		titles[h].chapter_count = pgc->nr_of_programs;
+		write_track++;
+		tracks[write_track].length = dvdtime2msec(&pgc->playback_time);
+		tracks[write_track].chapter_count = pgc->nr_of_programs;
 		int cell_count = pgc->nr_of_cells;
 
 		// Tracks
 		// ignore non-contiguous ends of tracks
-		titles[h].first_sector = pgc->cell_playback[0].first_sector;
+		tracks[write_track].first_sector = pgc->cell_playback[0].first_sector;
 		int last_sector = -1;
 
 		for (int i = 0; i < cell_count - 1; i++) {
@@ -112,7 +110,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 				for (i++; i < cell_count; i++){
 					missing_time += dvdtime2msec(&pgc->cell_playback[i].playback_time);
 				}
-				titles[h].length -= missing_time;
+				tracks[write_track].length -= missing_time;
 				break;
 			}
 		}
@@ -120,66 +118,78 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			int last = cell_count - 1;
 			last_sector = pgc->cell_playback[last].last_sector;
 		}
-		titles[h].last_sector = last_sector;
+		tracks[write_track].last_sector = last_sector;
 
 		// Chapters
-		titles[h].chapters = new int[titles[h].chapter_count];
-		if(titles[h].chapters == NULL) {
-			fputs("Out of memory\n", stderr);
-			return false;
-		}
+		tracks[write_track].chapters = new int[tracks[write_track].chapter_count];
 
 		int acc_chapter = 0;
-		for (int i=0; i<titles[h].chapter_count; i++) {
+		for (int i=0; i<tracks[write_track].chapter_count; i++) {
 			int idx = pgc->program_map[i] - 1;
 			int first_cell_sector = pgc->cell_playback[idx].first_sector;
 			if(first_cell_sector > last_sector) {
-				titles[h].chapter_count = i;
+				tracks[write_track].chapter_count = i;
 				break;
 			}
-			titles[h].chapters[i] = acc_chapter;
+			tracks[write_track].chapters[i] = acc_chapter;
 
 			acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
 		}
 
-		// Streams
-		titles[h].audiostream_count = 0;
-		titles[h].subtitle_count = 0;
-		for (int k = 0; k < 8; k++)
-			if (pgc->audio_control[k] & 0x8000)
-				titles[h].audiostream_count++;
+		// streams data is the same for each title set
+		// check if we've already seen this title set
+		for(int i = 0; i < write_track; i++) {
+			if(tracks[i].title->title_num == title_set_num) {
+				tracks[write_track].title = tracks[i].title;
+			}
+		}
+		if(tracks[write_track].title != NULL)
+			continue;
 
-		for (int k = 0; k < 32; k++)
-			if (pgc->subp_control[k] & 0x80000000)
-				titles[h].subtitle_count++;
+		// allocate new title set
+		tracks[write_track].title = new title_info;
+		tracks[write_track].title->title_num = title_set_num;
 
 		// Audio streams
-		titles[h].audio_streams = new title_info::audio_stream_info[titles[h].audiostream_count];
+		for (int k = 0; k < 8; k++)
+			if (pgc->audio_control[k] & 0x8000)
+				tracks[write_track].title->audiostream_count++;
+
+		tracks[write_track].title->audio_streams = new title_info::audio_stream_info[tracks[write_track].title->audiostream_count];
 		for (int i = 0, stream_index = 0; i < 8; i++) {
 			if ((pgc->audio_control[i] & 0x8000) == 0) continue;
 
 			audio_attr_t *audio_attr = &vtsi_mat->vts_audio_attr[i];
 
-			titles[h].audio_streams[stream_index++] = {
+			tracks[write_track].title->audio_streams[stream_index++] = {
 				.id = audio_id[audio_attr->audio_format] + (pgc->audio_control[i] >> 8 & 7),
 				.lang = audio_attr->lang_code,
 			};
 		}
 
 		// Subtitles
-		titles[h].subtitle_streams = new title_info::subtitle_stream_info[titles[h].subtitle_count];
+		for (int k = 0; k < 32; k++)
+			if (pgc->subp_control[k] & 0x80000000)
+				tracks[write_track].title->subtitle_count++;
+
+		tracks[write_track].title->subtitle_streams = new title_info::subtitle_stream_info[tracks[write_track].title->subtitle_count];
 		int x = vtsi_mat->vts_video_attr.display_aspect_ratio == 0 ? 24 : 8;
 		for (int i = 0, stream_index = 0; i < 32; i++) {
 			if ((pgc->subp_control[i] & 0x80000000) == 0) continue;
 
 			subp_attr_t *subp_attr = &vtsi_mat->vts_subp_attr[i];
 
-			titles[h].subtitle_streams[stream_index++] = {
+			tracks[write_track].title->subtitle_streams[stream_index++] = {
 				.id = (int)((pgc->subp_control[i] >> x) & 0x1f) + 0x20,
 				.found = false,
 				.lang = subp_attr->lang_code,
 			};
 		}
+
+		// Palette
+		tracks[write_track].title->palette[0] = 0;
+		for (int i = 1; i < 16; i++)
+			tracks[write_track].title->palette[i] = yvu2rgb(&cmatrix, pgc->palette[i]);
 	}
 
 	// close dvd meta data filehandles
@@ -209,10 +219,10 @@ bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 
 bool OMXDvdPlayer::OpenTrack(int ct)
 {
-	if(m_open && titles[ct].vts != titles[current_track].vts)
+	if(m_open && tracks[ct].title->title_num != tracks[current_track].title->title_num)
 		CloseTrack();
 
-	if(ct < 0 || ct > title_count - 1)
+	if(ct < 0 || ct > track_count - 1)
 		return false;
 
 	// select track
@@ -222,11 +232,11 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 	pos = 0;
 
 	// blocks for this track
-	total_blocks = titles[current_track].last_sector - titles[current_track].first_sector + 1;
+	total_blocks = tracks[current_track].last_sector - tracks[current_track].first_sector + 1;
 
 	// open dvd track
 	if(!m_open) {
-		dvd_track = DVDOpenFile(dvd_device, titles[current_track].vts, DVD_READ_TITLE_VOBS );
+		dvd_track = DVDOpenFile(dvd_device, tracks[current_track].title->title_num, DVD_READ_TITLE_VOBS );
 
 		if(!dvd_track) {
 			puts("Error on DVDOpenFile");
@@ -257,12 +267,12 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 	if(pos_byte_offset > 0) {
 		unsigned char *buffer;
 		buffer = (unsigned char *)malloc(blocks_to_read * DVD_VIDEO_LB_LEN);
-		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + pos, blocks_to_read, buffer);
+		read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, buffer);
 		memcpy(lpBuf, buffer + pos_byte_offset, (read_blocks * DVD_VIDEO_LB_LEN) - pos_byte_offset);
 		pos_byte_offset = 0;
 		free(buffer);
 	} else {
-		read_blocks = DVDReadBlocks(dvd_track, titles[current_track].first_sector + pos, blocks_to_read, lpBuf);
+		read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
 	}
 
 	if(read_blocks > 0) {
@@ -275,7 +285,12 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 
 int OMXDvdPlayer::getCurrentTrackLength()
 {
-	return titles[current_track].length;
+	return tracks[current_track].length;
+}
+
+uint32_t *OMXDvdPlayer::getPalette()
+{
+	return tracks[current_track].title->palette;
 }
 
 int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
@@ -305,12 +320,12 @@ bool OMXDvdPlayer::IsEOF()
 
 int OMXDvdPlayer::TotalChapters()
 {
-	return titles[current_track].chapter_count;
+	return tracks[current_track].chapter_count;
 }
 
 int64_t OMXDvdPlayer::GetChapterStartTime(int i)
 {
-	return titles[current_track].chapters[i] * 1000.0;
+	return tracks[current_track].chapters[i] * 1000.0;
 }
 
 void OMXDvdPlayer::CloseTrack()
@@ -323,16 +338,16 @@ void OMXDvdPlayer::CloseTrack()
 // in the vob file correspond to streams listed in the DVD meta data
 bool OMXDvdPlayer::MetaDataCheck(int audiostream_count, int subtitle_count)
 {
-	return titles[current_track].audiostream_count == audiostream_count &&
-		titles[current_track].subtitle_count == subtitle_count;
+	return tracks[current_track].title->audiostream_count == audiostream_count &&
+		tracks[current_track].title->subtitle_count == subtitle_count;
 }
 
 void OMXDvdPlayer::GetAudioStreamInfo(OMXStream *stream)
 {
-	for (int i = 0; i < titles[current_track].audiostream_count; i++) {
-		if(titles[current_track].audio_streams[i].id == stream->stream->id) {
+	for (int i = 0; i < tracks[current_track].title->audiostream_count; i++) {
+		if(tracks[current_track].title->audio_streams[i].id == stream->stream->id) {
 			stream->index = i;
-			strcpy(stream->language, convertLangCode(titles[current_track].audio_streams[i].lang));
+			strcpy(stream->language, convertLangCode(tracks[current_track].title->audio_streams[i].lang));
 			return;
 		}
 	}
@@ -343,10 +358,10 @@ void OMXDvdPlayer::GetAudioStreamInfo(OMXStream *stream)
 
 void OMXDvdPlayer::GetSubtitleStreamInfo(OMXStream *stream)
 {
-	for (int i = 0; i < titles[current_track].subtitle_count; i++) {
-		if(titles[current_track].subtitle_streams[i].id == stream->stream->id) {
+	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
+		if(tracks[current_track].title->subtitle_streams[i].id == stream->stream->id) {
 			stream->index = i;
-			strcpy(stream->language, convertLangCode(titles[current_track].subtitle_streams[i].lang));
+			strcpy(stream->language, convertLangCode(tracks[current_track].title->subtitle_streams[i].lang));
 			return;
 		}
 	}
@@ -357,9 +372,9 @@ void OMXDvdPlayer::GetSubtitleStreamInfo(OMXStream *stream)
 
 void OMXDvdPlayer::MarkSubtitleAsFound(int id)
 {
-	for (int i = 0; i < titles[current_track].subtitle_count; i++) {
-		if(titles[current_track].subtitle_streams[i].id == id) {
-			titles[current_track].subtitle_streams[i].found = true;
+	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
+		if(tracks[current_track].title->subtitle_streams[i].id == id) {
+			tracks[current_track].title->subtitle_streams[i].found = true;
 			return;
 		}
 	}
@@ -368,8 +383,8 @@ void OMXDvdPlayer::MarkSubtitleAsFound(int id)
 void OMXDvdPlayer::InsertMissingSubs(AVFormatContext *s)
 {
 	//unsigned int new_stream_num = s->nb_streams;
-	for (int i = 0; i < titles[current_track].subtitle_count; i++) {
-		if(titles[current_track].subtitle_streams[i].found)
+	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
+		if(tracks[current_track].title->subtitle_streams[i].found)
 			continue;
 
 		// We've found a new subtitle stream
@@ -377,7 +392,7 @@ void OMXDvdPlayer::InsertMissingSubs(AVFormatContext *s)
 		if (!st)
 			continue;
 
-		st->id = titles[current_track].subtitle_streams[i].id;
+		st->id = tracks[current_track].title->subtitle_streams[i].id;
 		st->codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
 		st->codecpar->codec_id = AV_CODEC_ID_DVD_SUBTITLE;
 		st->request_probe = 0;
@@ -391,12 +406,16 @@ OMXDvdPlayer::~OMXDvdPlayer()
 		CloseTrack();
 
 	if(m_allocated) {
-		for (int i=0; i < title_count; i++) {
-			delete titles[i].audio_streams;
-			delete titles[i].subtitle_streams;
-			delete titles[i].chapters;
+		for (int i=0; i < track_count; i++) {
+			if(tracks[i].title != NULL) {
+				delete tracks[i].title->audio_streams;
+				delete tracks[i].title->subtitle_streams;			
+				delete tracks[i].title;
+				tracks[i].title = NULL;
+			}
+			delete tracks[i].chapters;
 		}
-		delete titles;
+		delete tracks;
 	}
 
 	if(dvd_device)
@@ -508,23 +527,23 @@ void OMXDvdPlayer::read_disc_serial_number()
 void OMXDvdPlayer::enableHeuristicTrackSelection()
 {
 	// Disable tracks which are shorter than two minutes
-	for(int i = 0; i < title_count; i++) {
-		if(titles[i].length < 120000) {
-			titles[i].enabled = false;
+	for(int i = 0; i < track_count; i++) {
+		if(tracks[i].length < 120000) {
+			tracks[i].enabled = false;
 		}
 	}
 
 	// Search for and disable composite tracks
-	for(int i = 0; i < title_count - 1; i++) {
-		for(int j = i + 1; j < title_count; j++) {
-			if(titles[i].vts == titles[j].vts
-					&& titles[i].first_sector == titles[j].first_sector
-					&& titles[i].enabled && titles[j].enabled) {
+	for(int i = 0; i < track_count - 1; i++) {
+		for(int j = i + 1; j < track_count; j++) {
+			if(tracks[i].title->title_num == tracks[j].title->title_num
+					&& tracks[i].first_sector == tracks[j].first_sector
+					&& tracks[i].enabled && tracks[j].enabled) {
 
-				if(titles[i].length > titles[j].length)
-					titles[i].enabled = false;
+				if(tracks[i].length > tracks[j].length)
+					tracks[i].enabled = false;
 				else
-					titles[j].enabled = false;
+					tracks[j].enabled = false;
 			}
 		}
 	}
@@ -532,8 +551,8 @@ void OMXDvdPlayer::enableHeuristicTrackSelection()
 
 int OMXDvdPlayer::findNextEnabledTrack(int i)
 {
-	for(i++; i < title_count; i++) {
-		if(titles[i].enabled)
+	for(i++; i < track_count; i++) {
+		if(tracks[i].enabled)
 			return i;
 		else printf("Skipping Track %d\n", i+1);
 	}
@@ -543,12 +562,33 @@ int OMXDvdPlayer::findNextEnabledTrack(int i)
 int OMXDvdPlayer::findPrevEnabledTrack(int i)
 {
 	for(i--; i > -1; i--) {
-		if(titles[i].enabled)
+		if(tracks[i].enabled)
 			return i;
 		else printf("Skipping Track %d\n", i+1);
 	}
 	return -1;
 }
+
+// This is a condensed version code from mpv
+int OMXDvdPlayer::yvu2rgb(const yuv2rgb_matrix *m, int color)
+{
+	const int in[3] = {color >> 16 & 0xff, color >> 8 & 0xff, color & 0xff};
+	int out[3];
+
+    for (int i = 0; i < 3; i++) {
+        float val = m->offsets[i];
+        for (int x = 0; x < 3; x++)
+            val += m->m[i][x] * in[x];
+
+        // clamp and round
+        if(val > 255) out[i] = 255;
+        else if(val < 0) out[i] = 0;
+        else out[i] = (int)(val + 0.5f);
+    }
+
+    return out[2] << 16 | out[1] << 8 | out[0];
+}
+
 
 const char* OMXDvdPlayer::convertLangCode(uint16_t lang)
 {

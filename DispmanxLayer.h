@@ -35,7 +35,8 @@
 class DispmanxLayer
 {
 public:
-	DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension src_image = {-1, -1});
+	DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension src_image = {-1, -1},
+		uint32_t *palette = NULL);
 	~DispmanxLayer();
 
 	void hideElement();

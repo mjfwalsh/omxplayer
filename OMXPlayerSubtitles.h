@@ -49,9 +49,8 @@ public:
 
   bool Open(size_t stream_count, string &external_subtitle_path) BOOST_NOEXCEPT;
 
-  bool initDVDSubs(Dimension video,
-            float video_aspect,
-            int aspect_mode) BOOST_NOEXCEPT;
+  bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode,
+                   uint32_t *palette) BOOST_NOEXCEPT;
 
   void Close() BOOST_NOEXCEPT;
   void DeInit() BOOST_NOEXCEPT;
@@ -98,6 +97,7 @@ private:
       Dimension video;
       float video_aspect;
       int aspect_mode;
+      uint32_t *palette;
     };
     struct Stop {};
     struct Flush

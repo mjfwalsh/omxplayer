@@ -34,6 +34,7 @@ class OMXDvdPlayer
 	int findPrevEnabledTrack(int i);
 	void MarkSubtitleAsFound(int id);
 	void InsertMissingSubs(AVFormatContext *s);
+	uint32_t *getPalette();
 
   private:
 	int dvdtime2msec(dvd_time_t *dt);
@@ -56,27 +57,41 @@ class OMXDvdPlayer
 	std::string device_path;
 	std::string disc_title;
 	std::string disc_checksum;
-	int title_count;
-	struct title_info {
-		bool enabled;
-		int vts;
-		int length;
-		int chapter_count;
-		int *chapters;
-		int audiostream_count;
+
+	int title_count = 0;
+	typedef struct title_info {
+		int title_num;
+		int audiostream_count = 0;
 		struct audio_stream_info {
 			int id; // as in the hex number in "Stream #0:2[0x85]:"
 			uint16_t lang; // lang code
 		} *audio_streams;
-		int subtitle_count;
+		int subtitle_count = 0;
 		struct subtitle_stream_info {
 			int id; // as in the hex number in "Stream #0:2[0x85]:"
 			bool found; // whether discovered during probe
 			uint16_t lang; // lang code
 		} *subtitle_streams;
+		uint32_t palette[16];
+	} title_info;
+
+	int track_count = 0;
+	struct track_info {
+		bool enabled = true;
+		title_info *title = NULL;
+		int length;
+		int chapter_count;
+		int *chapters;
 		int first_sector;
 		int last_sector;
-	} *titles;
+	} *tracks;
 
 	float frames_per_s[4] = {-1.0, 25.00, -1.0, 29.97};
+
+	typedef struct yuv2rgb_matrix {
+		float m[3][3];
+		float offsets[3];
+	} yuv2rgb_matrix;
+
+	int yvu2rgb(const yuv2rgb_matrix *m, int c);
 };

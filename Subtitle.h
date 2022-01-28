@@ -41,7 +41,7 @@ class Subtitle {
   int stop;
   bool isImage = false;
 
-  void assign_image(unsigned char *data, int size);
+  void assign_image(unsigned char *data, unsigned char *palette, int size);
   void alloc_text(int size);
 
   int *refcount;

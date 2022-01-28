@@ -124,8 +124,8 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 	 *            Set up layer for DVD subtitles            *
 	 *    *    *    *    *    *    *    *    *    *    *    */
 
-void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio,
-		int aspect_mode)
+void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio, int aspect_mode,
+		uint32_t *palette)
 {
 	if(dvdSubLayer)
 		delete dvdSubLayer;
@@ -151,7 +151,7 @@ void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio,
 	view_port.y = (screen.height - view_port.height) / 2;
 
 	// create layer
-	dvdSubLayer = new DispmanxLayer(1, view_port, video);
+	dvdSubLayer = new DispmanxLayer(1, view_port, video, palette);
 }
 
 void SubtitleRenderer::set_font(int new_font_type)

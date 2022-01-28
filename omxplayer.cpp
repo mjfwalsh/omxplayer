@@ -1347,9 +1347,12 @@ int main(int argc, char *argv[])
     // the subtitles have a different size
     Dimension sub_dim = {m_config_video.hints.width, m_config_video.hints.height};
     float sub_aspect = m_config_video.hints.aspect;
-    if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect)
-        && !m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode))
-      ExitGentlyOnError();
+    if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect))
+    {
+      if(!m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode,
+      		m_DvdPlayer ? m_DvdPlayer->getPalette() : NULL))
+      	ExitGentlyOnError();
+    }
   }
 
   if(m_has_subtitle)

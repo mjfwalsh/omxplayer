@@ -21,6 +21,7 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <assert.h>
 
 #include "Subtitle.h"
 #include "utils/simple_geometry.h"
@@ -52,13 +53,20 @@ Subtitle::Subtitle(int start, int stop, const char *t, int l)
   text.lines[l] = '\0';
 }
 
-void Subtitle::assign_image(unsigned char *srcData, int size)
+void Subtitle::assign_image(unsigned char *srcData, unsigned char *palette, int size)
 {
   refcount = new int;
   *refcount = 1;
 
   image.data = new unsigned char[size];
-  memcpy(image.data, srcData, size);
+
+  for(int i = 0; i < size; i++) {    
+    int x = (int)srcData[i];
+    
+    assert(x >= 0 && x <= 3);
+
+    image.data[i] = palette[x];
+  }
 }
 
 void Subtitle::alloc_text(int size)

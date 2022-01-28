@@ -41,8 +41,7 @@ class SubtitleRenderer {
 						bool box_opacity,
 						unsigned int lines);
 
-		void initDVDSubs(Dimension video, float video_aspect_ratio,
-				int aspect_mode);
+		void initDVDSubs(Dimension video, float video_aspect_ratio, int aspect_mode, uint32_t *palette);
 
 		~SubtitleRenderer();
 
