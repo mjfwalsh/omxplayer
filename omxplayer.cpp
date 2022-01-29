@@ -2028,6 +2028,9 @@ end_of_play_loop:
 
   delete m_av_clock;
 
+  if(m_DvdPlayer)
+    delete m_DvdPlayer;
+
   // not playing anything else, so shutdown
   if(NULL != m_keyboard)
     delete m_keyboard;

@@ -263,23 +263,32 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 			return 0;
 	}
 
-	int read_blocks;
 	if(pos_byte_offset > 0) {
 		unsigned char *buffer;
 		buffer = (unsigned char *)malloc(blocks_to_read * DVD_VIDEO_LB_LEN);
-		read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, buffer);
-		memcpy(lpBuf, buffer + pos_byte_offset, (read_blocks * DVD_VIDEO_LB_LEN) - pos_byte_offset);
+		int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, buffer);
+		if(read_blocks <= 0) {
+			free(buffer);
+			return read_blocks;
+		}
+
+		int bytes_read = read_blocks * DVD_VIDEO_LB_LEN - pos_byte_offset;
+		memcpy(lpBuf, buffer + pos_byte_offset, bytes_read);
+
 		pos_byte_offset = 0;
 		free(buffer);
-	} else {
-		read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
-	}
 
-	if(read_blocks > 0) {
 		pos += read_blocks;
-		return read_blocks * DVD_VIDEO_LB_LEN;
+		return bytes_read;
 	} else {
-		return read_blocks;
+		int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
+
+		if(read_blocks > 0) {
+			pos += read_blocks;
+			return read_blocks * DVD_VIDEO_LB_LEN;
+		} else {
+			return read_blocks;
+		}
 	}
 }
 
