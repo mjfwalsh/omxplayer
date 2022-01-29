@@ -142,10 +142,9 @@ void print_version()
   ExitGently(); \
 }
 
-#define show_short_osd_message(...) _user_message(false, 1000, false, strprintf(__VA_ARGS__))
-#define show_long_osd_message(...) _user_message(false, 2000, false, strprintf(__VA_ARGS__))
-#define user_message(...) _user_message(true, 1000, false, strprintf(__VA_ARGS__))
-#define user_message_on_close(...) _user_message(true, 3000, true, strprintf(__VA_ARGS__))
+#define show_osd_message(...)      _user_message(false, 1500, false, strprintf(__VA_ARGS__))
+#define user_message(...)          _user_message(true,  1500, false, strprintf(__VA_ARGS__))
+#define user_message_on_close(...) _user_message(true,  3000,  true, strprintf(__VA_ARGS__))
 
 #ifdef __GNUC__
 char *strprintf(const char* format, ...) __attribute__((format(printf,1,2)));
@@ -168,16 +167,21 @@ void _user_message(bool to_stdout, int duration, bool sleep, char *msg)
     m_player_subtitles.DisplayText(msg, duration);
 
   if(to_stdout)
-    puts(msg);
+  {
+    char *p = msg;
+    while(*p != '\0' && *p != '\n') p++;
+	if(*p == '\n') *p = ' ';
+	puts(msg);
+  }
 
   // useful when we want to display some osd before exiting the program
   if(m_osd && sleep) m_av_clock->OMXSleep(duration);
 }
 
-void show_progress_message(const char *msg, int pos, int dur)
+void show_progress_message(const char *msg, int pos, int dur, bool print_to_stdout = false)
 {
-  show_long_osd_message("%s\n%02d:%02d:%02d / %02d:%02d:%02d",
-    msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
+  _user_message(print_to_stdout, 1500, false, strprintf("%s\n%02d:%02d:%02d / %02d:%02d:%02d",
+                msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60));
 }
 
 static void UpdateRaspicastMetaData(string msg)
@@ -584,15 +588,15 @@ int main(int argc, char *argv[])
     m_player_subtitles.SetActiveStreamDelta(delta);
     if(!m_player_subtitles.GetVisible()) {
       m_subtitle_lang[0] = '\0';
-      show_short_osd_message("Subtitles Off");
+      show_osd_message("Subtitles Off");
     } else {
       int new_index = m_player_subtitles.GetActiveStream();
       strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
           new_index).c_str());
       if(m_subtitle_lang[0] != '\0')
-          show_short_osd_message("Subtitle stream: %s", m_subtitle_lang);
+          show_osd_message("Subtitle stream: %s", m_subtitle_lang);
       else
-          show_short_osd_message("Subtitle stream: %d", new_index + 1);
+          show_osd_message("Subtitle stream: %d", new_index + 1);
     }
     PrintSubtitleInfo();
   };
@@ -1058,7 +1062,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  show_long_osd_message("Loading...");
+  show_osd_message("Loading...");
 
   int gpu_mem = get_mem_gpu();
   int min_gpu_mem = 64;
@@ -1461,7 +1465,7 @@ int main(int argc, char *argv[])
         {
           unsigned t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
           int dur = m_omx_reader.GetStreamLengthSeconds();
-          show_short_osd_message("Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
+          show_osd_message("Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
               (t/3600000), (t/60000)%60, (t/1000)%60, t%1000,
               (dur/3600), (dur/60)%60, dur%60);
         }
@@ -1473,7 +1477,7 @@ int main(int argc, char *argv[])
           if(new_index < 0) new_index = m_omx_reader.AudioStreamCount() - 1;
           m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
           strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
-          show_short_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
+          show_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
         break;
       case KeyConfig::ACTION_NEXT_AUDIO:
@@ -1483,7 +1487,7 @@ int main(int argc, char *argv[])
           if(new_index >= m_omx_reader.AudioStreamCount()) new_index = 0;
           m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
           strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
-          show_short_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
+          show_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
         break;
       case KeyConfig::ACTION_PREVIOUS_CHAPTER:
@@ -1503,7 +1507,7 @@ int main(int argc, char *argv[])
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
-              show_long_osd_message("Chapter %d", go_to_ch + 1);
+              show_osd_message("Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
               m_chapter_seek = true;
@@ -1532,7 +1536,7 @@ int main(int argc, char *argv[])
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
-              show_long_osd_message("Chapter %d", go_to_ch + 1);
+              show_osd_message("Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
               m_chapter_seek = true;
@@ -1563,10 +1567,10 @@ int main(int argc, char *argv[])
         {
           if(m_player_subtitles.GetVisible()) {
             m_player_subtitles.SetVisible(false);
-            show_short_osd_message("Subtitles Off");
+            show_osd_message("Subtitles Off");
           } else {
             m_player_subtitles.SetVisible(true);
-            show_short_osd_message("Subtitles On");
+            show_osd_message("Subtitles On");
           }
           PrintSubtitleInfo();
         }
@@ -1575,7 +1579,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(false);
-          show_short_osd_message("Subtitles Off");
+          show_osd_message("Subtitles Off");
           PrintSubtitleInfo();
         }
         break;
@@ -1583,7 +1587,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(true);
-          show_short_osd_message("Subtitles On");
+          show_osd_message("Subtitles On");
           PrintSubtitleInfo();
         }
         break;
@@ -1591,7 +1595,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
           int new_delay = m_player_subtitles.GetDelay() - 250;
-          show_short_osd_message("Subtitle delay: %d ms", new_delay);
+          show_osd_message("Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
         }
@@ -1600,7 +1604,7 @@ int main(int argc, char *argv[])
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
           int new_delay = m_player_subtitles.GetDelay() + 250;
-          show_short_osd_message("Subtitle delay: %d ms", new_delay);
+          show_osd_message("Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
         }
@@ -1697,7 +1701,7 @@ int main(int argc, char *argv[])
         {
           int t = (int)(startpts*1e-6);
           int dur = m_omx_reader.GetStreamLengthSeconds();
-          show_progress_message("Seek", t, dur);
+          show_progress_message("Seek", t, dur, true);
 
           FlushStreams(startpts);
         }
