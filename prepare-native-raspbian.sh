@@ -32,11 +32,15 @@ MAJOR_VERSION=`lsb_release -sc`
 if [ "$MAJOR_VERSION" = "buster" ]; then
 	COMPILE_FFMPEG_PKGS="$COMPILE_FFMPEG_PKGS $COMPILE_FFMPEG_PKGS_BUSTER"
 	echo " (Buster)"
+elif [ "$MAJOR_VERSION" = "bullseye" ]; then
+	# The development packages for bullseye are the same as the one for buster
+	COMPILE_FFMPEG_PKGS="$COMPILE_FFMPEG_PKGS $COMPILE_FFMPEG_PKGS_BUSTER"
+	echo " (Bullseye)"
 elif [ "$MAJOR_VERSION" = "stretch" ]; then
 	COMPILE_FFMPEG_PKGS="$COMPILE_FFMPEG_PKGS $COMPILE_FFMPEG_PKGS_STRETCH"
 	echo " (Stretch)"
 else
-	echo "\nThis script does not support $major_version"
+	echo "\nThis script does not support $MAJOR_VERSION"
 	exit 1
 fi
 
@@ -133,6 +137,15 @@ fi
 echo ""
 
 echo =======================================================================================
+
+if [ "$MAJOR_VERSION" = "bullseye" ]; then
+	echo ""
+	echo Bullseye no longer comes with the required firmware files to compile omxplayer.
+	echo However it is still possible to compile and run omxplayer if you get the required
+	echo firmware files and make the appropriate changes to the display driver.
+	echo ""
+	echo =======================================================================================
+fi
 
 if [ -z "$MISSING_OMX_PKGS" ] && [ -z "$MISSING_DEV_HEADERS" ]; then
 	if [ -z "$MISSING_EXTERNAL_FFMPEG_PKGS" ]; then
