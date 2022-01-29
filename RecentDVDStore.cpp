@@ -91,16 +91,16 @@ void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, cha
 
 	for(auto i = store.begin(); i != store.end(); i++) {
 		if(i->key == key) {
-			if(track == -1) {
+			if(time == -1 && track == -1) {
 				track = i->track;
 				time = i->time;
 			} else if(track == i->track) {
 				time = i->time;
 			}
-			if(audio[0] != '\0') {
+			if(audio[0] == '\0') {
 				strncpy(audio, i->audio.c_str(), 3);
 			}
-			if(subtitle[0] != '\0') {
+			if(subtitle[0] == '\0') {
 				strncpy(subtitle, i->subtitle.c_str(), 3);
 			}
 			store.erase(i);
