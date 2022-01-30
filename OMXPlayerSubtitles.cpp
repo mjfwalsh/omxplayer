@@ -110,7 +110,18 @@ bool OMXPlayerSubtitles::Open(size_t stream_count,
 bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
 		int aspect_mode, uint32_t *palette) BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::DVDSubs{video, video_aspect, aspect_mode, palette});
+  if(palette) {
+    if(!m_palette)
+      m_palette = new uint32_t[16];
+
+    for(int i = 0; i < 16; i++)
+      m_palette[i] = palette[i];
+  } else if(m_palette) {
+    delete m_palette;
+    m_palette = NULL;
+  }
+
+  SendToRenderer(Message::DVDSubs{video, video_aspect, aspect_mode, m_palette});
 
   AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
@@ -120,7 +131,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
   if(!m_dvd_codec_context)
     return false;
 
-  if(palette == NULL) {
+  if(m_palette == NULL) {
     if(avcodec_open2(m_dvd_codec_context, dvd_codec, NULL) < 0)
       return false;
   } else {
@@ -155,6 +166,9 @@ void OMXPlayerSubtitles::DeInit() BOOST_NOEXCEPT
 
   if(m_dvd_codec_context)
     avcodec_free_context(&m_dvd_codec_context);
+
+  if(m_palette)
+    delete m_palette;
 }
 
 void OMXPlayerSubtitles::Process()
@@ -548,17 +562,22 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   // Fix time
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
 
+  // calculate palette
   unsigned char palette[4];
-  uint32_t *p = (uint32_t *)s.rects[0]->data[1];
-  for(int i = 0; i < 4; i++) {
-    // merge the most significant four bits (alpha channel) and
-    // the least significant four bits (index from the above dummy palette)
-    palette[i] = (*p >> 24 & 0xf0) | (*p & 0xf);
-    p++;
+  if(m_palette)
+  {
+    uint32_t *p = (uint32_t *)s.rects[0]->data[1];
+    for(int i = 0; i < 4; i++) {
+      // merge the most significant four bits (alpha channel) and
+      // the least significant four bits (index from the above dummy palette)
+      palette[i] = (*p >> 24 & 0xf0) | (*p & 0xf);
+      p++;
+    }
   }
 
   // assign data
-  sub.assign_image(s.rects[0]->data[0], &palette[0], s.rects[0]->linesize[0] * s.rects[0]->h);
+  sub.assign_image(s.rects[0]->data[0], s.rects[0]->linesize[0] * s.rects[0]->h,
+                   m_palette ? &palette[0] : NULL);
   sub.image.rect = {s.rects[0]->x, s.rects[0]->y, s.rects[0]->w, s.rects[0]->h};
 
   avsubtitle_free(&s);

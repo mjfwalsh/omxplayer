@@ -166,6 +166,6 @@ public:
   std::string GetStreamName(OMXStreamType type, unsigned int index);
   std::string GetStreamType(OMXStreamType type, unsigned int index);
   bool CanSeek();
-  bool FindDVDSubs(Dimension &d, float &aspect);
+  bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
 };
 #endif

@@ -1293,10 +1293,48 @@ bool OMXReader::CanSeek()
   return false;
 }
 
+void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
+{
+  while(p < end) {
+    if(strncmp(p, "palette:", 8) == 0) {
+      p += 8;
+      goto found_palette;
+    }
+    while(p < end && *p++ != '\n');
+  }
+  return;
+
+  found_palette:
+
+  // no guarantee extradata is null terminated so we create a
+  // a null terminated buffer to avoid overruns
+  char buffer[130];
+  int i = 0;
+  while(p < end && i < 129)
+    buffer[i++] = *p++;
+  *p = '\0';
+
+  char *buf = &buffer[0];
+  char *next;
+  uint32_t *palette = *palette_c = (uint32_t *)malloc(sizeof(uint32_t) * 16);
+  for(int i = 0; i < 16; i++) {
+    palette[i] = strtoul(buf, &next, 16);
+    if(buf == next) {
+      free(palette);
+      *palette_c = NULL;
+      return;
+    } else {
+      buf = next;
+    }
+
+    while(*buf == ',' || *buf == ' ') buf++;
+  }
+}
+
 // Find if dvd subs are present and returns true if so.
 // If width and height are available, it sets them too.
 // We assume that all dvd subs will have the same dimensions.
-bool OMXReader::FindDVDSubs(Dimension &d, float &aspect)
+bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette)
 {
   for(int i = 0; i < MAX_STREAMS; i++)
   {
@@ -1307,6 +1345,13 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect)
         d.width = m_streams[i].hints.width;
         d.height = m_streams[i].hints.height;
         aspect = d.width / (float)d.height;
+      }
+
+      if(*palette == NULL && m_streams[i].extrasize > 0)
+      {
+        get_palette_from_extradata((char *)m_streams[i].extradata,
+                                   (char *)m_streams[i].extradata + m_streams[i].extrasize,
+                                   palette);
       }
       return true;
     }

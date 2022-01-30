@@ -88,10 +88,5 @@ class OMXDvdPlayer
 
 	float frames_per_s[4] = {-1.0, 25.00, -1.0, 29.97};
 
-	typedef struct yuv2rgb_matrix {
-		float m[3][3];
-		float offsets[3];
-	} yuv2rgb_matrix;
-
-	int yvu2rgb(const yuv2rgb_matrix *m, int c);
+	int yvu2rgb(int c);
 };

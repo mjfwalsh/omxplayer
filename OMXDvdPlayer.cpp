@@ -30,13 +30,6 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 {
 	const int audio_id[7] = {0x80, 0, 0xC0, 0xC0, 0xA0, 0, 0x88};
 
-	const yuv2rgb_matrix cmatrix = {{
-		{1.1643f,  0.0000f,  1.5960f},
-		{1.1643f, -0.3917f, -0.8129f},
-		{1.1643f,  2.0172f,  0.0000f},
-	},
-	{-222.9215f, 135.5752f, -276.8358f}};
-
 	device_path = filename;
 
 	// Open DVD device or file
@@ -189,7 +182,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		// Palette
 		tracks[write_track].title->palette[0] = 0;
 		for (int i = 1; i < 16; i++)
-			tracks[write_track].title->palette[i] = yvu2rgb(&cmatrix, pgc->palette[i]);
+			tracks[write_track].title->palette[i] = yvu2rgb(pgc->palette[i]);
 	}
 
 	// close dvd meta data filehandles
@@ -578,24 +571,25 @@ int OMXDvdPlayer::findPrevEnabledTrack(int i)
 	return -1;
 }
 
-// This is a condensed version code from mpv
-int OMXDvdPlayer::yvu2rgb(const yuv2rgb_matrix *m, int color)
+int clamp(float val)
 {
-	const int in[3] = {color >> 16 & 0xff, color >> 8 & 0xff, color & 0xff};
-	int out[3];
+	if(val > 255) return 255;
+	else if(val < 0) return 0;
+	else return (int)(val + 0.5f);
+}
 
-    for (int i = 0; i < 3; i++) {
-        float val = m->offsets[i];
-        for (int x = 0; x < 3; x++)
-            val += m->m[i][x] * in[x];
+// This is a condensed version code from mpv
+int OMXDvdPlayer::yvu2rgb(int color)
+{
+	int y = color >> 16 & 0xff;
+	int u = color >> 8 & 0xff;
+	int v = color & 0xff;
 
-        // clamp and round
-        if(val > 255) out[i] = 255;
-        else if(val < 0) out[i] = 0;
-        else out[i] = (int)(val + 0.5f);
-    }
+	float r = -222.9215f + 1.1643f * y +                 1.5960f * v;
+	float g =  135.5752f + 1.1643f * y + -0.3917f * u + -0.8129f * v;
+	float b = -276.8358f + 1.1643f * y +  2.0172f * u;
 
-    return out[2] << 16 | out[1] << 8 | out[0];
+	return clamp(b) << 16 | clamp(g) << 8 | clamp(r);
 }
 
 

@@ -179,4 +179,5 @@ private:
   OMXClock*                                     m_av_clock;
   int                                           m_display;
   int                                           m_layer;
+  uint32_t                                      *m_palette = NULL;
 };
