@@ -87,7 +87,6 @@ void RecentDVDStore::readStore()
 void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle)
 {
 	current_dvd = key;
-	time = 0;
 
 	for(auto i = store.begin(); i != store.end(); i++) {
 		if(i->key == key) {
