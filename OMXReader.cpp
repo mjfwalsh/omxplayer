@@ -1074,7 +1074,7 @@ int64_t OMXReader::GetStreamLengthMicro()
     return 0;
 
   if(m_DvdPlayer)
-    return m_DvdPlayer->getCurrentTrackLength() * 1000;
+    return (int64_t)m_DvdPlayer->getCurrentTrackLength() * 1000;
 
   return m_pFormatContext->duration;
 }
