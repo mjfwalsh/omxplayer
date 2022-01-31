@@ -30,151 +30,31 @@ using namespace std;
 
 Subtitle::Subtitle(bool is_image)
 : isImage(is_image)
-{
-  refcount = NULL;
-  if(isImage) {
-    image.data = NULL;
-  } else {
-    text.lines = NULL;
-  }
-}
+{}
 
-Subtitle::Subtitle(int start, int stop, const char *t, int l)
+Subtitle::Subtitle(int start, int stop, std::string &text_lines)
 : start(start),
   stop(stop)
 {
+  text.swap(text_lines);
   isImage = false;
-  refcount = new int;
-  *refcount = 1;
-
-  text.length = l;
-  text.lines = new char[l + 1];
-  memcpy(text.lines, t, l);
-  text.lines[l] = '\0';
 }
 
 void Subtitle::assign_image(unsigned char *srcData, int size, unsigned char *palette)
 {
-  refcount = new int;
-  *refcount = 1;
-
   image.data = new unsigned char[size];
 
   if(palette == NULL) {
-    memcpy(image.data, srcData, size);
+    image.data.assign(srcData, size);
   } else {
+    image.data.resize(size);
     for(int i = 0; i < size; i++) {
-      int x = (int)srcData[i];
-      image.data[i] = palette[x];
+      image.data[i] = palette[(int)srcData[i]];
     }
   }
 }
 
 void Subtitle::alloc_text(int size)
 {
-  refcount = new int;
-  *refcount = 1;
-
-  text.lines = new char[size + 1];
-}
-
-Subtitle::Subtitle(const Subtitle &old) //copy
-{
-  start = old.start;
-  stop = old.stop;
-  isImage = old.isImage;
-
-  if(isImage) {
-    image.data = old.image.data;
-    image.rect = old.image.rect;
-  } else {
-    text.lines = old.text.lines;
-    text.length = old.text.length;
-  }
-
-  refcount = old.refcount;
-  (*refcount)++;
-}
-
-Subtitle& Subtitle::operator=(const Subtitle &old) // copy assign
-{
-  start = old.start;
-  stop = old.stop;
-  isImage = old.isImage;
-
-  if(isImage) {
-    image.data = old.image.data;
-    image.rect = old.image.rect;
-
-  } else {
-    text.lines = old.text.lines;
-    text.length = old.text.length;
-  }
-
-  refcount = old.refcount;
-  (*refcount)++;
-  return *this;
-}
-
-Subtitle::Subtitle(Subtitle &&old) noexcept //move
-{
-  start = old.start;
-  stop = old.stop;
-  isImage = old.isImage;
-  refcount = old.refcount;
-
-  old.refcount = NULL;
-
-  if(isImage) {
-    image.data = old.image.data;
-    image.rect = move(old.image.rect);
-    old.image.data = NULL;
-  } else {
-    text.lines = old.text.lines;
-    text.length = old.text.length;
-    old.text.lines = NULL;
-  }
-}
-
-Subtitle& Subtitle::operator=(Subtitle &&old) noexcept // move assign
-{
-  start = old.start;
-  stop = old.stop;
-  isImage = old.isImage;
-  refcount = old.refcount;
-
-  old.refcount = NULL;
-
-  if(isImage) {
-    image.data = old.image.data;
-    image.rect = move(old.image.rect);
-    old.image.data = NULL;
-  } else {
-    text.lines = old.text.lines;
-    text.length = old.text.length;
-    old.text.lines = NULL;
-  }
-  return *this;
-}
-
-Subtitle::~Subtitle()
-{
-  if(refcount == NULL)
-    return;
-
-  if(isImage) {
-    if(*refcount == 1) {
-      delete image.data;
-      delete refcount;
-    } else if(*refcount > 1) {
-      (*refcount)--;
-    }
-  } else {
-    if(*refcount == 1) {
-      delete text.lines;
-      delete refcount;
-    } else if(*refcount > 1) {
-      (*refcount)--;
-    }
-  }
+  text.resize(size + 1);
 }

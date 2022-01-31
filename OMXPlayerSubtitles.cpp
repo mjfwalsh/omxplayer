@@ -518,31 +518,29 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
   }
 
   // allocate space
-  sub.alloc_text(pkt->size);
+  sub.text.resize(pkt->size);
 
   // replace literal '\N' with newlines, ignore form feeds
   char *r = start;
-  char *w = sub.text.lines;
+  int w = 0;
 
   while (r < end - 1)
   {
     if(*r == '\\' && *(r + 1) == 'N') {
-      *(w++) = '\n';
+      sub.text[w++] = '\n';
       r += 2;
     } else if(*r == '\r') {
       r++;
     } else {
-      *(w++) = *(r++);
+      sub.text[w++] = *(r++);
     }
   }
 
   // last char
   if(*r != '\r' && *r != '\n')
-    *(w++) = *r;
+    sub.text[w++] = *r;
 
-  *w = '\0';
-
-  sub.text.length = w - sub.text.lines;
+  sub.text[w++] = '\0';
 
   return true;
 }

@@ -39,12 +39,18 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
   std::ifstream srt(filename);
   if (!srt) return false;
 
+  srt.seekg( 0, std::ios::end );
+  int estimated_lines = srt.tellg() / 75;
+  srt.seekg( 0, std::ios::beg );
+
+  subtitles.reserve(estimated_lines);
+
   std::string text_lines;
-  text_lines.reserve(1024);
+  text_lines.reserve(128);
   int h, m, s, f, h2, m2, s2, f2;
 
   std::string line;
-  line.reserve(100);
+  line.reserve(128);
 
   while(std::getline(srt, line)) {
     if (sscanf(line.c_str(), "%2u:%2u:%2u,%3u --> %2u:%2u:%2u,%3u",
@@ -73,9 +79,14 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
 
     if(text_lines.empty()) continue;
 
+	text_lines.pop_back(); // remove trailing new line
+	text_lines.shrink_to_fit();
+
     // deduct one to delete the training newline
-    subtitles.emplace_back(start, stop, text_lines.data(), text_lines.length() - 1);
+    subtitles.emplace_back(start, stop, text_lines);
   }
+
+  subtitles.shrink_to_fit();
 
   return true;
 }

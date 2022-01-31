@@ -202,14 +202,14 @@ void SubtitleRenderer::prepare(Subtitle &sub)
 	if(sub.isImage)
 		make_subtitle_image(sub);
 	else
-		parse_lines(sub.text.lines, sub.text.length);
+		parse_lines(sub.text.data(), sub.text.length());
 }
 
 void SubtitleRenderer::prepare(string &lines)
 {
     unprepare();
 
-    parse_lines(lines.c_str(), lines.length());
+    parse_lines(lines.data(), lines.length());
 }
 
 void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed_lines)
@@ -342,7 +342,7 @@ void SubtitleRenderer::make_subtitle_image(Subtitle &sub)
 
 	for(int j = 0; j < sub.image.rect.height; j++) {
 		mem_set(sub.image.rect.x);
-		mem_copy(sub.image.data + (j * sub.image.rect.width), sub.image.rect.width);
+		mem_copy(sub.image.data.data() + (j * sub.image.rect.width), sub.image.rect.width);
 		mem_set(right_padding);
 	}
 

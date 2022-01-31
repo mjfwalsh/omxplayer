@@ -27,15 +27,7 @@ class Subtitle {
   public:
   Subtitle(bool is_image);
 
-  Subtitle(int start, int stop, const char *t, int l);
-
-  Subtitle(const Subtitle &old);
-  Subtitle& operator=(const Subtitle &old);
-
-  Subtitle(Subtitle &&old) noexcept;
-  Subtitle& operator=(Subtitle &&old) noexcept;
-
-  ~Subtitle();
+  Subtitle(int start, int stop, std::string &text_lines);
 
   int start;
   int stop;
@@ -44,16 +36,10 @@ class Subtitle {
   void assign_image(unsigned char *data, int size, unsigned char *palette);
   void alloc_text(int size);
 
-  int *refcount;
+  struct {
+    std::basic_string<unsigned char> data;
+    Rectangle rect;
+  } image;
 
-  union {
-    struct {
-      unsigned char *data;
-      Rectangle rect;
-    } image;
-    struct {
-      char *lines;
-      int length;
-    } text;
-  };
+  std::string text;
 };
