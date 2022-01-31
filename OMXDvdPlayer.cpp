@@ -212,17 +212,18 @@ bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 
 bool OMXDvdPlayer::OpenTrack(int ct)
 {
-	if(m_open && tracks[ct].title->title_num != tracks[current_track].title->title_num)
-		CloseTrack();
-
 	if(ct < 0 || ct > track_count - 1)
 		return false;
+
+	if(m_open && tracks[ct].title->title_num != tracks[current_track].title->title_num)
+		CloseTrack();
 
 	// select track
 	current_track = ct;
 
 	// seek to beginning to track
 	pos = 0;
+	pos_byte_offset = 0;
 
 	// blocks for this track
 	total_blocks = tracks[current_track].last_sector - tracks[current_track].first_sector + 1;
@@ -256,32 +257,22 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 			return 0;
 	}
 
-	if(pos_byte_offset > 0) {
-		unsigned char *buffer;
-		buffer = (unsigned char *)malloc(blocks_to_read * DVD_VIDEO_LB_LEN);
-		int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, buffer);
-		if(read_blocks <= 0) {
-			free(buffer);
-			return read_blocks;
-		}
+	int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
 
+	if(read_blocks <= 0) {
+		return read_blocks;
+	} else if(pos_byte_offset > 0) {
 		int bytes_read = read_blocks * DVD_VIDEO_LB_LEN - pos_byte_offset;
-		memcpy(lpBuf, buffer + pos_byte_offset, bytes_read);
+
+		// shift the contents of the buffer to the left
+		memmove(lpBuf, lpBuf + pos_byte_offset, bytes_read);
 
 		pos_byte_offset = 0;
-		free(buffer);
-
 		pos += read_blocks;
 		return bytes_read;
 	} else {
-		int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
-
-		if(read_blocks > 0) {
-			pos += read_blocks;
-			return read_blocks * DVD_VIDEO_LB_LEN;
-		} else {
-			return read_blocks;
-		}
+		pos += read_blocks;
+		return read_blocks * DVD_VIDEO_LB_LEN;
 	}
 }
 
@@ -408,10 +399,15 @@ OMXDvdPlayer::~OMXDvdPlayer()
 		CloseTrack();
 
 	if(m_allocated) {
-		for (int i=0; i < track_count; i++) {
+		for(int i = 0; i < track_count; i++) {
 			if(tracks[i].title != NULL) {
 				delete tracks[i].title->audio_streams;
 				delete tracks[i].title->subtitle_streams;			
+
+				for(int h = i + 1; h < track_count; h++)
+					if(tracks[i].title == tracks[h].title)
+						tracks[h].title = NULL;
+
 				delete tracks[i].title;
 				tracks[i].title = NULL;
 			}
