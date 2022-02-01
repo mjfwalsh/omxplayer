@@ -1257,6 +1257,7 @@ int main(int argc, char *argv[])
   if(m_is_dvd)
   {
     printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
+    show_osd_message("%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
 
     UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + to_string(m_track + 1));
   }
@@ -1264,8 +1265,11 @@ int main(int argc, char *argv[])
   {
     printf("Playing: %s\n", m_filename.c_str());
 
-    int lastSlash = m_filename.rfind("/");
-    UpdateRaspicastMetaData(m_filename.substr(lastSlash + 1));
+    int lastSlash = m_filename.find_last_of('/');
+    string short_filename = m_filename.substr(lastSlash + 1);
+
+    show_osd_message(short_filename.c_str());
+    UpdateRaspicastMetaData(short_filename);
   }
 
   // select an audio stream
