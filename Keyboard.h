@@ -12,17 +12,14 @@ class Keyboard : public OMXThread
  protected:
   struct termios orig_termios;
   int orig_fl;
-  int m_action;
+  int m_action = -1;
   DBusConnection *conn;
   std::unordered_map<int,int> m_keymap;
   std::string m_dbus_name;
  public:
-  Keyboard();
   ~Keyboard();
-  void Close();
+  void Init(std::string &filename, const std::string &dbus_name);
   void Process();
-  void setKeymap(std::string &filename);
-  void setDbusName(const std::string &dbus_name);
   void Sleep(unsigned int dwMilliSeconds);
   int getEvent();
  private:
@@ -30,4 +27,5 @@ class Keyboard : public OMXThread
   void send_action(int action);
   int dbus_connect();
   void dbus_disconnect();
+  bool m_init = false;
 };

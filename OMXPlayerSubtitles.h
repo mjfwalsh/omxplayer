@@ -53,7 +53,6 @@ public:
                    uint32_t *palette) BOOST_NOEXCEPT;
 
   void Close() BOOST_NOEXCEPT;
-  void DeInit() BOOST_NOEXCEPT;
   void Flush() BOOST_NOEXCEPT;
   void Resume() BOOST_NOEXCEPT;
   void Pause() BOOST_NOEXCEPT;

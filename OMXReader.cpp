@@ -124,8 +124,11 @@ static int dvd_read(void *h, uint8_t* buf, int size)
   int ret = reader->Read(buf, size);
 
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(58,12,100)
-  if (ret == 0 && reader->IsEOF())
-    ret = AVERROR_EOF;
+  if (ret == 0) {
+    if(reader->IsEOF())
+      return AVERROR_EOF;
+    else puts("OMXDvdPlayer failed to read anything");
+  }
 #endif
 
   return ret;

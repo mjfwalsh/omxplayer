@@ -79,7 +79,7 @@ OMXReader         m_omx_reader;
 int               m_audio_index     = -1;
 OMXClock          *m_av_clock           = NULL;
 OMXControl        m_omxcontrol;
-Keyboard          *m_keyboard           = NULL;
+Keyboard          m_keyboard;
 OMXAudioConfig    m_config_audio;
 OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
@@ -570,10 +570,6 @@ int main(int argc, char *argv[])
   auto ExitFileNotFound = [&](const std::string& path)
   {
     user_message_on_close("File \"%s\" not found.", path.c_str());
-    if(m_keyboard != NULL)
-      delete m_keyboard;
-
-    m_player_subtitles.DeInit();
 
     if (m_av_clock)
       delete m_av_clock;
@@ -1102,14 +1098,7 @@ int main(int argc, char *argv[])
     m_keys = false;
 
   if(m_keys)
-  {
-    m_keyboard = new Keyboard();
-    if(m_keyboard)
-    {
-      m_keyboard->setKeymap(keymap_file);
-      m_keyboard->setDbusName(m_dbus_name);
-    }
-  }
+    m_keyboard.Init(keymap_file, m_dbus_name);
 
   // Disable seeking and playlists when reading from a pipe
   if(IsPipe(m_filename))
@@ -1430,7 +1419,7 @@ int main(int argc, char *argv[])
 
     if (update) {
       OMXControlResult result = control_err
-                               ? (OMXControlResult)(m_keyboard ? m_keyboard->getEvent() : KeyConfig::ACTION_BLANK)
+                               ? (OMXControlResult)(m_keyboard.getEvent())
                                : m_omxcontrol.getEvent();
 
       switch(result.getKey())
@@ -2024,6 +2013,7 @@ end_of_play_loop:
     goto change_file;
   }
 
+  // not playing anything else, so shutdown
   if (m_NativeDeinterlace)
   {
     char response[80];
@@ -2035,16 +2025,10 @@ end_of_play_loop:
     vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
   }
 
-  m_player_subtitles.DeInit();
-
   delete m_av_clock;
 
   if(m_DvdPlayer)
     delete m_DvdPlayer;
-
-  // not playing anything else, so shutdown
-  if(NULL != m_keyboard)
-    delete m_keyboard;
 
   vc_tv_show_info(0);
 

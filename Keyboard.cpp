@@ -9,8 +9,18 @@
 #include "Keyboard.h"
 #include "KeyConfig.h"
 
-Keyboard::Keyboard() 
+void Keyboard::Init(std::string &filename, const std::string &dbus_name)
 {
+  //setDbusName
+  m_dbus_name = dbus_name;
+
+  // setKeymap
+  if(filename.empty()) {
+    KeyConfig::buildDefaultKeymap(m_keymap);
+  } else {
+    KeyConfig::parseConfigFile(filename, m_keymap);
+  }
+
   if (isatty(STDIN_FILENO)) 
   {
     struct termios new_termios;
@@ -43,22 +53,21 @@ Keyboard::Keyboard()
 
   dbus_threads_init_default();
   Create();
-  m_action = -1;
+
+  m_init = true;
 }
 
-Keyboard::~Keyboard() 
+Keyboard::~Keyboard()
 {
-  Close();
-}
-
-void Keyboard::Close()
-{
-  if (ThreadHandle()) 
+  if(m_init)
   {
-    StopThread();
+    if (ThreadHandle())
+    {
+      StopThread();
+    }
+    dbus_disconnect();
+    restore_term();
   }
-  dbus_disconnect();
-  restore_term();
 }
 
 void Keyboard::restore_term() 
@@ -108,6 +117,9 @@ void Keyboard::Process()
 
 int Keyboard::getEvent()
 {
+  if(!m_init)
+    return KeyConfig::ACTION_BLANK;
+
   int ret = m_action;
   m_action = -1;
   return ret;
@@ -156,20 +168,6 @@ fail:
 
   if (reply)
     dbus_message_unref(reply);
-}
-
-void Keyboard::setKeymap(std::string &filename)
-{
-  if(filename.empty()) {
-    KeyConfig::buildDefaultKeymap(m_keymap);
-  } else {
-    KeyConfig::parseConfigFile(filename, m_keymap);
-  }
-}
-
-void Keyboard::setDbusName(const std::string &dbus_name)
-{
-  m_dbus_name = dbus_name;
 }
 
 int Keyboard::dbus_connect() 

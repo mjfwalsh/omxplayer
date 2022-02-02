@@ -51,8 +51,8 @@ class OMXDvdPlayer
 	dvd_reader_t *dvd_device = NULL;
 	dvd_file_t *dvd_track = NULL;
 
-	int current_track;
-	int total_blocks;
+	int current_track = -1;
+	int total_blocks = 0;
 
 	std::string device_path;
 	std::string disc_title;

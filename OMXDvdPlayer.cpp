@@ -306,7 +306,7 @@ int64_t OMXDvdPlayer::GetSizeInBytes()
 bool OMXDvdPlayer::IsEOF()
 {
 	if(!m_open)
-		return false;
+		return true;
 
 	return pos >= total_blocks;
 }

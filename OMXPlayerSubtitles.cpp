@@ -50,6 +50,18 @@ OMXPlayerSubtitles::OMXPlayerSubtitles() BOOST_NOEXCEPT
 
 OMXPlayerSubtitles::~OMXPlayerSubtitles() BOOST_NOEXCEPT
 {
+  if(Running())
+  {
+    SendToRenderer(Message::Stop{});
+    StopThread();
+  }
+
+  if(m_dvd_codec_context)
+    avcodec_free_context(&m_dvd_codec_context);
+
+  if(m_palette)
+    delete m_palette;
+
   Close();
 }
 
@@ -154,21 +166,6 @@ void OMXPlayerSubtitles::Close() BOOST_NOEXCEPT
   m_mailbox.clear();
   m_subtitle_buffers.clear();
   m_stream_count = 0;
-}
-
-void OMXPlayerSubtitles::DeInit() BOOST_NOEXCEPT
-{
-  if(Running())
-  {
-    SendToRenderer(Message::Stop{});
-    StopThread();
-  }
-
-  if(m_dvd_codec_context)
-    avcodec_free_context(&m_dvd_codec_context);
-
-  if(m_palette)
-    delete m_palette;
 }
 
 void OMXPlayerSubtitles::Process()
@@ -357,6 +354,8 @@ RenderLoop(float font_size,
       [&](Message::Clear&&)
       {
         renderer.clear();
+        external_subtitles.clear();
+        subtitles.clear();
       });
 
     if(exit) break;
