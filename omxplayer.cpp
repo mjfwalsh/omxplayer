@@ -88,7 +88,6 @@ int               m_subtitle_index      = -1;
 OMXPlayerVideo    m_player_video;
 OMXPlayerAudio    m_player_audio;
 OMXPlayerSubtitles  m_player_subtitles;
-int               m_tv_show_info        = 0;
 bool              m_has_video           = false;
 bool              m_has_audio           = false;
 bool              m_has_subtitle        = false;
@@ -1437,10 +1436,6 @@ int main(int argc, char *argv[])
 
         goto end_of_play_loop;
         break;
-      case KeyConfig::ACTION_SHOW_INFO:
-        m_tv_show_info = !m_tv_show_info;
-        vc_tv_show_info(m_tv_show_info);
-        break;
       case KeyConfig::ACTION_DECREASE_SPEED:
         if(playspeed_current > 0)
           playspeed_current--;
@@ -1748,29 +1743,6 @@ int main(int argc, char *argv[])
                m_player_video.GetCached()>>10, m_player_audio.GetCached()>>10);
       }
 
-      if(m_tv_show_info)
-      {
-        static unsigned count;
-        if ((count++ & 7) == 0)
-        {
-          char response[80];
-          if (m_player_video.GetDecoderBufferSize() && m_player_audio.GetCacheTotal())
-            vc_gencmd(response, sizeof response, "render_bar 4 video_fifo %d %d %d %d",
-                (int)(100.0*m_player_video.GetDecoderBufferSize()-m_player_video.GetDecoderFreeSpace())/m_player_video.GetDecoderBufferSize(),
-                (int)(100.0*video_fifo/m_player_audio.GetCacheTotal()),
-                0, 100);
-          if (m_player_audio.GetCacheTotal())
-            vc_gencmd(response, sizeof response, "render_bar 5 audio_fifo %d %d %d %d",
-                (int)(100.0*audio_fifo/m_player_audio.GetCacheTotal()),
-                (int)(100.0*m_player_audio.GetDelay()/m_player_audio.GetCacheTotal()),
-                0, 100);
-          vc_gencmd(response, sizeof response, "render_bar 6 video_queue %d %d %d %d",
-                m_player_video.GetLevel(), 0, 0, 100);
-          vc_gencmd(response, sizeof response, "render_bar 7 audio_queue %d %d %d %d",
-                m_player_audio.GetLevel(), 0, 0, 100);
-        }
-      }
-
       if (audio_pts != AV_NOPTS_VALUE)
       {
         audio_fifo_low = m_has_audio && audio_fifo < threshold;
@@ -2029,8 +2001,6 @@ end_of_play_loop:
 
   if(m_DvdPlayer)
     delete m_DvdPlayer;
-
-  vc_tv_show_info(0);
 
   g_OMX.Deinitialize();
   bcm_host_deinit();
