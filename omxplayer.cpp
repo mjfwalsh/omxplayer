@@ -60,7 +60,7 @@ extern "C" {
 
 typedef enum {CONF_FLAGS_FORMAT_NONE, CONF_FLAGS_FORMAT_SBS, CONF_FLAGS_FORMAT_TB, CONF_FLAGS_FORMAT_FP } FORMAT_3D_T;
 enum PCMChannels  *m_pChannelMap        = NULL;
-volatile sig_atomic_t g_abort           = false;
+volatile sig_atomic_t m_stopped           = false;
 long              m_Volume              = 0;
 long              m_Amplification       = 0;
 bool              m_NativeDeinterlace   = false;
@@ -70,10 +70,6 @@ bool              m_keys                = true;
 std::string       m_external_subtitles_path;
 bool              m_has_external_subtitles = false;
 std::string       m_dbus_name           = "org.mpris.MediaPlayer2.omxplayer";
-float             m_font_size           = 0.055f;
-bool              m_centered            = false;
-bool              m_ghost_box           = true;
-unsigned int      m_subtitle_lines      = 3;
 bool              m_Pause               = false;
 OMXReader         m_omx_reader;
 int               m_audio_index     = -1;
@@ -83,7 +79,6 @@ Keyboard          m_keyboard;
 OMXAudioConfig    m_config_audio;
 OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
-bool              m_no_hdmi_clock_sync  = false;
 int               m_subtitle_index      = -1;
 OMXPlayerVideo    m_player_video;
 OMXPlayerAudio    m_player_audio;
@@ -96,7 +91,38 @@ RecentFileStore   m_file_store;
 RecentDVDStore    m_dvd_store;
 AutoPlaylist      m_playlist;
 bool              m_firstfile           = true;
-bool              m_exit_with_error    = false;
+bool              m_send_eos            = false;
+bool              m_seek_flush          = false;
+std::string       m_filename;
+int               m_track               = -1;
+bool              m_is_dvd              = false;
+bool              m_is_dvd_device       = false;
+OMXDvdPlayer      *m_DvdPlayer          = NULL;
+int               m_incr                = -1;
+int               m_loop_from           = 0;
+COMXCore          g_OMX;
+bool              m_stats               = false;
+bool              m_dump_format         = false;
+bool              m_dump_format_exit    = false;
+FORMAT_3D_T       m_3d                  = CONF_FLAGS_FORMAT_NONE;
+bool              m_refresh             = false;
+float             m_threshold           = -1.0f; // amount of audio/video required to come out of buffering
+float             m_timeout             = 10.0f; // amount of time file/network operation can stall for before timing out
+int               m_orientation         = -1; // unset
+float             m_fps                 = 0.0f; // unset
+TV_DISPLAY_STATE_T   tv_state;
+std::string       m_cookie;
+std::string       m_user_agent;
+std::string       m_lavfdopts;
+std::string       m_avdict;
+int               m_next_prev_file      = 0;
+char              m_audio_lang[4]       = "\0";
+char              m_subtitle_lang[4]    = "\0";
+std::string       m_replacement_filename;
+bool              m_playlist_enabled    = true;
+float             m_latency             = 0.0f;
+int               m_control_err;
+bool              m_ext_subs_showing    = false;
 
 #define S(x) (int)(DVD_PLAYSPEED_NORMAL*(x))
 int playspeeds[] = {S(0), S(1/16.0), S(1/8.0), S(1/4.0), S(1/2.0), S(0.975), S(1.0), S(1.125), S(2.0), S(4.0)};
@@ -105,9 +131,23 @@ int playspeed_current = playspeed_normal;
 
 enum{ERROR=-1,SUCCESS,ONEBYTE};
 
+enum {
+//EXIT_SUCCESS = 0,
+//EXIT_FAILURE = 2,
+  PLAY_STOPPED = 3,
+  CHANGE_FILE = 4,
+  CHANGE_PLAYLIST_ITEM = 5,
+  RUN_PLAY_LOOP = 6,
+  END_PLAY = 7,
+  END_PLAY_WITH_ERROR = 8,
+  ABORT_PLAY = 9,
+  SHUTDOWN = 10,
+};
+
+
 void sig_handler(int s)
 {
-  g_abort = true;
+  m_stopped = true;
 }
 
 void print_usage()
@@ -132,15 +172,6 @@ void print_version()
   printf("        Repository: %s\n", VERSION_REPO);
 }
 
-// Exit macros for main function
-#define ExitGently() { g_abort = true; goto end_of_play_loop; }
-#define ExitGentlyOnError() ExitGentlyWithMessage("Error: omxplayer.cpp line: %d", __LINE__)
-#define ExitGentlyWithMessage(...) { \
-  user_message_on_close(__VA_ARGS__); \
-  m_exit_with_error = true; \
-  ExitGently(); \
-}
-
 #define show_osd_message(...)      _user_message(false, 1500, false, strprintf(__VA_ARGS__))
 #define user_message(...)          _user_message(true,  1500, false, strprintf(__VA_ARGS__))
 #define user_message_on_close(...) _user_message(true,  3000,  true, strprintf(__VA_ARGS__))
@@ -160,21 +191,33 @@ char *strprintf(const char* format, ...)
     return buffer;
 }
 
-void _user_message(bool to_stdout, int duration, bool sleep, char *msg)
+void _user_message(bool to_stdout, int duration, bool sleep, const char *msg)
 {
   if(m_osd)
     m_player_subtitles.DisplayText(msg, duration);
 
   if(to_stdout)
   {
-    char *p = msg;
-    while(*p != '\0' && *p != '\n') p++;
-	if(*p == '\n') *p = ' ';
-	puts(msg);
+    char *s = strdup(msg);
+
+    char *p = s;
+    while(*p != '\0') {
+      if(*p == '\n') *p = ' ';
+      p++;
+    }
+
+    puts(s);
+    free(s);
   }
 
   // useful when we want to display some osd before exiting the program
   if(m_osd && sleep) m_av_clock->OMXSleep(duration);
+}
+
+int exit_with_message(const char *msg)
+{
+  _user_message(true, 3000,  true, msg);
+  return END_PLAY_WITH_ERROR;
 }
 
 void show_progress_message(const char *msg, int pos, int dur, bool print_to_stdout = false)
@@ -526,99 +569,71 @@ static void blank_background(uint32_t rgba)
   assert( ret == 0 );
 }
 
+int ExitFileNotFound(const std::string& path)
+{
+  user_message_on_close("File \"%s\" not found.", path.c_str());
+
+  if (m_av_clock)
+    delete m_av_clock;
+
+  bcm_host_deinit();
+  g_OMX.Deinitialize();
+  return EXIT_FAILURE;
+}
+
+void ChangeSubtitle(int delta)
+{
+  m_player_subtitles.SetActiveStreamDelta(delta);
+  if(!m_player_subtitles.GetVisible()) {
+    m_subtitle_lang[0] = '\0';
+    show_osd_message("Subtitles Off");
+  } else {
+    int new_index = m_player_subtitles.GetActiveStream();
+    strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
+        new_index).c_str());
+    if(m_subtitle_lang[0] != '\0')
+        show_osd_message("Subtitle stream: %s", m_subtitle_lang);
+    else
+        show_osd_message("Subtitle stream: %d", new_index + 1);
+  }
+  PrintSubtitleInfo();
+}
+
+void PlayPause(bool new_status)
+{
+  m_Pause = new_status;
+
+  if (m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_NORMAL &&
+      m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
+  {
+    puts("resume");
+    playspeed_current = playspeed_normal;
+    SetSpeed(playspeeds[playspeed_current]);
+    m_seek_flush = true;
+  }
+
+  if(m_has_subtitle)
+  {
+    if(m_Pause) m_player_subtitles.Pause();
+    else m_player_subtitles.Resume();
+  }
+
+  int t = m_av_clock->OMXMediaTime() * 1e-6;
+  int dur = m_omx_reader.GetStreamLengthSeconds();
+  show_progress_message(m_Pause ? "Pause" : "Play", t, dur);
+}
+
+int change_file();
+int change_playlist_item();
+int run_play_loop();
+void end_of_play_loop();
+int playlist_control();
+int shutdown(bool exit_with_error = false);
+
 int main(int argc, char *argv[])
 {
   signal(SIGINT, sig_handler);
   signal(SIGTERM, sig_handler);
-
-  bool                  m_send_eos            = false;
-  bool                  m_seek_flush          = false;
-  bool                  m_chapter_seek        = false;
-  std::string           m_filename;
-  int                   m_track               = -1;
-  bool                  m_is_dvd              = false;
-  bool                  m_is_dvd_device       = false;
-  OMXDvdPlayer          *m_DvdPlayer          = NULL;
-  int                   m_incr                = -1;
-  int                   m_loop_from           = 0;
-  COMXCore              g_OMX;
-  bool                  m_stats               = false;
-  bool                  m_dump_format         = false;
-  bool                  m_dump_format_exit    = false;
-  FORMAT_3D_T           m_3d                  = CONF_FLAGS_FORMAT_NONE;
-  bool                  m_refresh             = false;
-  int64_t               startpts              = 0;
-  uint32_t              m_blank_background    = 0;
-  bool sentStarted = false;
-  float m_threshold      = -1.0f; // amount of audio/video required to come out of buffering
-  float m_timeout        = 10.0f; // amount of time file/network operation can stall for before timing out
-  int m_orientation      = -1; // unset
-  float m_fps            = 0.0f; // unset
-  TV_DISPLAY_STATE_T   tv_state;
-  int64_t last_seek_pos   = 0;
-  std::string            m_cookie;
-  std::string            m_user_agent;
-  std::string            m_lavfdopts;
-  std::string            m_avdict;
-  int                    m_next_prev_file      = 0;
-  char                   m_audio_lang[4]       = "\0";
-  char                   m_subtitle_lang[4]    = "\0";
-  std::string            m_replacement_filename;
-  bool                   m_playlist_enabled    = true;
-
-  auto ExitFileNotFound = [&](const std::string& path)
-  {
-    user_message_on_close("File \"%s\" not found.", path.c_str());
-
-    if (m_av_clock)
-      delete m_av_clock;
-
-    bcm_host_deinit();
-    g_OMX.Deinitialize();
-    return EXIT_FAILURE;
-  };
-
-  auto ChangeSubtitle = [&](int delta)
-  {
-    m_player_subtitles.SetActiveStreamDelta(delta);
-    if(!m_player_subtitles.GetVisible()) {
-      m_subtitle_lang[0] = '\0';
-      show_osd_message("Subtitles Off");
-    } else {
-      int new_index = m_player_subtitles.GetActiveStream();
-      strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
-          new_index).c_str());
-      if(m_subtitle_lang[0] != '\0')
-          show_osd_message("Subtitle stream: %s", m_subtitle_lang);
-      else
-          show_osd_message("Subtitle stream: %d", new_index + 1);
-    }
-    PrintSubtitleInfo();
-  };
-
-  auto PlayPause = [&](bool new_status)
-  {
-    m_Pause = new_status;
-
-    if (m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_NORMAL &&
-        m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
-    {
-      puts("resume");
-      playspeed_current = playspeed_normal;
-      SetSpeed(playspeeds[playspeed_current]);
-      m_seek_flush = true;
-    }
-
-    if(m_has_subtitle)
-    {
-      if(m_Pause) m_player_subtitles.Pause();
-      else m_player_subtitles.Resume();
-    }
-
-    int t = m_av_clock->OMXMediaTime() * 1e-6;
-    int dur = m_omx_reader.GetStreamLengthSeconds();
-    show_progress_message(m_Pause ? "Pause" : "Play", t, dur);
-  };
 
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
@@ -722,11 +737,15 @@ int main(int argc, char *argv[])
     { 0, 0, 0, 0 }
   };
 
-  int64_t m_last_check_time = 0;
-  float m_latency = 0.0f;
-  int c;
-  std::string mode;
-  std::string keymap_file;
+  int               c;
+  std::string       mode;
+  bool              centered            = false;
+  bool              ghost_box           = true;
+  unsigned int      subtitle_lines      = 3;
+  float             font_size           = 0.055f;
+  bool              no_hdmi_clock_sync  = false;
+  uint32_t          background  = 0;
+  std::string       keymap_file;
 
   while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
@@ -742,7 +761,7 @@ int main(int argc, char *argv[])
         m_config_video.hdmi_clock_sync = true;
         break;
       case 'z':
-        m_no_hdmi_clock_sync = true;
+        no_hdmi_clock_sync = true;
         break;
       case '3':
         mode = optarg;
@@ -871,14 +890,14 @@ int main(int argc, char *argv[])
         {
           const int thousands = atoi(optarg);
           if (thousands > 0)
-            m_font_size = thousands*0.001f;
+            font_size = thousands*0.001f;
         }
         break;
       case align_opt:
-        m_centered = !strcmp(optarg, "center");
+        centered = !strcmp(optarg, "center");
         break;
       case no_ghost_box_opt:
-        m_ghost_box = false;
+        ghost_box = false;
         break;
       case subtitles_opt:
         m_external_subtitles_path = optarg;
@@ -886,7 +905,7 @@ int main(int argc, char *argv[])
         m_subtitle_index = 0;
         break;
       case lines_opt:
-        m_subtitle_lines = std::max(atoi(optarg), 1);
+        subtitle_lines = std::max(atoi(optarg), 1);
         break;
       case aspect_mode_opt:
         if (optarg) {
@@ -967,7 +986,7 @@ int main(int argc, char *argv[])
         m_playlist_enabled = false;
         break;
       case 'b':
-        m_blank_background = optarg ? strtoul(optarg, NULL, 0) : 0xff000000;
+        background = optarg ? strtoul(optarg, NULL, 0) : 0xff000000;
         break;
       case key_config_opt:
         keymap_file = optarg;
@@ -1028,7 +1047,11 @@ int main(int argc, char *argv[])
   }
 
   bcm_host_init();
-  g_OMX.Initialize();
+  if(!g_OMX.Initialize())
+  {
+    bcm_host_deinit();
+    return EXIT_FAILURE;
+  }
 
   // start the clock
   m_av_clock = new OMXClock();
@@ -1039,15 +1062,15 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  blank_background(m_blank_background);
+  blank_background(background);
 
   // init subtitle object
   if(!m_player_subtitles.Init(m_config_video.display,
                                 m_config_video.layer,
-                                m_font_size,
-                                m_centered,
-                                m_ghost_box,
-                                m_subtitle_lines,
+                                font_size,
+                                centered,
+                                ghost_box,
+                                subtitle_lines,
                                 m_av_clock))
   {
     if (m_av_clock)
@@ -1064,7 +1087,7 @@ int main(int argc, char *argv[])
   if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
     printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
 
-  int control_err = m_omxcontrol.init(
+  m_control_err = m_omxcontrol.init(
     m_av_clock,
     &m_player_audio,
     &m_player_subtitles,
@@ -1077,7 +1100,7 @@ int main(int argc, char *argv[])
     m_refresh = true;
 
   // you really don't want want to match refresh rate without hdmi clock sync
-  if ((m_refresh || m_NativeDeinterlace) && !m_no_hdmi_clock_sync)
+  if ((m_refresh || m_NativeDeinterlace) && !no_hdmi_clock_sync)
     m_config_video.hdmi_clock_sync = true;
 
   if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
@@ -1110,9 +1133,46 @@ int main(int argc, char *argv[])
   if(m_has_external_subtitles && !Exists(m_external_subtitles_path))
     return ExitFileNotFound(m_external_subtitles_path);
 
-  // we jump here when is provided with a new file
-  change_file:
+  // control loop
+  int rv = CHANGE_FILE;
 
+  while(1) {
+    switch(rv) {
+    case CHANGE_FILE:
+      rv = change_file();
+      break;
+    case CHANGE_PLAYLIST_ITEM:
+      rv = change_playlist_item();
+      break;
+    case RUN_PLAY_LOOP:
+      rv = run_play_loop();
+      end_of_play_loop();
+      break;
+    case END_PLAY_WITH_ERROR:
+      rv = shutdown(true);
+      break;
+    case ABORT_PLAY:
+      m_stopped = true;
+      rv = playlist_control();
+      break;
+    case END_PLAY:
+      rv = playlist_control();
+      break;
+    case SHUTDOWN:
+      rv = shutdown(false);
+      // fall through
+    case EXIT_SUCCESS:
+    case EXIT_FAILURE:
+    case PLAY_STOPPED:
+    default:
+      return rv;
+    }
+  }
+}
+
+// we jump here when is provided with a new file
+int change_file()
+{
   // strip off file://
   if(m_filename.substr(0, 7) == "file://" )
     m_filename.erase(0, 7);
@@ -1147,6 +1207,8 @@ int main(int argc, char *argv[])
   }
 
   // m_filename may have changed
+  m_is_dvd = false;
+  m_is_dvd_device = false;
   if(is_local_file)
   {
     // Are we dealing with a DVD VIDEO_TS folder or a device file
@@ -1179,9 +1241,13 @@ int main(int argc, char *argv[])
     }
   }
 
-  // we jump here when playing the next item in an auto generated playlist
-  change_playlist_item:
+  return CHANGE_PLAYLIST_ITEM;
+}
 
+
+// we jump here when playing the next item in an auto generated playlist
+int change_playlist_item()
+{
   // a playlist item is a new file that could be an iso or a dmg files
   if(m_filename.substr(m_filename.size()-4, 4) == ".iso"
       || m_filename.substr(m_filename.size()-4, 4) == ".dmg")
@@ -1192,11 +1258,11 @@ int main(int argc, char *argv[])
     m_has_external_subtitles = false;
     m_DvdPlayer = new OMXDvdPlayer();
     if(!m_DvdPlayer->Open(m_filename))
-      ExitGentlyOnError();
+      return exit_with_message("Failed to open DVD");
 
     m_DvdPlayer->enableHeuristicTrackSelection();
 
-	// Was DVD played before?
+    // Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_playlist_enabled)
     {
       // check we have a valid dvd id
@@ -1204,14 +1270,14 @@ int main(int argc, char *argv[])
         m_playlist_enabled = false;
       else
         m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
-	}
+    }
 
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)
       m_track = m_DvdPlayer->findNextEnabledTrack(-1);
 
     if(!m_DvdPlayer->OpenTrack(m_track))
-      ExitGentlyOnError();
+      return exit_with_message("Failed to open DVD track");
   }
   else
   {
@@ -1233,14 +1299,18 @@ int main(int argc, char *argv[])
   if(m_incr == -1)
     m_incr = 0;
 
-  // we jump here when playing the next track in a dvd
-  change_track:
+  return RUN_PLAY_LOOP;
+}
 
-  if(!m_omx_reader.Open(m_filename, IsURL(m_filename), m_dump_format, m_config_audio.is_live, m_timeout, m_cookie, m_user_agent, m_lavfdopts, m_avdict, m_DvdPlayer))
-    ExitGentlyWithMessage("File read error or format not supported");
+// we jump here when playing the next track in a dvd
+int run_play_loop()
+{
+  if(!m_omx_reader.Open(m_filename, IsURL(m_filename), m_dump_format, m_config_audio.is_live,
+                        m_timeout, m_cookie, m_user_agent, m_lavfdopts, m_avdict, m_DvdPlayer))
+    return exit_with_message("File read error or format not supported");
 
   if (m_dump_format_exit)
-    ExitGently();
+    return ABORT_PLAY;
 
   if(m_is_dvd)
   {
@@ -1329,7 +1399,7 @@ int main(int argc, char *argv[])
     m_config_video.hints.orientation = m_orientation;
 
   if(m_has_video && !m_player_video.Open(m_av_clock, m_config_video))
-    ExitGentlyOnError();
+    return exit_with_message("Failed to open video");
 
   if(m_has_subtitle || m_osd)
   {
@@ -1337,7 +1407,7 @@ int main(int argc, char *argv[])
 
     if(!m_player_subtitles.Open(m_omx_reader.SubtitleStreamCount(),
                                 m_external_subtitles_path))
-      ExitGentlyOnError();
+      return exit_with_message("Failed to open subtitles");
 
     // sub_dim and sub_aspect asre passed through FindDVDSubs in case
     // the subtitles have a different size
@@ -1347,7 +1417,7 @@ int main(int argc, char *argv[])
     if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
       if(!m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
-      	ExitGentlyOnError();
+        return exit_with_message("Failed to initialise DVD subtitles");
     }
 
     if(!m_DvdPlayer && palette != NULL)
@@ -1384,7 +1454,7 @@ int main(int argc, char *argv[])
     m_config_audio.passthrough = false;
 
   if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, &m_omx_reader))
-    ExitGentlyOnError();
+    return exit_with_message("Failed to open audio out");
 
   if(m_has_audio)
   {
@@ -1400,24 +1470,30 @@ int main(int argc, char *argv[])
 
   m_av_clock->OMXReset(m_has_video, m_has_audio);
   m_av_clock->OMXStateExecute();
-  sentStarted = true;
 
   // forget seek time fo all files being played
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
 
-  while(!g_abort)
+  int64_t last_check_time = 0;
+  bool update = false;
+  bool chapter_seek = false;
+  int64_t startpts = 0;
+  bool sentStarted = true;
+  int64_t last_seek_pos   = 0.0f;
+
+  while(!m_stopped)
   {
     int64_t now = OMXClock::GetAbsoluteClock();
-    bool update = false;
-    m_chapter_seek = false;
-    if (m_last_check_time == 0 || m_last_check_time + 20000 <= now)
+    update = false;
+    chapter_seek = false;
+    if (last_check_time == 0 || last_check_time + 20000 <= now)
     {
       update = true;
-      m_last_check_time = now;
+      last_check_time = now;
     }
 
     if (update) {
-      OMXControlResult result = control_err
+      OMXControlResult result = m_control_err
                                ? (OMXControlResult)(m_keyboard.getEvent())
                                : m_omxcontrol.getEvent();
 
@@ -1434,8 +1510,8 @@ int main(int argc, char *argv[])
           break;
         }
 
-        goto end_of_play_loop;
-        break;
+        m_stopped = true;
+        return END_PLAY;
       case KeyConfig::ACTION_DECREASE_SPEED:
         if(playspeed_current > 0)
           playspeed_current--;
@@ -1494,14 +1570,14 @@ int main(int argc, char *argv[])
             {
               m_send_eos = true;
               m_next_prev_file = -1;
-              goto end_of_play_loop;
+              return END_PLAY;
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
               show_osd_message("Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
-              m_chapter_seek = true;
+              chapter_seek = true;
             }
           }
           else
@@ -1523,14 +1599,14 @@ int main(int argc, char *argv[])
             {
               m_send_eos = true;
               m_next_prev_file = 1;
-              goto end_of_play_loop;
+              return END_PLAY;
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
               show_osd_message("Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
-              m_chapter_seek = true;
+              chapter_seek = true;
             }
           }
           else
@@ -1541,11 +1617,11 @@ int main(int argc, char *argv[])
         break;
       case KeyConfig::ACTION_PREVIOUS_FILE:
         m_next_prev_file = -1;
-        goto end_of_play_loop;
+        return END_PLAY;
         break;
       case KeyConfig::ACTION_NEXT_FILE:
         m_next_prev_file = 1;
-        goto end_of_play_loop;
+        return END_PLAY;
         break;
       case KeyConfig::ACTION_PREVIOUS_SUBTITLE:
         if(m_has_subtitle) ChangeSubtitle(-1);
@@ -1601,8 +1677,8 @@ int main(int argc, char *argv[])
         }
         break;
       case KeyConfig::ACTION_EXIT:
-        g_abort = true;
-        goto end_of_play_loop;
+        m_stopped = true;
+        return END_PLAY;
         break;
       case KeyConfig::ACTION_SEEK_BACK_SMALL:
         if(m_omx_reader.CanSeek()) m_incr = -30;
@@ -1681,7 +1757,7 @@ int main(int argc, char *argv[])
       if(m_has_subtitle)
         m_player_subtitles.Pause();
 
-      if (!m_chapter_seek)
+      if (!chapter_seek)
       {
         pts = m_av_clock->OMXMediaTime();
 
@@ -1701,11 +1777,11 @@ int main(int argc, char *argv[])
       sentStarted = false;
 
       if (m_omx_reader.IsEof())
-        goto end_of_play_loop;
+        return END_PLAY;
 
       // Quick reset to reduce delay during loop & seek.
       if (m_has_video && !m_player_video.Reset())
-        ExitGentlyOnError();
+        return exit_with_message("Failed to open video out");
 
       CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
 
@@ -1719,7 +1795,7 @@ int main(int argc, char *argv[])
 
     /* player got in an error state */
     if(m_player_audio.Error())
-      ExitGentlyWithMessage("Audio player error");
+      return exit_with_message("Audio player error");
 
     if (update)
     {
@@ -1890,8 +1966,13 @@ int main(int argc, char *argv[])
       m_omx_pkt = NULL;
     }
   }
+  return END_PLAY;
+}
 
-end_of_play_loop:
+
+
+void end_of_play_loop()
+{
   if (m_stats)
     puts("");
 
@@ -1916,7 +1997,7 @@ end_of_play_loop:
   }
 
   // remember this for later
-  bool ext_subs_showing = m_has_external_subtitles && m_player_subtitles.GetVisible();
+  m_ext_subs_showing = m_has_external_subtitles && m_player_subtitles.GetVisible();
 
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
@@ -1928,9 +2009,15 @@ end_of_play_loop:
   // stop seeking
   m_seek_flush = false;
   m_incr = 0;
+}
 
-  if(m_playlist_enabled && !m_exit_with_error) {
-    if(!g_abort && (m_send_eos || m_next_prev_file != 0)) {
+
+int playlist_control()
+{
+  int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
+
+  if(m_playlist_enabled) {
+    if(!m_stopped && (m_send_eos || m_next_prev_file != 0)) {
       // default to playing next track file
       if(m_next_prev_file == 0) m_next_prev_file = 1;
 
@@ -1940,7 +2027,7 @@ end_of_play_loop:
         {
           m_firstfile = false;
           m_next_prev_file = 0;
-          goto change_track;
+          return RUN_PLAY_LOOP;
         }
 
         // no more tracks to play, exit DVD mode
@@ -1955,18 +2042,18 @@ end_of_play_loop:
           && Exists(m_filename)) {
         m_firstfile = false;
         m_next_prev_file = 0;
-        goto change_playlist_item;
+        return CHANGE_PLAYLIST_ITEM;
       }
     } else if(!m_firstfile || t > 5) {
       if(m_is_dvd_device)
         m_dvd_store.remember(m_track, t, &m_audio_lang[0], &m_subtitle_lang[0]);
       else
         m_file_store.remember(m_filename, m_track, t, &m_audio_lang[0], &m_subtitle_lang[0],
-            ext_subs_showing);
+            m_ext_subs_showing);
     }
   }
 
-  if(!g_abort && !m_replacement_filename.empty()) {
+  if(!m_replacement_filename.empty()) {
     // we've received a new file to play via dbus
     if(m_is_dvd) {
       m_is_dvd = false;
@@ -1982,9 +2069,14 @@ end_of_play_loop:
 
     m_firstfile = true;
 
-    goto change_file;
+    return CHANGE_FILE;
   }
 
+  return SHUTDOWN;
+}
+
+int shutdown(bool exit_with_error)
+{
   // not playing anything else, so shutdown
   if (m_NativeDeinterlace)
   {
@@ -2014,7 +2106,7 @@ end_of_play_loop:
   puts("have a nice day ;)");
 
   // Exit on failure
-  if(m_exit_with_error)
+  if(exit_with_error)
     return EXIT_FAILURE;
 
   // If user has chosen to dump format exit with sucess
@@ -2023,13 +2115,13 @@ end_of_play_loop:
 
   // exit status OMXPlayer defined value on user quit
   // (including a stop caused by SIGTERM or SIGINT)
-  if (g_abort) {
+  if(m_stopped) {
     puts("Stopped before end of file");
-    return 3;
+    return PLAY_STOPPED;
   }
 
   // exit status success on playback end
-  if (m_send_eos) {
+  if(m_send_eos) {
     puts("Reached end of file");
     return EXIT_SUCCESS;
   }
