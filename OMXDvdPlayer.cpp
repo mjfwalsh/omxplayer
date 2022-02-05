@@ -44,14 +44,17 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 	read_disc_checksum();
 
 	// Open dvd meta data header
-	ifo_handle_t *ifo_zero, **ifo;
-	ifo_zero = ifoOpen(dvd_device, 0);
-	if ( !ifo_zero ) {
+	ifo_handle_t *ifo_zero = ifoOpen(dvd_device, 0);
+	if(!ifo_zero) {
 		fprintf( stderr, "Can't open main ifo!\n");
 		return false;
 	}
 
-	ifo = new ifo_handle_t*[ifo_zero->vts_atrt->nr_of_vtss + 1];
+	ifo_handle_t **ifo = (ifo_handle_t **)calloc(ifo_zero->vts_atrt->nr_of_vtss + 1, sizeof(ifo_handle_t*));
+	if(!ifo) {
+		fputs("Memory error\n", stderr);
+		return false;
+	}
 
 	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
 		ifo[i] = ifoOpen(dvd_device, i);
@@ -63,7 +66,11 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 
 	// alloc space for tracks
 	int read_track_count = track_count = ifo_zero->tt_srpt->nr_of_srpts;
-	tracks = new track_info[read_track_count];
+	tracks = (track_info *)calloc(read_track_count, sizeof(track_info));
+	if(!tracks) {
+		fputs("Memory error\n", stderr);
+		return false;
+	}
 
 	int write_track = -1;
 	for(int read_track = 0; read_track < read_track_count; read_track++) {
@@ -85,6 +92,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		}
 
 		write_track++;
+		tracks[write_track].enabled = true;
 		tracks[write_track].length = dvdtime2msec(&pgc->playback_time);
 		tracks[write_track].chapter_count = pgc->nr_of_programs;
 		int cell_count = pgc->nr_of_cells;
@@ -114,7 +122,11 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		tracks[write_track].last_sector = last_sector;
 
 		// Chapters
-		tracks[write_track].chapters = new int[tracks[write_track].chapter_count];
+		tracks[write_track].chapters = (int *)calloc(tracks[write_track].chapter_count, sizeof(int));
+		if(!tracks[write_track].chapters) {
+			fputs("Memory error\n", stderr);
+			return false;
+		}
 
 		int acc_chapter = 0;
 		for (int i=0; i<tracks[write_track].chapter_count; i++) {
@@ -131,6 +143,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 
 		// streams data is the same for each title set
 		// check if we've already seen this title set
+		tracks[write_track].title = NULL;
 		for(int i = 0; i < write_track; i++) {
 			if(tracks[i].title->title_num == title_set_num) {
 				tracks[write_track].title = tracks[i].title;
@@ -140,7 +153,12 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			continue;
 
 		// allocate new title set
-		tracks[write_track].title = new title_info;
+		tracks[write_track].title = (title_info *)calloc(1, sizeof(title_info));
+		if(!tracks[write_track].title) {
+			fputs("Memory error\n", stderr);
+			return false;
+		}
+
 		tracks[write_track].title->title_num = title_set_num;
 
 		// Audio streams
@@ -148,7 +166,12 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			if (pgc->audio_control[k] & 0x8000)
 				tracks[write_track].title->audiostream_count++;
 
-		tracks[write_track].title->audio_streams = new title_info::audio_stream_info[tracks[write_track].title->audiostream_count];
+		tracks[write_track].title->audio_streams = (title_info::audio_stream_info *)calloc(tracks[write_track].title->audiostream_count, sizeof(title_info::audio_stream_info));
+		if(!tracks[write_track].title->audio_streams) {
+			fputs("Memory error\n", stderr);
+			return false;
+		}
+
 		for (int i = 0, stream_index = 0; i < 8; i++) {
 			if ((pgc->audio_control[i] & 0x8000) == 0) continue;
 
@@ -165,7 +188,12 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			if (pgc->subp_control[k] & 0x80000000)
 				tracks[write_track].title->subtitle_count++;
 
-		tracks[write_track].title->subtitle_streams = new title_info::subtitle_stream_info[tracks[write_track].title->subtitle_count];
+		tracks[write_track].title->subtitle_streams = (title_info::subtitle_stream_info *)calloc(tracks[write_track].title->subtitle_count, sizeof(title_info::subtitle_stream_info));
+		if(!tracks[write_track].title->subtitle_streams) {
+			fputs("Memory error\n", stderr);
+			return false;
+		}
+
 		int x = vtsi_mat->vts_video_attr.display_aspect_ratio == 0 ? 24 : 8;
 		for (int i = 0, stream_index = 0; i < 32; i++) {
 			if ((pgc->subp_control[i] & 0x80000000) == 0) continue;
@@ -187,7 +215,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 
 	// close dvd meta data filehandles
 	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) ifoClose(ifo[i]);
-	delete ifo;
+	free(ifo);
 	ifoClose(ifo_zero);
 	m_allocated = true;
 	puts("Finished parsing DVD meta data");
@@ -196,13 +224,9 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 
 bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 {
-	int ct;
-	if(delta == -1)
-		ct = findPrevEnabledTrack(t);
-	else
-		ct = findNextEnabledTrack(t);
+	int ct = t + delta;
 
-	if(ct == -1)
+	if(ct == -1 || ct >= track_count)
 		return false;
 
 	bool r = OpenTrack(ct);
@@ -401,19 +425,19 @@ OMXDvdPlayer::~OMXDvdPlayer()
 	if(m_allocated) {
 		for(int i = 0; i < track_count; i++) {
 			if(tracks[i].title != NULL) {
-				delete tracks[i].title->audio_streams;
-				delete tracks[i].title->subtitle_streams;			
+				free(tracks[i].title->audio_streams);
+				free(tracks[i].title->subtitle_streams);			
 
 				for(int h = i + 1; h < track_count; h++)
 					if(tracks[i].title == tracks[h].title)
 						tracks[h].title = NULL;
 
-				delete tracks[i].title;
+				free(tracks[i].title);
 				tracks[i].title = NULL;
 			}
-			delete tracks[i].chapters;
+			free(tracks[i].chapters);
 		}
-		delete tracks;
+		free(tracks);
 	}
 
 	if(dvd_device)
@@ -545,26 +569,32 @@ void OMXDvdPlayer::enableHeuristicTrackSelection()
 			}
 		}
 	}
-}
 
-int OMXDvdPlayer::findNextEnabledTrack(int i)
-{
-	for(i++; i < track_count; i++) {
-		if(tracks[i].enabled)
-			return i;
-		else printf("Skipping Track %d\n", i+1);
+	// remove disabled tracks
+	int r = 0;
+	int w = 0;
+	while(r < track_count) {
+		if(tracks[r].enabled) {
+			if(w != r)
+				memcpy(&tracks[w], &tracks[r], sizeof(struct track_info));
+			w++;
+			r++;
+		} else {
+			r++;
+		}
 	}
-	return -1;
-}
 
-int OMXDvdPlayer::findPrevEnabledTrack(int i)
-{
-	for(i--; i > -1; i--) {
-		if(tracks[i].enabled)
-			return i;
-		else printf("Skipping Track %d\n", i+1);
+	int old_track_count = track_count;
+	track_count = w;
+
+	if(old_track_count != track_count) {
+		struct track_info *tmp = (struct track_info *)realloc(tracks, track_count * sizeof(struct track_info));
+		if(!tmp) {
+			fputs("Memory error\n", stderr);
+			exit(1);
+		}
+		tracks = tmp;
 	}
-	return -1;
 }
 
 int clamp(float val)

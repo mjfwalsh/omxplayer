@@ -70,11 +70,11 @@ omxplayer.1: README.md
 
 clean:
 	for i in $(OBJS); do (if test -e "$$i"; then ( rm $$i ); fi ); done
-	rm -f omxplayer.old.log omxplayer.log
+	#rm -f omxplayer.old.log omxplayer.log
 	rm -f omxplayer.bin
-	rm -rf $(DIST)
-	rm -f omxplayer-dist.tgz
-	rm -f version.h MAN omxplayer.1
+	#rm -rf $(DIST)
+	#rm -f omxplayer-dist.tgz
+	#rm -f version.h MAN omxplayer.1
 
 .PHONY: ffmpeg
 ffmpeg:

@@ -1265,7 +1265,7 @@ int change_playlist_item()
 
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)
-      m_track = m_DvdPlayer->findNextEnabledTrack(-1);
+      m_track = 0;
 
     if(!m_DvdPlayer->OpenTrack(m_track))
       return exit_with_message("Failed to open DVD track");
