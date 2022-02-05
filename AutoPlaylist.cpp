@@ -48,8 +48,7 @@ void AutoPlaylist::readPlaylist(string &filename)
 	}
 
 	// re for filename match
-	CRegExp fnameext_match = CRegExp(true);
-	fnameext_match.RegComp("\\.(3g2|3gp|amv|asf|avi|drc|f4a|f4b|f4p|f4v|flv|"
+	CRegExp fnameext_match("\\.(3g2|3gp|amv|asf|avi|drc|f4a|f4b|f4p|f4v|flv|"
 		"m2ts|m2v|m4p|m4v|mkv|mov|mp2|mp4|mpe|mpeg|mpg|mpv|mts|mxf|nsv|ogg|"
 		"ogv|qt|rm|rmvb|roq|svi|ts|vob|webm|wmv|yuv|iso|dmg)$");
 

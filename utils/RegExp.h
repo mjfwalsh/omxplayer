@@ -20,19 +20,10 @@
  *
  */
 
-#ifndef REGEXP_H
-#define REGEXP_H
-
 #include <string>
-#include <vector>
 
 namespace PCRE {
-#ifdef _WIN32
-#define PCRE_STATIC
-#include "lib/win32/pcre/pcre.h"
-#else
 #include <pcre.h>
-#endif
 }
 
 // maximum of 20 backreferences
@@ -42,16 +33,14 @@ const int OVECCOUNT=(20+1)*3;
 class CRegExp
 {
 public:
-  CRegExp(bool caseless = false);
-  CRegExp(const CRegExp& re);
+  CRegExp(const char *re, bool casesensitive = false
+  );
+
   ~CRegExp();
 
-  CRegExp* RegComp(const char *re);
-  CRegExp* RegComp(const std::string& re) { return RegComp(re.c_str()); }
   int RegFind(const char *str, int startoffset = 0, int len = -1);
   int RegFind(const std::string& str, int startoffset = 0) { return RegFind(str.c_str(), startoffset, str.length()); }
   int RegFind(const std::string& str, int startoffset, int len) { return RegFind(str.c_str(), startoffset, len); }
-  char* GetReplaceString( const char* sReplaceExp );
   int GetFindLen()
   {
     if (!m_re || !m_bMatched)
@@ -64,25 +53,13 @@ public:
   int GetSubLength(int iSub) { return (m_iOvector[(iSub*2)+1] - m_iOvector[(iSub*2)]); } // correct spelling
   int GetCaptureTotal();
   std::string GetMatch(int iSub = 0);
-  const std::string& GetPattern() { return m_pattern; }
-  bool GetNamedSubPattern(const char* strName, std::string& strMatch);
-  void DumpOvector(int iLog);
-  CRegExp& operator= (const CRegExp& re);
-
-private:
-  void Cleanup() { if (m_re) { PCRE::pcre_free(m_re); m_re = NULL; } }
 
 private:
   PCRE::pcre* m_re;
   int         m_iOvector[OVECCOUNT];
-  int         m_iMatchCount;
-  int         m_iOptions;
-  bool        m_bMatched;
+  int         m_iMatchCount = 0;
+  int         m_iOptions = PCRE_DOTALL;
+  bool        m_bMatched = false;
   std::string m_subject;
   std::string m_pattern;
 };
-
-typedef std::vector<CRegExp> VECCREGEXP;
-
-#endif
-

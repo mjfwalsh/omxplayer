@@ -38,14 +38,9 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
   m_max_lines(lines)
 {
 	// Subtitle tag parser regexes
-	m_tags = new CRegExp(true);
-	m_tags->RegComp("(\\n|<[^>]*>|\\{\\\\[^\\}]*\\})");
-
-	m_font_color_html = new CRegExp(true);
-	m_font_color_html->RegComp("color[ \\t]*=[ \\t\"']*#?([a-f0-9]{6})");
-
-	m_font_color_curly = new CRegExp(true);
-	m_font_color_curly->RegComp("^\\{\\\\c&h([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})&\\}$");
+	m_tags = new CRegExp("(\\n|<[^>]*>|\\{\\\\[^\\}]*\\})");
+	m_font_color_html = new CRegExp("color[ \\t]*=[ \\t\"']*#?([a-f0-9]{6})");
+	m_font_color_curly = new CRegExp("^\\{\\\\c&h([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})&\\}$");
 
 	// Open display
 	DispmanxLayer::openDisplay(display_num, layer_num);

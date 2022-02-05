@@ -499,18 +499,10 @@ bool Exists(const std::string& path)
   return false;
 }
 
-bool IsURL(const std::string& str)
+bool IsURL(const std::string &str)
 {
-  auto result = str.find("://");
-  if(result == std::string::npos || result == 0)
-    return false;
-
-  for(size_t i = 0; i < result; ++i)
-  {
-    if(!isalpha(str[i]))
-      return false;
-  }
-  return true;
+  static CRegExp protocol_match("^[a-zA-Z]+://");
+  return protocol_match.RegFind(str, 0) > -1;
 }
 
 bool IsPipe(const std::string& str)
@@ -1212,8 +1204,7 @@ int change_file()
   if(is_local_file)
   {
     // Are we dealing with a DVD VIDEO_TS folder or a device file
-    CRegExp findvideots = CRegExp(true);
-    findvideots.RegComp("^(.*?/VIDEO_TS|/dev/.*$)");
+    CRegExp findvideots("^(.*?/VIDEO_TS|/dev/.*$)");
     if(findvideots.RegFind(m_filename, 0) > -1)
     {
       m_is_dvd = true;

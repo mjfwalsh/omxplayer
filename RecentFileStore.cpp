@@ -199,8 +199,7 @@ vector<string> RecentFileStore::getRecentFileList()
 		return recents;
 
 	// re for filename match
-	CRegExp link_file = CRegExp(true);
-	link_file.RegComp("^[0-9]{2} - ");
+	CRegExp link_file("^[0-9]{2} - ");
 
 	while ((ent = readdir (dir)) != NULL) {
 		if(link_file.RegFind(ent->d_name, 0) > -1) {
@@ -258,11 +257,8 @@ void RecentFileStore::saveStore()
 	clearRecents();
 
 	// set up some regexes
-	CRegExp link_file = CRegExp(true);
-	link_file.RegComp("/([^/]+?)(\\.[^\\.]{1,4}|)$");
-
-	CRegExp link_stream = CRegExp(true);
-	link_stream.RegComp("://([^/]+)/");
+	CRegExp link_file("/([^/]+?)(\\.[^\\.]{1,4}|)$");
+	CRegExp link_stream("://([^/]+)/");
 
 	int size = store.size();
 	if(size > 20) size = 20; // to to twenty files
