@@ -30,16 +30,18 @@ using namespace PCRE;
 CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
 {
   if(!casesensitive)
-    m_iOptions |= PCRE_CASELESS;
+    m_iOptions |= PCRE2_CASELESS;
 
-  const char *errMsg = NULL;
-  int errOffset      = 0;
+  int errCode;
+  PCRE2_SIZE errOffset;
 
-  m_re = pcre_compile(re, m_iOptions, &errMsg, &errOffset, NULL);
+  m_re = pcre2_compile((const unsigned char *)re, PCRE2_ZERO_TERMINATED, m_iOptions, &errCode, &errOffset, NULL);
+
+  m_match_data = pcre2_match_data_create_from_pattern(m_re, NULL);
+
   if (!m_re)
   {
-    printf("PCRE: %s. Compilation failed at offset %d in expression '%s'\n",
-              errMsg, errOffset, re);
+    printf("PCRE: Compilation failed for expression '%s'\n", re);
     assert(0);
   }
 }
@@ -47,7 +49,8 @@ CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
 
 CRegExp::~CRegExp()
 {
-  PCRE::pcre_free(m_re);
+  PCRE::pcre2_code_free(m_re);
+  PCRE::pcre2_match_data_free(m_match_data);
 }
 
 int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
@@ -65,33 +68,28 @@ int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
     str_len = strlen(str);
 
   m_subject = str;
-  int rc = pcre_exec(m_re, NULL, str, str_len, startoffset, 0, m_iOvector, OVECCOUNT);
+  int rc = pcre2_match(m_re, (const unsigned char *)str, str_len, startoffset, 0, m_match_data, NULL);
 
-  if (rc<1)
+  if (rc < 1)
   {
-    switch(rc)
-    {
-    case PCRE_ERROR_NOMATCH:
-      return -1;
+    if(rc != PCRE2_ERROR_NOMATCH)
+      CLogLog(LOGERROR, "PCRE: Error: %d", rc);
 
-    case PCRE_ERROR_MATCHLIMIT:
-      CLogLog(LOGERROR, "PCRE: Match limit reached");
-      return -1;
-
-    default:
-      CLogLog(LOGERROR, "PCRE: Unknown error: %d", rc);
-      return -1;
-    }
+    return -1;
   }
+
   m_bMatched = true;
   m_iMatchCount = rc;
+
+  m_iOvector = pcre2_get_ovector_pointer(m_match_data);
+
   return m_iOvector[0];
 }
 
 int CRegExp::GetCaptureTotal()
 {
   int c = -1;
-  pcre_fullinfo(m_re, NULL, PCRE_INFO_CAPTURECOUNT, &c);
+  pcre2_pattern_info(m_re, PCRE2_INFO_CAPTURECOUNT, &c);
   return c;
 }
 

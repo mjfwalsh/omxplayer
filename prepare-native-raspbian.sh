@@ -19,7 +19,7 @@ MISSING_COMPILE_FFMPEG_PKGS=""
 MISSING_EXTERNAL_FFMPEG_PKGS=""
 
 # packages
-REQUIRED_OMX_PKGS="git sed gcc g++ pkg-config binutils libasound2-dev libpcre3-dev libboost-dev libcairo2-dev libdvdread-dev libdbus-1-dev"
+REQUIRED_OMX_PKGS="git sed gcc g++ pkg-config binutils libasound2-dev libpcre2-dev libboost-dev libcairo2-dev libdvdread-dev libdbus-1-dev"
 REQUIRED_DEV_HEADERS="libraspberrypi-dev libraspberrypi0 libraspberrypi-bin"
 COMPILE_FFMPEG_PKGS="ca-certificates"
 COMPILE_FFMPEG_PKGS_STRETCH="libva1 libssl1.0-dev"

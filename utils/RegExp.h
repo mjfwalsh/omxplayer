@@ -23,18 +23,14 @@
 #include <string>
 
 namespace PCRE {
-#include <pcre.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 }
-
-// maximum of 20 backreferences
-// OVEVCOUNT must be a multiple of 3
-const int OVECCOUNT=(20+1)*3;
 
 class CRegExp
 {
 public:
-  CRegExp(const char *re, bool casesensitive = false
-  );
+  CRegExp(const char *re, bool casesensitive = false);
 
   ~CRegExp();
 
@@ -55,10 +51,11 @@ public:
   std::string GetMatch(int iSub = 0);
 
 private:
-  PCRE::pcre* m_re;
-  int         m_iOvector[OVECCOUNT];
+  PCRE::pcre2_code *m_re;
+  size_t *m_iOvector;
+  PCRE::pcre2_match_data *m_match_data;
   int         m_iMatchCount = 0;
-  int         m_iOptions = PCRE_DOTALL;
+  int         m_iOptions = PCRE2_DOTALL;
   bool        m_bMatched = false;
   std::string m_subject;
   std::string m_pattern;
