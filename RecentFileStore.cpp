@@ -27,6 +27,7 @@
 
 #include "utils/RegExp.h"
 #include "RecentFileStore.h"
+#include "utils/uri_unescape.h"
 
 using namespace std;
 
@@ -276,6 +277,8 @@ void RecentFileStore::saveStore()
 		} else {
 			link += "stream.url";
 		}
+
+        uri_unescape(link);
 
 		// write link file
 		ofstream s(recent_dir + link);

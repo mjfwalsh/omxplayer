@@ -52,6 +52,7 @@ extern "C" {
 #include "AutoPlaylist.h"
 #include "RecentFileStore.h"
 #include "RecentDVDStore.h"
+#include "utils/uri_unescape.h"
 
 #include <string>
 #include <utility>
@@ -1316,6 +1317,7 @@ int run_play_loop()
 
     int lastSlash = m_filename.find_last_of('/');
     string short_filename = m_filename.substr(lastSlash + 1);
+    uri_unescape(short_filename);
 
     show_osd_message(short_filename.c_str());
     UpdateRaspicastMetaData(short_filename);

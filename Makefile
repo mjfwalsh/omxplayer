@@ -14,6 +14,7 @@ SRC=	linux/XMemUtils.cpp \
 		utils/log.cpp \
 		utils/PCMRemap.cpp \
 		utils/RegExp.cpp \
+		utils/uri_unescape.cpp \
 		BitstreamConverter.cpp \
 		OMXThread.cpp \
 		OMXReader.cpp \
