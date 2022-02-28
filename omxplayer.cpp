@@ -173,66 +173,74 @@ void print_version()
   printf("        Repository: %s\n", VERSION_REPO);
 }
 
-#define show_osd_message(...)      _user_message(false, 1500, false, strprintf(__VA_ARGS__))
-#define user_message(...)          _user_message(true,  1500, false, strprintf(__VA_ARGS__))
-#define user_message_on_close(...) _user_message(true,  3000,  true, strprintf(__VA_ARGS__))
+enum {
+    UM_STDOUT = 0b00000001,
+    UM_LONG   = 0b00000010,
+    UM_SLEEP  = 0b00000100,
+    UM_NORM   = 0b00000000,
+    UM_ALL    = 0b00000111,
+};
 
-#ifdef __GNUC__
-char *strprintf(const char* format, ...) __attribute__((format(printf,1,2)));
-#endif
-
-char *strprintf(const char* format, ...)
-{
-    static char buffer[50];
-    va_list va;
-    va_start(va, format);
-    vsnprintf(buffer, 50, format, va);
-    va_end(va);
-
-    return buffer;
-}
-
-void _user_message(bool to_stdout, int duration, bool sleep, const char *msg)
+void osd_print(int options, const char *msg)
 {
   if(m_osd)
-    m_player_subtitles.DisplayText(msg, duration);
+    m_player_subtitles.DisplayText(msg, options & UM_LONG ? 3000 : 1500);
 
-  if(to_stdout)
+  if(options & UM_STDOUT)
   {
     char *s = strdup(msg);
+    if(s) {
+      char *p = s;
+      while(*p != '\0') {
+        if(*p == '\n') *p = ' ';
+        p++;
+      }
 
-    char *p = s;
-    while(*p != '\0') {
-      if(*p == '\n') *p = ' ';
-      p++;
+      puts(s);
+      free(s);
     }
-
-    puts(s);
-    free(s);
   }
 
   // useful when we want to display some osd before exiting the program
-  if(m_osd && sleep) m_av_clock->OMXSleep(duration);
+  if(m_osd && (options & UM_SLEEP)) m_av_clock->OMXSleep(options & UM_LONG ? 3000 : 1500);
+}
+
+void osd_print(const char *msg)
+{
+  osd_print(UM_NORM, msg);
+}
+
+#ifdef __GNUC__
+void osd_printf(int options, const char* format, ...) __attribute__((format(printf,2,3)));
+#endif
+
+void osd_printf(int options, const char* format, ...)
+{
+    char buffer[60];
+    va_list va;
+    va_start(va, format);
+    vsnprintf(buffer, 60, format, va);
+    va_end(va);
+
+    osd_print(options, &buffer[0]);
 }
 
 int exit_with_message(const char *msg)
 {
-  _user_message(true, 3000,  true, msg);
+  //osd_print(UM_ALL, msg);
+  puts(msg);
   return END_PLAY_WITH_ERROR;
 }
 
-void show_progress_message(const char *msg, int pos, int dur, bool print_to_stdout = false)
+void show_progress_message(const char *msg, int pos, int dur, int options = UM_NORM)
 {
-  _user_message(print_to_stdout, 1500, false, strprintf("%s\n%02d:%02d:%02d / %02d:%02d:%02d",
-                msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60));
+  osd_printf(options, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
+                msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
 
-static void UpdateRaspicastMetaData(string msg)
+static void UpdateRaspicastMetaData(const string &msg)
 {
-  const char *file = "/dev/shm/.r_info";
-
-  FILE *fp;
-  fp = fopen(file, "w");
+  FILE *fp = fopen("/dev/shm/.r_info", "w");
   if(fp == NULL) return;
 
   fputs("local\n", fp);
@@ -564,7 +572,7 @@ static void blank_background(uint32_t rgba)
 
 int ExitFileNotFound(const std::string& path)
 {
-  user_message_on_close("File \"%s\" not found.", path.c_str());
+  osd_printf(UM_ALL, "File \"%s\" not found.", path.c_str());
 
   if (m_av_clock)
     delete m_av_clock;
@@ -579,15 +587,15 @@ void ChangeSubtitle(int delta)
   m_player_subtitles.SetActiveStreamDelta(delta);
   if(!m_player_subtitles.GetVisible()) {
     m_subtitle_lang[0] = '\0';
-    show_osd_message("Subtitles Off");
+    osd_print("Subtitles Off");
   } else {
     int new_index = m_player_subtitles.GetActiveStream();
     strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
         new_index).c_str());
     if(m_subtitle_lang[0] != '\0')
-        show_osd_message("Subtitle stream: %s", m_subtitle_lang);
+        osd_printf(UM_NORM, "Subtitle stream: %s", m_subtitle_lang);
     else
-        show_osd_message("Subtitle stream: %d", new_index + 1);
+        osd_printf(UM_NORM, "Subtitle stream: %d", new_index + 1);
   }
   PrintSubtitleInfo();
 }
@@ -1073,7 +1081,7 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  show_osd_message("Loading...");
+  osd_print("Loading...");
 
   int gpu_mem = get_mem_gpu();
   int min_gpu_mem = 64;
@@ -1307,7 +1315,7 @@ int run_play_loop()
   if(m_is_dvd)
   {
     printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
-    show_osd_message("%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
+    osd_printf(UM_NORM, "%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
 
     UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + to_string(m_track + 1));
   }
@@ -1319,7 +1327,7 @@ int run_play_loop()
     string short_filename = m_filename.substr(lastSlash + 1);
     uri_unescape(short_filename);
 
-    show_osd_message(short_filename.c_str());
+    osd_printf(UM_NORM, short_filename.c_str());
     UpdateRaspicastMetaData(short_filename);
   }
 
@@ -1509,14 +1517,14 @@ int run_play_loop()
         if(playspeed_current > 0)
           playspeed_current--;
         SetSpeed(playspeeds[playspeed_current]);
-        user_message("Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
+        osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
         m_Pause = false;
         break;
       case KeyConfig::ACTION_INCREASE_SPEED:
         if(playspeed_current < playspeed_max)
           playspeed_current++;
         SetSpeed(playspeeds[playspeed_current]);
-        user_message("Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
+        osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
         m_Pause = false;
         break;
       case KeyConfig::ACTION_STEP:
@@ -1525,7 +1533,7 @@ int run_play_loop()
         {
           unsigned t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
           int dur = m_omx_reader.GetStreamLengthSeconds();
-          show_osd_message("Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
+          osd_printf(UM_NORM, "Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
               (t/3600000), (t/60000)%60, (t/1000)%60, t%1000,
               (dur/3600), (dur/60)%60, dur%60);
         }
@@ -1537,7 +1545,7 @@ int run_play_loop()
           if(new_index < 0) new_index = m_omx_reader.AudioStreamCount() - 1;
           m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
           strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
-          show_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
+          osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
         break;
       case KeyConfig::ACTION_NEXT_AUDIO:
@@ -1547,7 +1555,7 @@ int run_play_loop()
           if(new_index >= m_omx_reader.AudioStreamCount()) new_index = 0;
           m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
           strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
-          show_osd_message("Audio stream: %d %s", new_index + 1, m_audio_lang);
+          osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
         break;
       case KeyConfig::ACTION_PREVIOUS_CHAPTER:
@@ -1567,7 +1575,7 @@ int run_play_loop()
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
-              show_osd_message("Chapter %d", go_to_ch + 1);
+              osd_printf(UM_NORM, "Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
               chapter_seek = true;
@@ -1596,7 +1604,7 @@ int run_play_loop()
             }
             else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
             {
-              show_osd_message("Chapter %d", go_to_ch + 1);
+              osd_printf(UM_NORM, "Chapter %d", go_to_ch + 1);
               FlushStreams(startpts);
               m_seek_flush = true;
               chapter_seek = true;
@@ -1627,10 +1635,10 @@ int run_play_loop()
         {
           if(m_player_subtitles.GetVisible()) {
             m_player_subtitles.SetVisible(false);
-            show_osd_message("Subtitles Off");
+            osd_print("Subtitles Off");
           } else {
             m_player_subtitles.SetVisible(true);
-            show_osd_message("Subtitles On");
+            osd_print("Subtitles On");
           }
           PrintSubtitleInfo();
         }
@@ -1639,7 +1647,7 @@ int run_play_loop()
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(false);
-          show_osd_message("Subtitles Off");
+          osd_print("Subtitles Off");
           PrintSubtitleInfo();
         }
         break;
@@ -1647,7 +1655,7 @@ int run_play_loop()
         if(m_has_subtitle)
         {
           m_player_subtitles.SetVisible(true);
-          show_osd_message("Subtitles On");
+          osd_print("Subtitles On");
           PrintSubtitleInfo();
         }
         break;
@@ -1655,7 +1663,7 @@ int run_play_loop()
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
           int new_delay = m_player_subtitles.GetDelay() - 250;
-          show_osd_message("Subtitle delay: %d ms", new_delay);
+          osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
         }
@@ -1664,7 +1672,7 @@ int run_play_loop()
         if(m_has_subtitle && m_player_subtitles.GetVisible())
         {
           int new_delay = m_player_subtitles.GetDelay() + 250;
-          show_osd_message("Subtitle delay: %d ms", new_delay);
+          osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
           m_player_subtitles.SetDelay(new_delay);
           PrintSubtitleInfo();
         }
@@ -1730,12 +1738,12 @@ int run_play_loop()
       case KeyConfig::ACTION_DECREASE_VOLUME:
         m_Volume -= 50;
         m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
-        user_message("Volume: %.2f dB", m_Volume / 100.0f);
+        osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         break;
       case KeyConfig::ACTION_INCREASE_VOLUME:
         m_Volume += 50;
         m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
-        user_message("Volume: %.2f dB", m_Volume / 100.0f);
+        osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         break;
       default:
         break;
