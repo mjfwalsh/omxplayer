@@ -129,6 +129,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		}
 
 		int acc_chapter = 0;
+		int cell_i = 0;
 		for (int i=0; i<tracks[write_track].chapter_count; i++) {
 			int idx = pgc->program_map[i] - 1;
 			int first_cell_sector = pgc->cell_playback[idx].first_sector;
@@ -138,7 +139,9 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 			}
 			tracks[write_track].chapters[i] = acc_chapter;
 
-			acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
+            for(; cell_i <= idx; cell_i++) {
+                acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
+            }
 		}
 
 		// streams data is the same for each title set
@@ -225,9 +228,6 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 {
 	int ct = t + delta;
-
-	if(ct == -1 || ct >= track_count)
-		return false;
 
 	bool r = OpenTrack(ct);
 	t = current_track;
@@ -584,16 +584,18 @@ void OMXDvdPlayer::enableHeuristicTrackSelection()
 		}
 	}
 
+	// change track count
 	int old_track_count = track_count;
 	track_count = w;
 
+	// free unused space, if possible
 	if(old_track_count != track_count) {
-		struct track_info *tmp = (struct track_info *)realloc(tracks, track_count * sizeof(struct track_info));
-		if(!tmp) {
+		struct track_info *tmp = (struct track_info *)reallocarray(tracks, track_count, sizeof(struct track_info));
+		if(tmp) {
+			tracks = tmp;
+		} else {
 			fputs("Memory error\n", stderr);
-			exit(1);
 		}
-		tracks = tmp;
 	}
 }
 
