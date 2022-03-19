@@ -20,47 +20,105 @@
  */
 
 #include <string.h>
+#include <dlfcn.h>
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
 
 #include "OMXReader.h"
 #include "OMXDvdPlayer.h"
 
-bool OMXDvdPlayer::Open(const std::string &filename)
+class DVD
 {
+private:
+	typedef dvd_reader_t* (*DVDOpen_t)(const char *);
+	typedef void (*DVDClose_t)(dvd_reader_t*);
+	typedef dvd_file_t* (*DVDOpenFile_t)(dvd_reader_t *, int, dvd_read_domain_t);
+	typedef void (*DVDCloseFile_t)(dvd_file_t *);
+	typedef ssize_t (*DVDReadBlocks_t)(dvd_file_t *, int, size_t, unsigned char *);
+	typedef int (*DVDDiscID_t)(dvd_reader_t *, unsigned char *);
+	typedef ifo_handle_t* (*ifoOpen_t)(dvd_reader_t *, int);
+	typedef void(*ifoClose_t)(ifo_handle_t *);
+
+	void *load_function(const char *func_name)
+	{
+		void *r = dlsym(dll_handle, func_name);
+		if(!r)
+			throw "Failed to load libdvdread\n";
+
+		return r;
+	}
+
+	void *dll_handle;
+
+public:
+	DVDOpen_t       DVDOpen;
+	DVDClose_t      DVDClose;
+	DVDOpenFile_t   DVDOpenFile;
+	DVDCloseFile_t  DVDCloseFile;
+	DVDReadBlocks_t DVDReadBlocks;
+	DVDDiscID_t     DVDDiscID;
+	ifoOpen_t       ifoOpen;
+	ifoClose_t      ifoClose;
+
+	DVD()
+	{
+		dll_handle = dlopen("libdvdread.so", RTLD_LAZY);
+		if(!dll_handle) {
+			throw "Failed to load libdvdread\n";
+		}
+
+		DVDOpen        = (DVDOpen_t)load_function("DVDOpen");
+		DVDClose       = (DVDClose_t)load_function("DVDClose");
+		DVDOpenFile    = (DVDOpenFile_t)load_function("DVDOpenFile");
+		DVDCloseFile   = (DVDCloseFile_t)load_function("DVDCloseFile");
+		DVDReadBlocks  = (DVDReadBlocks_t)load_function("DVDReadBlocks");
+		DVDDiscID      = (DVDDiscID_t)load_function("DVDDiscID");
+		ifoOpen        = (ifoOpen_t)load_function("ifoOpen");
+		ifoClose       = (ifoClose_t)load_function("ifoClose");
+	}
+
+	~DVD()
+	{
+		dlclose(dll_handle);
+	}
+};
+
+OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
+{
+    // let's see if we have libdvdread installed
+    dvdread = new DVD();
+
 	const int audio_id[7] = {0x80, 0, 0xC0, 0xC0, 0xA0, 0, 0x88};
 
 	device_path = filename;
 
 	// Open DVD device or file
-	dvd_device = DVDOpen(device_path.c_str());
-	if(!dvd_device) {
-		puts("Error on DVDOpen");
-		return false;
-	}
+	dvd_device = dvdread->DVDOpen(device_path.c_str());
+	if(!dvd_device)
+		throw "Error on DVDOpen";
 
 	// Get device name and checksum
 	read_title_name();
 	read_disc_checksum();
 
 	// Open dvd meta data header
-	ifo_handle_t *ifo_zero = ifoOpen(dvd_device, 0);
+	ifo_handle_t *ifo_zero = dvdread->ifoOpen(dvd_device, 0);
 	if(!ifo_zero) {
 		fprintf( stderr, "Can't open main ifo!\n");
-		return false;
+		throw "Failed to open DVD";
 	}
 
 	ifo_handle_t **ifo = (ifo_handle_t **)calloc(ifo_zero->vts_atrt->nr_of_vtss + 1, sizeof(ifo_handle_t*));
 	if(!ifo) {
 		fputs("Memory error\n", stderr);
-		return false;
+		throw "Failed to open DVD";
 	}
 
 	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
-		ifo[i] = ifoOpen(dvd_device, i);
+		ifo[i] = dvdread->ifoOpen(dvd_device, i);
 		if ( !ifo[i] && i == 0 ) {
 			fprintf( stderr, "Can't open ifo %d!\n", i);
-			return false;
+			throw "Failed to open DVD";
 		}
 	}
 
@@ -69,7 +127,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 	tracks = (track_info *)calloc(read_track_count, sizeof(track_info));
 	if(!tracks) {
 		fputs("Memory error\n", stderr);
-		return false;
+		throw "Failed to open DVD";
 	}
 
 	int write_track = -1;
@@ -125,7 +183,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		tracks[write_track].chapters = (int *)calloc(tracks[write_track].chapter_count, sizeof(int));
 		if(!tracks[write_track].chapters) {
 			fputs("Memory error\n", stderr);
-			return false;
+			throw "Failed to open DVD";
 		}
 
 		int acc_chapter = 0;
@@ -159,7 +217,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		tracks[write_track].title = (title_info *)calloc(1, sizeof(title_info));
 		if(!tracks[write_track].title) {
 			fputs("Memory error\n", stderr);
-			return false;
+			throw "Failed to open DVD";
 		}
 
 		tracks[write_track].title->title_num = title_set_num;
@@ -172,7 +230,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		tracks[write_track].title->audio_streams = (title_info::audio_stream_info *)calloc(tracks[write_track].title->audiostream_count, sizeof(title_info::audio_stream_info));
 		if(!tracks[write_track].title->audio_streams) {
 			fputs("Memory error\n", stderr);
-			return false;
+			throw "Failed to open DVD";
 		}
 
 		for (int i = 0, stream_index = 0; i < 8; i++) {
@@ -194,7 +252,7 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 		tracks[write_track].title->subtitle_streams = (title_info::subtitle_stream_info *)calloc(tracks[write_track].title->subtitle_count, sizeof(title_info::subtitle_stream_info));
 		if(!tracks[write_track].title->subtitle_streams) {
 			fputs("Memory error\n", stderr);
-			return false;
+			throw "Failed to open DVD";
 		}
 
 		int x = vtsi_mat->vts_video_attr.display_aspect_ratio == 0 ? 24 : 8;
@@ -217,12 +275,11 @@ bool OMXDvdPlayer::Open(const std::string &filename)
 	}
 
 	// close dvd meta data filehandles
-	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) ifoClose(ifo[i]);
+	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) dvdread->ifoClose(ifo[i]);
 	free(ifo);
-	ifoClose(ifo_zero);
+	dvdread->ifoClose(ifo_zero);
 	m_allocated = true;
 	puts("Finished parsing DVD meta data");
-	return true;
 }
 
 bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
@@ -254,7 +311,7 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 
 	// open dvd track
 	if(!m_open) {
-		dvd_track = DVDOpenFile(dvd_device, tracks[current_track].title->title_num, DVD_READ_TITLE_VOBS );
+		dvd_track = dvdread->DVDOpenFile(dvd_device, tracks[current_track].title->title_num, DVD_READ_TITLE_VOBS );
 
 		if(!dvd_track) {
 			puts("Error on DVDOpenFile");
@@ -281,7 +338,7 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 			return 0;
 	}
 
-	int read_blocks = DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
+	int read_blocks = dvdread->DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
 
 	if(read_blocks <= 0) {
 		return read_blocks;
@@ -347,7 +404,7 @@ int64_t OMXDvdPlayer::GetChapterStartTime(int i)
 
 void OMXDvdPlayer::CloseTrack()
 {
-	DVDCloseFile(dvd_track);
+	dvdread->DVDCloseFile(dvd_track);
 	m_open = false;
 }
 
@@ -426,7 +483,7 @@ OMXDvdPlayer::~OMXDvdPlayer()
 		for(int i = 0; i < track_count; i++) {
 			if(tracks[i].title != NULL) {
 				free(tracks[i].title->audio_streams);
-				free(tracks[i].title->subtitle_streams);			
+				free(tracks[i].title->subtitle_streams);
 
 				for(int h = i + 1; h < track_count; h++)
 					if(tracks[i].title == tracks[h].title)
@@ -441,7 +498,10 @@ OMXDvdPlayer::~OMXDvdPlayer()
 	}
 
 	if(dvd_device)
-		DVDClose(dvd_device);
+		dvdread->DVDClose(dvd_device);
+
+	if(dvdread)
+	    delete dvdread;
 }
 
 int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)
@@ -498,7 +558,7 @@ void OMXDvdPlayer::read_title_name()
 void OMXDvdPlayer::read_disc_checksum()
 {
 	unsigned char buf[16];
-	if (DVDDiscID(dvd_device, &buf[0]) == -1) {
+	if (dvdread->DVDDiscID(dvd_device, &buf[0]) == -1) {
 		fprintf(stderr, "Failed to get DVD checksum");
 		read_disc_serial_number(); // fallback
 		return;

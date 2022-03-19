@@ -1256,9 +1256,12 @@ int change_playlist_item()
   if(m_is_dvd)
   {
     m_has_external_subtitles = false;
-    m_DvdPlayer = new OMXDvdPlayer();
-    if(!m_DvdPlayer->Open(m_filename))
-      return exit_with_message("Failed to open DVD");
+    try {
+        m_DvdPlayer = new OMXDvdPlayer(m_filename);
+    }
+    catch(const char *msg) {
+        return exit_with_message(msg);
+    }
 
     m_DvdPlayer->enableHeuristicTrackSelection();
 

@@ -5,11 +5,12 @@
 #include <string>
 
 struct OMXStream;
+class DVD;
 
 class OMXDvdPlayer
 {
   public:
-	bool Open(const std::string &filename);
+	OMXDvdPlayer(const std::string &filename);
 	~OMXDvdPlayer();
 
 	void CloseTrack();
@@ -45,6 +46,7 @@ class OMXDvdPlayer
 	bool m_allocated = false;
 	int pos = 0;
 	int pos_byte_offset = 0;
+	DVD *dvdread = NULL;
 
 	dvd_reader_t *dvd_device = NULL;
 	dvd_file_t *dvd_track = NULL;
