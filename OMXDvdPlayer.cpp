@@ -116,7 +116,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
 		ifo[i] = dvdread->ifoOpen(dvd_device, i);
-		if ( !ifo[i] && i == 0 ) {
+		if (!ifo[i]) {
 			fprintf( stderr, "Can't open ifo %d!\n", i);
 			throw "Failed to open DVD";
 		}
@@ -559,7 +559,7 @@ void OMXDvdPlayer::read_disc_checksum()
 {
 	unsigned char buf[16];
 	if (dvdread->DVDDiscID(dvd_device, &buf[0]) == -1) {
-		fprintf(stderr, "Failed to get DVD checksum");
+		fprintf(stderr, "Failed to get DVD checksum\n");
 		read_disc_serial_number(); // fallback
 		return;
 	}
