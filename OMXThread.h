@@ -45,5 +45,6 @@ public:
   bool StopThread();
   void Lock();
   void UnLock();
+  static pthread_t main_thread;
 };
 #endif

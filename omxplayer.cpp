@@ -146,9 +146,14 @@ enum {
 };
 
 
+// SIGUSR1 is an error in a thread so exit
+// otherwise set m_stopped for an orderly winddown
 void sig_handler(int s)
 {
-  m_stopped = true;
+  if(s == SIGUSR1)
+    exit(1);
+  else
+    m_stopped = true;
 }
 
 void print_usage()
@@ -528,11 +533,12 @@ static int get_mem_gpu(void)
   return gpu_mem;
 }
 
-static void blank_background(uint32_t rgba)
+static bool blank_background(uint32_t rgba)
 {
   // if alpha is fully transparent then background has no effect
   if (!(rgba & 0xff000000))
-    return;
+    return true;
+
   // we create a 1x1 black pixel image that is added to display just behind video
   DISPMANX_DISPLAY_HANDLE_T   display;
   DISPMANX_UPDATE_HANDLE_T    update;
@@ -546,28 +552,30 @@ static void blank_background(uint32_t rgba)
   VC_RECT_T dst_rect, src_rect;
 
   display = vc_dispmanx_display_open(m_config_video.display);
-  assert(display);
+  if(!display) return false;
 
   resource = vc_dispmanx_resource_create( type, 1 /*width*/, 1 /*height*/, &vc_image_ptr );
-  assert( resource );
+  if(!resource) return false;
 
   vc_dispmanx_rect_set( &dst_rect, 0, 0, 1, 1);
 
   ret = vc_dispmanx_resource_write_data( resource, type, sizeof(rgba), &rgba, &dst_rect );
-  assert(ret == 0);
+  if(ret != 0) return false;
 
   vc_dispmanx_rect_set( &src_rect, 0, 0, 1<<16, 1<<16);
   vc_dispmanx_rect_set( &dst_rect, 0, 0, 0, 0);
 
   update = vc_dispmanx_update_start(0);
-  assert(update);
+  if(!update) return false;
 
   element = vc_dispmanx_element_add(update, display, layer, &dst_rect, resource, &src_rect,
                                     DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO );
-  assert(element);
+  if(!element) return false;
 
   ret = vc_dispmanx_update_submit_sync( update );
-  assert( ret == 0 );
+  if(ret != 0) return false;
+
+  return true;
 }
 
 int ExitFileNotFound(const std::string& path)
@@ -635,6 +643,7 @@ int main(int argc, char *argv[])
 {
   signal(SIGINT, sig_handler);
   signal(SIGTERM, sig_handler);
+  signal(SIGUSR1, sig_handler);
 
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
@@ -1063,7 +1072,14 @@ int main(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  blank_background(background);
+  if(!blank_background(background))
+  {
+    if (m_av_clock)
+      delete m_av_clock;
+    bcm_host_deinit();
+    g_OMX.Deinitialize();
+    return EXIT_FAILURE;
+  }
 
   // init subtitle object
   if(!m_player_subtitles.Init(m_config_video.display,

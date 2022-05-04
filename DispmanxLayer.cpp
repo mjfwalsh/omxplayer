@@ -27,7 +27,6 @@
 // SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <assert.h>
 #include <bcm_host.h>
 
 #include "DispmanxLayer.h"
@@ -49,7 +48,8 @@ void DispmanxLayer::openDisplay(int display_num, int layer)
 
 	// Open display
 	s_display = vc_dispmanx_display_open(display_num);
-	assert(s_display != 0);
+	if(s_display == 0)
+		throw "Dispamnx Error: Failed to open display layer";
 
 	// set layer
 	s_layer = layer;
@@ -60,7 +60,8 @@ Dimension DispmanxLayer::getScreenDimensions()
 	// Get screen info
 	DISPMANX_MODEINFO_T screen_info;
 	int result = vc_dispmanx_display_get_info(s_display, &screen_info);
-	assert(result == 0);
+	if(result != 0)
+		throw "Dispamnx Error: Failed to get screen dimensions";
 
 	return {screen_info.width, screen_info.height};
 }
@@ -68,7 +69,8 @@ Dimension DispmanxLayer::getScreenDimensions()
 void DispmanxLayer::closeDisplay()
 {
 	int result = vc_dispmanx_display_close(s_display);
-	assert(result == 0);
+	if(result != 0)
+		throw "Dispamnx Error: Failed to close display layer";
 }
 
 DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension src_image,
@@ -81,15 +83,15 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension s
 		case 4:		imagetype = VC_IMAGE_ARGB8888;	break;
 		case 2:		imagetype = VC_IMAGE_RGBA16;	break;
 		case 1:		imagetype = VC_IMAGE_8BPP;		break;
-		default:	assert(0);
+		default:	throw "Dispamnx Error: Unsupported image type";
 	}
 
 	if(src_image.width == -1) src_image.width = dest_rect.width;
 	if(src_image.height == -1) src_image.height = dest_rect.height;
 
 	// Destination image dimensions should be divisible by 16
-	assert(dest_rect.width % 16 == 0);
-	assert(dest_rect.height % 16 == 0);
+	if(dest_rect.width % 16 != 0 || dest_rect.height % 16 != 0)
+		throw "Dispamnx Error: Layer must be divisible by 16";
 
 	// image rectangles
 	VC_RECT_T srcRect;
@@ -108,7 +110,8 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension s
 		src_image.width | (m_image_pitch << 16),
 		src_image.height | (src_image.height << 16),
 		&vc_image_ptr);
-	assert(m_resource != 0);
+	if(m_resource == 0)
+		throw "Dispamnx Error: Failed to create resource";
 
 	// set palette is necessary
 	if(imagetype == VC_IMAGE_8BPP) {
@@ -135,7 +138,8 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension s
 
 	// Position currently empty image on screen
 	m_update = vc_dispmanx_update_start(0);
-	assert(m_update != 0);
+	if(m_update == 0)
+		throw "Dispamnx Error: vc_dispmanx_update_start failed";
 
 	VC_DISPMANX_ALPHA_T alpha = { DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0 };
 
@@ -143,24 +147,29 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension s
 		&(dstRect), m_resource, &(srcRect),
 		DISPMANX_PROTECTION_NONE, &alpha, NULL, DISPMANX_NO_ROTATE);
 
-	assert(m_element != 0);
+	if(m_element == 0)
+		throw "Dispamnx Error: vc_dispmanx_element_add failed";
 
 	int result = vc_dispmanx_update_submit_sync(m_update);
-	assert(result == 0);
+	if(result != 0)
+		throw "Dispamnx Error: vc_dispmanx_update_submit_sync failed";
 }
 
 void DispmanxLayer::changeImageLayer(int new_layer)
 {
 	m_update = vc_dispmanx_update_start(0);
-	assert(m_update != 0);
+	if(m_update == 0)
+		throw "Dispamnx Error: vc_dispmanx_update_start failed";
 
 	// change layer to new_layer
 	int ret = vc_dispmanx_element_change_attributes(m_update, m_element,
 		ELEMENT_CHANGE_LAYER, new_layer, 255, NULL, NULL, 0, DISPMANX_NO_ROTATE);
-	assert( ret == 0 );
+	if( ret != 0 )
+		throw "Dispamnx Error: vc_dispmanx_element_change_attributes failed";
 
 	ret = vc_dispmanx_update_submit_sync( m_update );
-	assert( ret == 0 );
+	if( ret != 0 )
+		throw "Dispamnx Error: vc_dispmanx_update_submit_sync failed";
 }
 
 void DispmanxLayer::hideElement()
@@ -196,11 +205,13 @@ void DispmanxLayer::setImageData(void *image_data, bool show)
 	int result = vc_dispmanx_resource_write_data(m_resource,
 		VC_IMAGE_MIN, m_image_pitch, image_data, &(m_bmpRect));
 
-	assert(result == 0);
+	if(result != 0)
+		throw "Dispamnx Error: vc_dispmanx_resource_write_data failed";
 
 	result = vc_dispmanx_element_change_source(m_update, m_element, m_resource);
 
-	assert(result == 0);
+	if(result != 0)
+		throw "Dispamnx Error: vc_dispmanx_element_change_source failed";
 
 	if(show) showElement();
 }
@@ -217,17 +228,8 @@ const int& DispmanxLayer::getSourceHeight()
 
 DispmanxLayer::~DispmanxLayer()
 {
-	int result = 0;
-
 	m_update = vc_dispmanx_update_start(0);
-	assert(m_update != 0);
-
-	result = vc_dispmanx_element_remove(m_update, m_element);
-	assert(result == 0);
-
-	result = vc_dispmanx_update_submit_sync(m_update);
-	assert(result == 0);
-
-	result = vc_dispmanx_resource_delete(m_resource);
-	assert(result == 0);
+	vc_dispmanx_element_remove(m_update, m_element);
+	vc_dispmanx_update_submit_sync(m_update);
+	vc_dispmanx_resource_delete(m_resource);
 }

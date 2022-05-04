@@ -21,11 +21,11 @@
 #include "SubtitleRenderer.h"
 #include "Subtitle.h"
 #include "DllAvCodec.h"
-#include "utils/Enforce.h"
 #include "utils/ScopeExit.h"
 #include "utils/log.h"
 #include "Srt.h"
 
+#include <signal.h>
 #include <boost/algorithm/string.hpp>
 #include <utility>
 #include <algorithm>
@@ -172,21 +172,15 @@ void OMXPlayerSubtitles::Process()
 {
   try
   {
-    RenderLoop(m_font_size, m_centered,
-               m_ghost_box, m_lines,
-               m_av_clock);
+    RenderLoop(m_font_size, m_centered, m_ghost_box, m_lines, m_av_clock);
   }
-  catch(Enforce_error& e)
+  catch(const char *e)
   {
-    if(!e.user_friendly_what().empty())
-      printf("Error: %s\n", e.user_friendly_what().c_str());
-    CLogLog(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
-              typeid(e).name(), e.what());
-  }
-  catch(std::exception& e)
-  {
-    CLogLog(LOGERROR, "OMXPlayerSubtitles::RenderLoop threw %s (%s)",
-              typeid(e).name(), e.what());
+    // prints error message
+    puts(e);
+
+    // and send quit signal to main thread
+    pthread_kill(OMXThread::main_thread, SIGUSR1);
   }
   m_thread_stopped.store(true, memory_order_relaxed);
 }

@@ -46,6 +46,8 @@ OMXThread::~OMXThread()
   pthread_attr_destroy(&m_tattr);
 }
 
+pthread_t OMXThread::main_thread = pthread_self();
+
 bool OMXThread::StopThread()
 {
   if(!m_running)
