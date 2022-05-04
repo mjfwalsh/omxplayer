@@ -935,16 +935,29 @@ bool OMXReader::SetActiveStream(OMXStreamType type, unsigned int index)
   return ret;
 }
 
-bool OMXReader::SeekChapter(int chapter, int64_t* startpts)
+OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts)
 {
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,14,0)
-  if(m_chapter_count < 1)
-    return false;
+  if(cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
+  
+  // do we have chapters to seek to
+  if(m_chapter_count == 0) return SEEK_NO_CHAPTERS;
 
-  return SeekTime(m_chapters[chapter], 0, startpts);
-#else
-  return false;
-#endif
+  // Find current chapter
+  int current_chapter = 0;
+  for(; current_chapter < m_chapter_count - 1; current_chapter++)
+    if(cur_pts >=   m_chapters[current_chapter] && cur_pts <  m_chapters[current_chapter+1])
+      break;
+
+  // turn delta into absolute value and check in within range
+  int new_chapter = current_chapter + *chapter;
+  if(new_chapter < 0 || new_chapter >= m_chapter_count)
+    return SEEK_OUT_OF_BOUNDS;
+
+  // convert delta new chapter
+  *chapter = new_chapter;
+
+  return SeekTime(m_chapters[new_chapter], *new_pts < cur_pts, new_pts)
+    ? SEEK_SUCCESS : SEEK_ERROR;
 }
 
 int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
@@ -969,23 +982,6 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
     timestamp = 0;
 
   return timestamp * AV_TIME_BASE;
-}
-
-int OMXReader::GetChapter(int64_t cur_pos)
-{
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,14,0)
-  if(m_chapter_count < 1 || cur_pos == AV_NOPTS_VALUE)
-    return -1;
-
-  int i;
-  for(i = 0; i < m_chapter_count-1; i++)
-    if(cur_pos >=   m_chapters[i] && cur_pos <  m_chapters[i+1])
-      return i;
-
-  return i;
-#else
-  return -1;
-#endif
 }
 
 void OMXReader::SetSpeed(int iSpeed)

@@ -111,6 +111,14 @@ protected:
 
 private:
 public:
+  // results for chapter seek function
+  enum SeekResult {
+    SEEK_SUCCESS,
+    SEEK_ERROR,
+    SEEK_OUT_OF_BOUNDS,
+    SEEK_NO_CHAPTERS
+  };
+
   OMXReader();
   ~OMXReader();
   bool Open(std::string &filename, bool is_url, bool dump_format, bool live, float timeout,
@@ -133,15 +141,13 @@ public:
   int  VideoStreamCount() { return m_video_count; };
   int  SubtitleStreamCount() { return m_subtitle_count; };
   bool SetActiveStream(OMXStreamType type, unsigned int index);
-  int  GetChapterCount() { return m_chapter_count; };
   double GetAspectRatio() { return m_aspect; };
   int GetWidth() { return m_width; };
   int GetHeight() { return m_height; };
   OMXPacket *AllocPacket();
   void SetSpeed(int iSpeed);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
-  int GetChapter(int64_t cur_pts);
-  bool SeekChapter(int chapter, int64_t* startpts);
+  SeekResult SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts);
   int GetAudioIndex() { return (m_audio_index >= 0) ? m_streams[m_audio_index].index : -1; };
   int GetSubtitleIndex() { return (m_subtitle_index >= 0) ? m_streams[m_subtitle_index].index : -1; };
   int GetVideoIndex() { return (m_video_index >= 0) ? m_streams[m_video_index].index : -1; };

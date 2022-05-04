@@ -1578,60 +1578,27 @@ int run_play_loop()
         }
         break;
       case KeyConfig::ACTION_PREVIOUS_CHAPTER:
-        {
-          int current_chapter = m_omx_reader.GetChapter(m_av_clock->OMXMediaTime());
-          int total_chapters = m_omx_reader.GetChapterCount();
-
-          if(current_chapter > -1 && total_chapters > 0)
-          {
-            int go_to_ch = current_chapter - 1;
-
-            if(current_chapter == 0)
-            {
-              m_send_eos = true;
-              m_next_prev_file = -1;
-              return END_PLAY;
-            }
-            else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
-            {
-              osd_printf(UM_NORM, "Chapter %d", go_to_ch + 1);
-              FlushStreams(startpts);
-              m_seek_flush = true;
-              chapter_seek = true;
-            }
-          }
-          else
-          {
-            m_incr = -600;
-          }
-        }
-        break;
       case KeyConfig::ACTION_NEXT_CHAPTER:
         {
-          int current_chapter = m_omx_reader.GetChapter(m_av_clock->OMXMediaTime());
-          int total_chapters = m_omx_reader.GetChapterCount();
+          int64_t new_pts;
+          int ch = result.getKey() ==  KeyConfig::ACTION_NEXT_CHAPTER ? 1 : -1;
 
-          if(current_chapter > -1 && total_chapters > 0)
+          switch(m_omx_reader.SeekChapter(&ch, m_av_clock->OMXMediaTime(), &new_pts))
           {
-            int go_to_ch = current_chapter + 1;
-
-            if(go_to_ch >= total_chapters)
-            {
-              m_send_eos = true;
-              m_next_prev_file = 1;
-              return END_PLAY;
-            }
-            else if(m_omx_reader.SeekChapter(go_to_ch, &startpts))
-            {
-              osd_printf(UM_NORM, "Chapter %d", go_to_ch + 1);
-              FlushStreams(startpts);
-              m_seek_flush = true;
-              chapter_seek = true;
-            }
-          }
-          else
-          {
-            m_incr = 600;
+          case OMXReader::SEEK_SUCCESS:
+            osd_printf(UM_NORM, "Chapter %d", ch);
+            FlushStreams(new_pts);
+            m_seek_flush = true;
+            chapter_seek = true;
+            break;
+          case OMXReader::SEEK_OUT_OF_BOUNDS:
+            m_send_eos = true;
+            m_next_prev_file = ch;
+            return END_PLAY;
+          case OMXReader::SEEK_NO_CHAPTERS:
+            m_incr = ch * 600;
+          case OMXReader::SEEK_ERROR:
+            break;
           }
         }
         break;
