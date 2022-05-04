@@ -1,4 +1,5 @@
 *.o
+deps.mak
 omxplayer.log
 omxplayer.old.log
 omxplayer.bin

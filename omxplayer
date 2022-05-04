@@ -13,10 +13,10 @@ fi
 OMXPLAYER_BIN="$OMXPLAYER_DIR/omxplayer.bin"
 OMXPLAYER_LIBS="/opt/vc/lib"
 
-if [ -e "$OMXPLAYER_DIR/ffmpeg_compiled" ]; then
-    OMXPLAYER_LIBS="$OMXPLAYER_LIBS:$OMXPLAYER_DIR/ffmpeg_compiled/usr/local/lib"
-else
-    OMXPLAYER_LIBS="$OMXPLAYER_LIBS:/usr/lib/omxplayer"
+if [ -d "$OMXPLAYER_DIR/ffmpeg" ]; then
+    OMXPLAYER_LIBS+=:$(echo $OMXPLAYER_DIR/ffmpeg/lib[as]* | tr ' ' ':')
+elif [ -d "/usr/lib/omxplayer" ]; then
+    OMXPLAYER_LIBS+=:"/usr/lib/omxplayer"
 fi
 
 refresh_regex='(|.* )(-r|--refresh)( .*|$)'
@@ -64,22 +64,21 @@ if [ ! -s "$OMXPLAYER_DBUS_PID" ] || ! pgrep -f "$DBUS_CMD" -F "$OMXPLAYER_DBUS_
 	done
 fi
 
-DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
-DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
+export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
+export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
 
-export DBUS_SESSION_BUS_ADDRESS
-export DBUS_SESSION_BUS_PID
-
-LD_LIBRARY_PATH="$OMXPLAYER_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" $OMXPLAYER_BIN "$@"
-RESULT=$?
+export LD_LIBRARY_PATH="$OMXPLAYER_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 if [ ! -z $NOREFRESH ] && [ "$NOREFRESH" == "1" ]; then
-    exit $RESULT
+    exec $OMXPLAYER_BIN "$@"
 fi
 
 if [[ $@ =~ $audio_regex ]]; then
-    exit $RESULT
+    exec $OMXPLAYER_BIN "$@"
 fi
+
+$OMXPLAYER_BIN "$@"
+RESULT=$?
 
 if [[ $@ =~ $refresh_regex ]]; then
     if [ ! -z $fbset_bin ]; then
