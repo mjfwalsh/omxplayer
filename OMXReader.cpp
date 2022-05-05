@@ -115,13 +115,11 @@ static int dvd_read(void *h, uint8_t* buf, int size)
   OMXDvdPlayer *reader =(OMXDvdPlayer*) h;
   int ret = reader->Read(buf, size);
 
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(58,12,100)
   if (ret == 0) {
     if(reader->IsEOF())
       return AVERROR_EOF;
     else puts("OMXDvdPlayer failed to read anything");
   }
-#endif
 
   return ret;
 }
@@ -161,9 +159,6 @@ bool OMXReader::Open(
 
   ClearStreams();
 
-#if LIBAVFORMAT_VERSION_MAJOR < 58
-  av_register_all();
-#endif
   avformat_network_init();
   av_log_set_level(dump_format ? AV_LOG_INFO:AV_LOG_QUIET);
 
@@ -628,7 +623,6 @@ bool OMXReader::GetStreams(bool dump_format)
     for(int i = 0; i < m_chapter_count; i++)
       m_chapters[i]   = m_DvdPlayer->GetChapterStartTime(i);
   }
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,14,0)
   else if(m_video_index != -1)
   {
     m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
@@ -644,7 +638,6 @@ bool OMXReader::GetStreams(bool dump_format)
       m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
     }
   }
-#endif
 
   // print chapter info
   if(dump_format)
@@ -699,21 +692,13 @@ void OMXReader::AddStream(int id)
       return;
   }
 
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,83,0)
   AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
   if (langTag)
     strncpy(m_streams[id].language, langTag->value, 3);
-#else
-  strcpy( m_streams[id].language, pStream->language );
-#endif
 
-#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,83,0)
   AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata,"title", NULL, 0);
   if (titleTag)
     m_streams[id].name = titleTag->value;
-#else
-  m_streams[id].name = pStream->title;
-#endif
 
   if( pStream->codecpar->extradata && pStream->codecpar->extradata_size > 0 )
   {

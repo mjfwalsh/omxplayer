@@ -93,10 +93,6 @@ bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXR
   if (!av_clock)
     return false;
 
-#if LIBAVFORMAT_VERSION_MAJOR < 58
-  av_register_all();
-#endif
-
   m_config      = config;
   m_av_clock    = av_clock;
   m_omx_reader  = omx_reader;
