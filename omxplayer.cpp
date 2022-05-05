@@ -1943,7 +1943,7 @@ int run_play_loop()
       if(m_has_subtitle && playspeed_current == playspeed_normal)
       {
         m_player_subtitles.AddPacket(m_omx_pkt,
-                        m_omx_reader.GetRelativeIndex(m_omx_pkt->stream_index));
+                        m_omx_reader.GetSubtitleIndexFromId(m_omx_pkt->stream_index));
         m_omx_pkt = NULL;
       }
     }

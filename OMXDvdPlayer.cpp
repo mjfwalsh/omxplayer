@@ -227,7 +227,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 			if (pgc->audio_control[k] & 0x8000)
 				tracks[write_track].title->audiostream_count++;
 
-		tracks[write_track].title->audio_streams = (title_info::audio_stream_info *)calloc(tracks[write_track].title->audiostream_count, sizeof(title_info::audio_stream_info));
+		tracks[write_track].title->audio_streams = (title_info::stream_info *)calloc(tracks[write_track].title->audiostream_count, sizeof(title_info::stream_info));
 		if(!tracks[write_track].title->audio_streams) {
 			fputs("Memory error\n", stderr);
 			throw "Failed to open DVD";
@@ -249,7 +249,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 			if (pgc->subp_control[k] & 0x80000000)
 				tracks[write_track].title->subtitle_count++;
 
-		tracks[write_track].title->subtitle_streams = (title_info::subtitle_stream_info *)calloc(tracks[write_track].title->subtitle_count, sizeof(title_info::subtitle_stream_info));
+		tracks[write_track].title->subtitle_streams = (title_info::stream_info *)calloc(tracks[write_track].title->subtitle_count, sizeof(title_info::stream_info));
 		if(!tracks[write_track].title->subtitle_streams) {
 			fputs("Memory error\n", stderr);
 			throw "Failed to open DVD";
@@ -263,7 +263,6 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 			tracks[write_track].title->subtitle_streams[stream_index++] = {
 				.id = (int)((pgc->subp_control[i] >> x) & 0x1f) + 0x20,
-				.found = false,
 				.lang = subp_attr->lang_code,
 			};
 		}
@@ -408,70 +407,34 @@ void OMXDvdPlayer::CloseTrack()
 	m_open = false;
 }
 
-// Before copying over the meta data, make sure the number of streams found
-// in the vob file correspond to streams listed in the DVD meta data
-bool OMXDvdPlayer::MetaDataCheck(int audiostream_count, int subtitle_count)
+int OMXDvdPlayer::GetAudioStreamCount()
 {
-	return tracks[current_track].title->audiostream_count == audiostream_count &&
-		tracks[current_track].title->subtitle_count == subtitle_count;
+	return tracks[current_track].title->audiostream_count;
 }
 
-void OMXDvdPlayer::GetAudioStreamInfo(OMXStream *stream)
+int OMXDvdPlayer::GetSubtitleStreamCount()
 {
-	for (int i = 0; i < tracks[current_track].title->audiostream_count; i++) {
-		if(tracks[current_track].title->audio_streams[i].id == stream->stream->id) {
-			stream->index = i;
-			strcpy(stream->language, convertLangCode(tracks[current_track].title->audio_streams[i].lang));
-			return;
-		}
-	}
-
-	// fail
-	stream->index = -1;
+	return tracks[current_track].title->subtitle_count;
 }
 
-void OMXDvdPlayer::GetSubtitleStreamInfo(OMXStream *stream)
+int OMXDvdPlayer::GetAudioStreamId(int i)
 {
-	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
-		if(tracks[current_track].title->subtitle_streams[i].id == stream->stream->id) {
-			stream->index = i;
-			strcpy(stream->language, convertLangCode(tracks[current_track].title->subtitle_streams[i].lang));
-			return;
-		}
-	}
-
-	// fail
-	stream->index = -1;
+	return tracks[current_track].title->audio_streams[i].id;
 }
 
-void OMXDvdPlayer::MarkSubtitleAsFound(int id)
+int OMXDvdPlayer::GetSubtitleStreamId(int i)
 {
-	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
-		if(tracks[current_track].title->subtitle_streams[i].id == id) {
-			tracks[current_track].title->subtitle_streams[i].found = true;
-			return;
-		}
-	}
+	return tracks[current_track].title->subtitle_streams[i].id;
 }
 
-void OMXDvdPlayer::InsertMissingSubs(AVFormatContext *s)
+const char *OMXDvdPlayer::GetAudioStreamLanguage(int i)
 {
-	//unsigned int new_stream_num = s->nb_streams;
-	for (int i = 0; i < tracks[current_track].title->subtitle_count; i++) {
-		if(tracks[current_track].title->subtitle_streams[i].found)
-			continue;
+	return convertLangCode(tracks[current_track].title->audio_streams[i].lang);
+}
 
-		// We've found a new subtitle stream
-		AVStream *st = avformat_new_stream(s, NULL);
-		if (!st)
-			continue;
-
-		st->id = tracks[current_track].title->subtitle_streams[i].id;
-		st->codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
-		st->codecpar->codec_id = AV_CODEC_ID_DVD_SUBTITLE;
-		st->request_probe = 0;
-		st->need_parsing = AVSTREAM_PARSE_FULL;
-	}
+const char *OMXDvdPlayer::GetSubtitleStreamLanguage(int i)
+{
+	return convertLangCode(tracks[current_track].title->subtitle_streams[i].lang);
 }
 
 OMXDvdPlayer::~OMXDvdPlayer()

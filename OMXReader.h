@@ -30,21 +30,22 @@
 #include <sys/types.h>
 #include <string>
 #include <cassert>
+#include <unordered_map>
 
 class OMXDvdPlayer;
 
 using namespace std;
 
-#define MAX_OMX_CHAPTERS 64
-
-#define MAX_OMX_STREAMS        100
 
 #ifndef FFMPEG_FILE_BUFFER_SIZE
 #define FFMPEG_FILE_BUFFER_SIZE   32768 // default reading size for ffmpeg
 #endif
-#ifndef MAX_STREAMS
-#define MAX_STREAMS 100
-#endif
+
+#define MAX_VIDEO_STREAMS 3
+#define MAX_AUDIO_STREAMS 32
+#define MAX_SUBTITLE_STREAMS 50
+
+#define MAX_OMX_CHAPTERS 64
 
 class OMXPacket : public AVPacket
 {
@@ -64,19 +65,19 @@ enum OMXStreamType
   OMXSTREAM_SUBTITLE  = 3
 };
 
-typedef struct OMXStream
+class OMXStream
 {
+public:
   char language[4];
   std::string name;
   std::string codec_name;
-  AVStream    *stream;
-  OMXStreamType type;
-  int         id;
-  void        *extradata;
-  unsigned int extrasize;
-  unsigned int index;
+  AVStream    *stream     = NULL;
+  OMXStreamType type      = OMXSTREAM_NONE;
+  int         id          = 0;
+  void        *extradata  = NULL;
+  unsigned int extrasize  = 0;
   COMXStreamInfo hints;
-} OMXStream;
+};
 
 class OMXReader
 {
@@ -95,21 +96,21 @@ protected:
   AVIOContext               *m_ioContext      = NULL;
   bool                      m_eof             = false;
   int64_t                   m_chapters[MAX_OMX_CHAPTERS];
-  OMXStream                 m_streams[MAX_STREAMS];
+  OMXStream                 m_audio_streams[MAX_AUDIO_STREAMS];
+  OMXStream                 m_video_streams[MAX_VIDEO_STREAMS];
+  OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
   int                       m_chapter_count;
   int                       m_speed;
-  unsigned int              m_program;
   pthread_mutex_t           m_lock;
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
   int                       m_height          = 0;
   void Lock();
   void UnLock();
-  bool SetActiveStreamInternal(OMXStreamType type, unsigned int index);
   bool                      m_seek;
   OMXDvdPlayer              *m_DvdPlayer;
+  unordered_map<int, int>   m_subtitle_hash;
 
-private:
 public:
   // results for chapter seek function
   enum SeekResult {
@@ -124,41 +125,27 @@ public:
   bool Open(std::string &filename, bool is_url, bool dump_format, bool live, float timeout,
     std::string &cookie, std::string &user_agent, std::string &lavfdopts, std::string &avdict,
     OMXDvdPlayer *dvd);
-  void ClearStreams();
   bool Close();
-  //void FlushRead();
   bool SeekTime(int64_t time, bool backwords, int64_t *startpts);
   OMXPacket *Read();
-  bool GetStreams(bool dump_format = false);
-  void AddStream(int id);
-  bool IsActive(int stream_index);
   bool IsActive(OMXStreamType type, int stream_index);
-  double SelectAspect(AVStream* st, bool& forced);
   bool GetHints(AVStream *stream, COMXStreamInfo *hints);
   bool GetHints(OMXStreamType type, COMXStreamInfo &hints);
   bool IsEof();
   int  AudioStreamCount() { return m_audio_count; };
   int  VideoStreamCount() { return m_video_count; };
   int  SubtitleStreamCount() { return m_subtitle_count; };
-  bool SetActiveStream(OMXStreamType type, unsigned int index);
+  bool SetActiveStream(OMXStreamType type, int index);
   double GetAspectRatio() { return m_aspect; };
   int GetWidth() { return m_width; };
   int GetHeight() { return m_height; };
-  OMXPacket *AllocPacket();
   void SetSpeed(int iSpeed);
-  int64_t ConvertTimestamp(int64_t pts, int den, int num);
   SeekResult SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts);
-  int GetAudioIndex() { return (m_audio_index >= 0) ? m_streams[m_audio_index].index : -1; };
-  int GetSubtitleIndex() { return (m_subtitle_index >= 0) ? m_streams[m_subtitle_index].index : -1; };
-  int GetVideoIndex() { return (m_video_index >= 0) ? m_streams[m_video_index].index : -1; };
+  int GetAudioIndex() { return m_audio_index; };
+  int GetSubtitleIndex() { return m_subtitle_index; };
+  int GetVideoIndex() { return m_video_index; };
   std::string getFilename() const { return m_filename; }
-
-  int GetRelativeIndex(size_t index)
-  {
-    assert(index < MAX_STREAMS);
-    return m_streams[index].index;
-  }
-
+  int GetSubtitleIndexFromId(int id);
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
@@ -168,8 +155,16 @@ public:
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
   std::string GetStreamName(OMXStreamType type, unsigned int index);
-  std::string GetStreamType(OMXStreamType type, unsigned int index);
   bool CanSeek();
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
+private:
+  void GetStreams();
+  void GetDvdStreams();
+  void GetChapters();
+  void ClearStreams();
+  void AddStream(int id);
+  double SelectAspect(AVStream* st, bool& forced);
+  int64_t ConvertTimestamp(int64_t pts, int den, int num);
+  void AddMissingSubtitleStream(int id);
 };
 #endif
