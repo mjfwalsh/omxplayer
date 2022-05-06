@@ -344,39 +344,6 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
   return pts;
 }
 
-int64_t OMXClock::OMXClockAdjustment(bool lock /* = true */)
-{
-  if(m_omx_clock.GetComponent() == NULL)
-    return 0;
-
-  if(lock)
-    Lock();
-
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
-  int64_t pts = 0;
-
-  OMX_TIME_CONFIG_TIMESTAMPTYPE timeStamp;
-  OMX_INIT_STRUCTURE(timeStamp);
-  timeStamp.nPortIndex = m_omx_clock.GetInputPort();
-
-  omx_err = m_omx_clock.GetConfig(OMX_IndexConfigClockAdjustment, &timeStamp);
-  if(omx_err != OMX_ErrorNone)
-  {
-    CLogLog(LOGERROR, "OMXClock::MediaTime error getting OMX_IndexConfigClockAdjustment");
-    if(lock)
-      UnLock();
-    return 0;
-  }
-
-  pts = FromOMXTime(timeStamp.nTimestamp);
-  //CLogLog(LOGINFO, "OMXClock::ClockAdjustment %.0f %.0f", (double)FromOMXTime(timeStamp.nTimestamp), pts);
-  if(lock)
-    UnLock();
-
-  return pts;
-}
-
-
 // Set the media time, so calls to get media time use the updated value,
 // useful after a seek so mediatime is updated immediately (rather than waiting for first decoded packet)
 bool OMXClock::OMXMediaTime(int64_t pts, bool lock /* = true*/)

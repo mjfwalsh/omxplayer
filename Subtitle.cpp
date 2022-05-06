@@ -54,7 +54,3 @@ void Subtitle::assign_image(unsigned char *srcData, int size, unsigned char *pal
   }
 }
 
-void Subtitle::alloc_text(int size)
-{
-  text.resize(size + 1);
-}

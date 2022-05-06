@@ -116,14 +116,10 @@ public:
   void TransitionToStateLoaded();
 
   OMX_ERRORTYPE EmptyThisBuffer(OMX_BUFFERHEADERTYPE *omx_buffer);
-  OMX_ERRORTYPE FillThisBuffer(OMX_BUFFERHEADERTYPE *omx_buffer);
-  OMX_ERRORTYPE FreeOutputBuffer(OMX_BUFFERHEADERTYPE *omx_buffer);
 
   unsigned int GetInputBufferSize() const { return m_input_buffer_count * m_input_buffer_size; }
-  unsigned int GetOutputBufferSize() const { return m_output_buffer_count * m_output_buffer_size; }
 
   unsigned int GetInputBufferSpace() const { return m_omx_input_avaliable.size() * m_input_buffer_size; }
-  unsigned int GetOutputBufferSpace() const { return m_omx_output_available.size() * m_output_buffer_size; }
 
   void FlushAll();
   void FlushInput();
@@ -133,7 +129,6 @@ public:
   OMX_BUFFERHEADERTYPE *GetOutputBuffer(long timeout=200);
 
   OMX_ERRORTYPE AllocInputBuffers(bool use_buffers = false);
-  OMX_ERRORTYPE AllocOutputBuffers(bool use_buffers = false);
 
   OMX_ERRORTYPE FreeInputBuffers();
   OMX_ERRORTYPE FreeOutputBuffers();
@@ -174,7 +169,6 @@ private:
   unsigned int  m_output_alignment;
   unsigned int  m_output_buffer_size;
   unsigned int  m_output_buffer_count;
-  bool          m_omx_output_use_buffers;
 
   bool          m_exit;
   pthread_cond_t    m_input_buffer_cond;

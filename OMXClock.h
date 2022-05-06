@@ -71,7 +71,6 @@ public:
   bool OMXStep(int steps = 1, bool lock = true);
   bool OMXReset(bool has_video, bool has_audio, bool lock = true);
   int64_t OMXMediaTime(bool lock = true);
-  int64_t OMXClockAdjustment(bool lock = true);
   bool OMXMediaTime(int64_t pts, bool lock = true);
   bool OMXPause(bool lock = true);
   bool OMXResume(bool lock = true);

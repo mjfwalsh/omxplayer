@@ -109,7 +109,6 @@ private:
   float         m_CurrentVolume;
   bool          m_Mute;
   long          m_drc;
-  bool          m_Passthrough;
   unsigned int  m_BytesPerSec;
   unsigned int  m_InputBytesPerSec;
   unsigned int  m_BufferLen;

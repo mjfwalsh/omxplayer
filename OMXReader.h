@@ -81,28 +81,28 @@ typedef struct OMXStream
 class OMXReader
 {
 protected:
-  int                       m_video_index;
-  int                       m_audio_index;
-  int                       m_subtitle_index;
-  int                       m_video_count;
-  int                       m_audio_count;
-  int                       m_subtitle_count;
-  bool                      m_open;
+  int                       m_video_index     = -1;
+  int                       m_audio_index     = -1;
+  int                       m_subtitle_index  = -1;
+  int                       m_video_count     = 0;
+  int                       m_audio_count     = 0;
+  int                       m_subtitle_count  = 0;
+  bool                      m_open            = false;
   std::string               m_filename;
-  bool                      m_bMatroska;
-  bool                      m_bAVI;
-  AVFormatContext           *m_pFormatContext;
-  AVIOContext               *m_ioContext;
-  bool                      m_eof;
+  bool                      m_bMatroska       = false;
+  bool                      m_bAVI            = false;
+  AVFormatContext           *m_pFormatContext = NULL;
+  AVIOContext               *m_ioContext      = NULL;
+  bool                      m_eof             = false;
   int64_t                   m_chapters[MAX_OMX_CHAPTERS];
   OMXStream                 m_streams[MAX_STREAMS];
   int                       m_chapter_count;
   int                       m_speed;
   unsigned int              m_program;
   pthread_mutex_t           m_lock;
-  double                    m_aspect;
-  int                       m_width;
-  int                       m_height;
+  double                    m_aspect          = 0.0f;
+  int                       m_width           = 0;
+  int                       m_height          = 0;
   void Lock();
   void UnLock();
   bool SetActiveStreamInternal(OMXStreamType type, unsigned int index);

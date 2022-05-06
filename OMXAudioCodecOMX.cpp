@@ -324,13 +324,6 @@ int COMXAudioCodecOMX::GetBitsPerSample()
   return m_pCodecContext->sample_fmt == AV_SAMPLE_FMT_S16 ? 16 : 32;
 }
 
-int COMXAudioCodecOMX::GetBitRate()
-{
-  if (!m_pCodecContext)
-    return 0;
-  return m_pCodecContext->bit_rate;
-}
-
 static unsigned count_bits(int64_t value)
 {
   unsigned bits = 0;

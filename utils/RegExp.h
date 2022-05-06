@@ -52,7 +52,7 @@ public:
 
 private:
   PCRE::pcre2_code *m_re;
-  size_t *m_iOvector;
+  size_t *m_iOvector = NULL;
   PCRE::pcre2_match_data *m_match_data;
   int         m_iMatchCount = 0;
   int         m_iOptions = PCRE2_DOTALL;

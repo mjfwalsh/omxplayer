@@ -46,7 +46,6 @@ public:
   int GetSampleRate();
   int GetBitsPerSample();
   static const char* GetName() { return "FFmpeg"; }
-  int GetBitRate();
   unsigned int GetFrameSize() { return m_frameSize; }
 
 protected:

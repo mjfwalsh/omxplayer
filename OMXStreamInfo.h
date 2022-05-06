@@ -25,46 +25,26 @@
 class COMXStreamInfo
 {
 public:
-  COMXStreamInfo();
-
-  ~COMXStreamInfo();
-
-  void Clear(); // clears current information
-
-  enum AVCodecID codec;
-  bool software;  //force software decoding
-
+  enum AVCodecID codec = AV_CODEC_ID_NONE;
 
   // VIDEO
-  int fpsscale; // scale of 1000 and a rate of 29970 will result in 29.97 fps
-  int fpsrate;
-  int height; // height of the stream reported by the demuxer
-  int width; // width of the stream reported by the demuxer
-  float aspect; // display aspect as reported by demuxer
-  bool forced_aspect; // true if we trust container aspect more than codec
-  bool vfr; // variable framerate
-  bool stills; // there may be odd still frames in video
-  int level; // encoder level of the stream reported by the decoder. used to qualify hw decoders.
-  int profile; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
-  bool ptsinvalid;  // pts cannot be trusted (avi's).
-  int orientation; // video orientation in clockwise degrees
+  int fpsscale = 0; // scale of 1000 and a rate of 29970 will result in 29.97 fps
+  int fpsrate = 0;
+  int height = 0; // height of the stream reported by the demuxer
+  int width = 0; // width of the stream reported by the demuxer
+  float aspect = 0.0f; // display aspect as reported by demuxer
+  bool forced_aspect = false; // true if we trust container aspect more than codec
+  int profile = 0; // encoder profile of the stream reported by the decoder. used to qualify hw decoders.
+  int orientation = 0; // video orientation in clockwise degrees
 
   // AUDIO
-  int channels;
-  int samplerate;
-  int bitrate;
-  int blockalign;
-  int bitspersample;
-
-  // SUBTITLE
-  int identifier;
+  int channels = 0;
+  int samplerate = 0;
+  int bitrate = 0;
+  int blockalign = 0;
+  int bitspersample = 0;
 
   // CODEC EXTRADATA
-  void*        extradata; // extra data for codec to use
-  unsigned int extrasize; // size of extra data
-  unsigned int codec_tag; // extra identifier hints for decoding
-
-  /* ac3/dts indof */
-  unsigned int framesize;
-  uint32_t     syncword;
+  void*        extradata = NULL; // extra data for codec to use
+  unsigned int extrasize = 0; // size of extra data
 };

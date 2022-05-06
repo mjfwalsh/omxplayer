@@ -63,14 +63,7 @@ OMXPacket::~OMXPacket()
 
 OMXReader::OMXReader()
 {
-  m_open        = false;
-  m_bMatroska   = false;
-  m_bAVI        = false;
   g_abort       = false;
-  m_ioContext   = NULL;
-  m_pFormatContext = NULL;
-  m_eof           = false;
-  m_chapter_count = 0;
 
   for(int i = 0; i < MAX_STREAMS; i++)
     m_streams[i].extradata = NULL;
@@ -883,8 +876,6 @@ bool OMXReader::GetHints(AVStream *stream, COMXStreamInfo *hints)
 
     hints->aspect = SelectAspect(stream, hints->forced_aspect) * stream->codecpar->width / stream->codecpar->height;
 
-    if (m_bAVI && stream->codecpar->codec_id == AV_CODEC_ID_H264)
-      hints->ptsinvalid = true;
     AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", NULL, 0);
     if (rtag)
       hints->orientation = atoi(rtag->value);
@@ -1279,28 +1270,19 @@ void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
 
   found_palette:
 
-  // no guarantee extradata is null terminated so we create a
-  // a null terminated buffer to avoid overruns
-  char buffer[130];
-  int i = 0;
-  while(p < end && i < 129)
-    buffer[i++] = *p++;
-  *p = '\0';
-
-  char *buf = &buffer[0];
   char *next;
   uint32_t *palette = *palette_c = (uint32_t *)malloc(sizeof(uint32_t) * 16);
   for(int i = 0; i < 16; i++) {
-    palette[i] = strtoul(buf, &next, 16);
-    if(buf == next) {
+    palette[i] = strtoul(p, &next, 16);
+    if(p == next) {
       free(palette);
       *palette_c = NULL;
       return;
     } else {
-      buf = next;
+      p = next;
     }
 
-    while(*buf == ',' || *buf == ' ') buf++;
+    while(*p == ',' || *p == ' ') p++;
   }
 }
 

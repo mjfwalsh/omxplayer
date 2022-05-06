@@ -692,11 +692,6 @@ void COMXVideo::Close()
   m_av_clock          = NULL;
 }
 
-void COMXVideo::SetDropState(bool bDrop)
-{
-  m_drop_state = bDrop;
-}
-
 unsigned int COMXVideo::GetFreeSpace()
 {
   CSingleLock lock (m_critSection);
