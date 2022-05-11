@@ -1579,7 +1579,7 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_PREVIOUS_CHAPTER:
         {
-          int current_chapter = m_omx_reader.GetChapter();
+          int current_chapter = m_omx_reader.GetChapter(m_av_clock->OMXMediaTime());
           int total_chapters = m_omx_reader.GetChapterCount();
 
           if(current_chapter > -1 && total_chapters > 0)
@@ -1608,7 +1608,7 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_NEXT_CHAPTER:
         {
-          int current_chapter = m_omx_reader.GetChapter();
+          int current_chapter = m_omx_reader.GetChapter(m_av_clock->OMXMediaTime());
           int total_chapters = m_omx_reader.GetChapterCount();
 
           if(current_chapter > -1 && total_chapters > 0)

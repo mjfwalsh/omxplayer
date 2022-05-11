@@ -71,7 +71,6 @@ OMXReader::OMXReader()
   m_pFormatContext = NULL;
   m_eof           = false;
   m_chapter_count = 0;
-  m_iCurrentPts   = AV_NOPTS_VALUE;
 
   for(int i = 0; i < MAX_STREAMS; i++)
     m_streams[i].extradata = NULL;
@@ -160,7 +159,6 @@ bool OMXReader::Open(
 	OMXDvdPlayer *dvd)
 {
   timeout_default_duration = (int64_t) (timeout * 1e9);
-  m_iCurrentPts = AV_NOPTS_VALUE;
   m_filename    = filename; 
   m_speed       = DVD_PLAYSPEED_NORMAL;
   m_program     = UINT_MAX;
@@ -316,8 +314,6 @@ bool OMXReader::Open(
   if(dump_format)
     av_dump_format(m_pFormatContext, 0, m_filename.c_str(), 0);
 
-  UpdateCurrentPTS();
-
   m_open        = true;
 
   return true;
@@ -387,7 +383,6 @@ bool OMXReader::Close()
   m_subtitle_index  = -1;
   m_eof             = false;
   m_chapter_count   = 0;
-  m_iCurrentPts     = AV_NOPTS_VALUE;
   m_speed           = DVD_PLAYSPEED_NORMAL;
 
   ClearStreams();
@@ -427,9 +422,6 @@ bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
   RESET_TIMEOUT(1);
   int ret = av_seek_frame(m_pFormatContext, -1, seek_pts, backwords ? AVSEEK_FLAG_BACKWARD : 0);
 
-  if(ret >= 0)
-    UpdateCurrentPTS();
-
   // in this case the start time is requested time
   if(startpts)
     *startpts = time;
@@ -441,8 +433,6 @@ bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
     m_eof = true;
     ret = 0;
   }
-
-  CLogLog(LOGDEBUG, "OMXReader::SeekTime(%f) - seek ended up on time %d", (double)time/AV_TIME_BASE,(int)(m_iCurrentPts / AV_TIME_BASE * 1000));
 
   UnLock();
 
@@ -548,10 +538,6 @@ OMXPacket *OMXReader::Read()
   m_omx_pkt->dts = ConvertTimestamp(m_omx_pkt->dts, pStream->time_base.den, pStream->time_base.num);
   m_omx_pkt->pts = ConvertTimestamp(m_omx_pkt->pts, pStream->time_base.den, pStream->time_base.num);
   m_omx_pkt->duration = DVD_SEC_TO_MICROSEC((double)m_omx_pkt->duration * pStream->time_base.num / pStream->time_base.den);
-
-  // used to guess streamlength
-  if (m_omx_pkt->dts != AV_NOPTS_VALUE && (m_omx_pkt->dts > m_iCurrentPts || m_iCurrentPts == AV_NOPTS_VALUE))
-    m_iCurrentPts = m_omx_pkt->dts;
 
   UnLock();
   return m_omx_pkt;
@@ -994,14 +980,13 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
   return timestamp * AV_TIME_BASE;
 }
 
-int OMXReader::GetChapter()
+int OMXReader::GetChapter(int64_t cur_pos)
 {
 #if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(52,14,0)
-  if(m_chapter_count < 1 || m_iCurrentPts == AV_NOPTS_VALUE)
+  if(m_chapter_count < 1 || cur_pos == AV_NOPTS_VALUE)
     return -1;
 
   int i;
-  int64_t cur_pos = m_iCurrentPts;
   for(i = 0; i < m_chapter_count-1; i++)
     if(cur_pos >=   m_chapters[i] && cur_pos <  m_chapters[i+1])
       return i;
@@ -1010,21 +995,6 @@ int OMXReader::GetChapter()
 #else
   return -1;
 #endif
-}
-
-void OMXReader::UpdateCurrentPTS()
-{
-  m_iCurrentPts = AV_NOPTS_VALUE;
-  for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-  {
-    AVStream *stream = m_pFormatContext->streams[i];
-    if(stream && stream->cur_dts != (int64_t)AV_NOPTS_VALUE)
-    {
-      int64_t ts = ConvertTimestamp(stream->cur_dts, stream->time_base.den, stream->time_base.num);
-      if(m_iCurrentPts == AV_NOPTS_VALUE || m_iCurrentPts > ts )
-        m_iCurrentPts = ts;
-    }
-  }
 }
 
 void OMXReader::SetSpeed(int iSpeed)

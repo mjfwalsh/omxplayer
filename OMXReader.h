@@ -97,7 +97,6 @@ protected:
   int64_t                   m_chapters[MAX_OMX_CHAPTERS];
   OMXStream                 m_streams[MAX_STREAMS];
   int                       m_chapter_count;
-  int64_t                   m_iCurrentPts;
   int                       m_speed;
   unsigned int              m_program;
   pthread_mutex_t           m_lock;
@@ -140,9 +139,8 @@ public:
   int GetHeight() { return m_height; };
   OMXPacket *AllocPacket();
   void SetSpeed(int iSpeed);
-  void UpdateCurrentPTS();
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
-  int GetChapter();
+  int GetChapter(int64_t cur_pts);
   bool SeekChapter(int chapter, int64_t* startpts);
   int GetAudioIndex() { return (m_audio_index >= 0) ? m_streams[m_audio_index].index : -1; };
   int GetSubtitleIndex() { return (m_subtitle_index >= 0) ? m_streams[m_subtitle_index].index : -1; };
