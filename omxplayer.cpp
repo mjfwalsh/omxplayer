@@ -683,6 +683,7 @@ int main(int argc, char *argv[])
   const int avdict_opt      = 0x401;
   const int track_opt       = 0x402;
   const int start_paused_opt = 0x403;
+  const int ffmpeg_log_level = 0x404;
 
   struct option longopts[] = {
     { "info",         no_argument,        NULL,          'i' },
@@ -744,6 +745,7 @@ int main(int argc, char *argv[])
     { "avdict",       required_argument,  NULL,          avdict_opt },
     { "track",        required_argument,  NULL,          track_opt },
     { "start-paused", no_argument,        NULL,          start_paused_opt },
+    { "ffmpeg-log",   required_argument,  NULL,          ffmpeg_log_level },
     { 0, 0, 0, 0 }
   };
 
@@ -766,6 +768,34 @@ int main(int argc, char *argv[])
         break;
       case 'g':
         CLogInit(LOGDEBUG, optarg ? optarg : "./omxplayer.log");
+        break;
+      case ffmpeg_log_level:
+        {
+          int level = 0;
+          if(optarg[0] >= '0' && optarg[0] <= '9' )
+            level = atoi(optarg);
+          else if(strcmp("quiet", optarg) == 0)
+            level = AV_LOG_QUIET;
+          else if(strcmp("panic", optarg) == 0)
+            level = AV_LOG_PANIC;
+          else if(strcmp("fatal", optarg) == 0)
+            level = AV_LOG_FATAL;
+          else if(strcmp("error", optarg) == 0)
+            level = AV_LOG_ERROR;
+          else if(strcmp("warning", optarg) == 0)
+            level = AV_LOG_WARNING;
+          else if(strcmp("info", optarg) == 0)
+            level = AV_LOG_INFO;
+          else if(strcmp("verbose", optarg) == 0)
+            level = AV_LOG_VERBOSE;
+          else if(strcmp("debug", optarg) == 0)
+            level = AV_LOG_DEBUG;
+          else if(strcmp("trace", optarg) == 0)
+            level = AV_LOG_TRACE;
+          else
+            return EXIT_FAILURE;
+          av_log_set_level(level);
+        }
         break;
       case 'y':
         m_config_video.hdmi_clock_sync = true;

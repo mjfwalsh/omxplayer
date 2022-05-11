@@ -152,7 +152,9 @@ bool OMXReader::Open(
   RESET_TIMEOUT(3);
 
   avformat_network_init();
-  av_log_set_level(dump_format ? AV_LOG_INFO:AV_LOG_QUIET);
+
+  if(dump_format && av_log_get_level() < AV_LOG_INFO)
+    av_log_set_level(AV_LOG_INFO);
 
   int           result    = -1;
   AVInputFormat *iformat  = NULL;
