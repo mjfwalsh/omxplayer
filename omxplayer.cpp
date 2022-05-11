@@ -1546,9 +1546,6 @@ int run_play_loop()
         video_fifo_low = m_has_video && video_fifo < threshold;
         video_fifo_high = !m_has_video || video_fifo > m_threshold;
       }
-      CLogLog(LOGDEBUG, "Normal M:%lld (A:%lld V:%lld) P:%d A:%.2f V:%.2f/T:%.2f (%d,%d,%d,%d) A:%d%% V:%d%% (%.2f,%.2f)", stamp, audio_pts, video_pts, m_av_clock->OMXIsPaused(),
-        audio_pts == AV_NOPTS_VALUE ? 0.0:audio_fifo, video_pts == AV_NOPTS_VALUE ? 0.0:video_fifo, m_threshold, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high,
-        m_player_audio.GetLevel(), m_player_video.GetLevel(), m_player_audio.GetDelay(), (float)m_player_audio.GetCacheTotal());
 
       // keep latency under control by adjusting clock (and so resampling audio)
       if (m_config_audio.is_live)
