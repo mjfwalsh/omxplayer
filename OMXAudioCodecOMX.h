@@ -25,7 +25,6 @@
 #include "DllSwResample.h"
 
 #include "utils/PCMRemap.h"
-#include "linux/PlatformDefs.h"
 
 class COMXStreamInfo;
 class OMXPacket;
@@ -33,40 +32,33 @@ class OMXPacket;
 class COMXAudioCodecOMX
 {
 public:
-  COMXAudioCodecOMX();
+  COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layout);
   ~COMXAudioCodecOMX();
-  bool Open(COMXStreamInfo &hints, enum PCMLayout layout);
-  void Dispose();
   bool SendPacket(OMXPacket *pkt);
   bool GetFrame();
-  int GetData(BYTE** dst, int64_t &dts, int64_t &pts);
+  int GetData(unsigned char** dst, int64_t &dts, int64_t &pts);
   void Reset();
-  int GetChannels();
   uint64_t GetChannelMap();
-  int GetSampleRate();
   int GetBitsPerSample();
-  static const char* GetName() { return "FFmpeg"; }
   unsigned int GetFrameSize() { return m_frameSize; }
 
 protected:
-  AVCodecContext* m_pCodecContext;
-  SwrContext*     m_pConvert;
-  enum AVSampleFormat m_iSampleFormat;
-  enum AVSampleFormat m_desiredSampleFormat;
+  AVCodecContext* m_pCodecContext = NULL;
+  SwrContext*     m_pConvert = NULL;
+  enum AVSampleFormat m_iSampleFormat = AV_SAMPLE_FMT_NONE;
+  enum AVSampleFormat m_desiredSampleFormat = AV_SAMPLE_FMT_NONE;
 
-  AVFrame* m_pFrame1;
+  AVFrame* m_pFrame1 = NULL;
 
-  BYTE *m_pBufferOutput;
-  int   m_iBufferOutputUsed;
-  int   m_iBufferOutputAlloced;
+  unsigned char *m_pBufferOutput = NULL;
+  int   m_iBufferOutputUsed = 0;
+  int   m_iBufferOutputAlloced = 0;
 
-  bool m_bOpenedCodec;
+  int     m_channels = 0;
 
-  int     m_channels;
-
-  bool m_bFirstFrame;
-  bool m_bGotFrame;
-  bool m_bNoConcatenate;
-  unsigned int  m_frameSize;
+  bool m_bFirstFrame = false;
+  bool m_bGotFrame = false;
+  bool m_bNoConcatenate = false;
+  unsigned int  m_frameSize = 0;
   uint64_t m_dts, m_pts;
 };

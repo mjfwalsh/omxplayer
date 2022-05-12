@@ -348,11 +348,11 @@ bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
 
 bool OMXPlayerAudio::OpenAudioCodec()
 {
-  m_pAudioCodec = new COMXAudioCodecOMX();
-
-  if(!m_pAudioCodec->Open(m_config.hints, m_config.layout))
-  {
-    delete m_pAudioCodec; m_pAudioCodec = NULL;
+  try {
+    m_pAudioCodec = new COMXAudioCodecOMX(m_config.hints, m_config.layout);
+  }
+  catch(const char *msg) {
+    m_pAudioCodec = NULL;
     return false;
   }
 

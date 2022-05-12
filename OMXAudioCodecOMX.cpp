@@ -22,56 +22,31 @@
 #include "OMXAudioCodecOMX.h"
 #include "OMXReader.h"
 #include "utils/log.h"
-
 #include "utils/PCMRemap.h"
 
 // the size of the audio_render output port buffers
 #define AUDIO_DECODE_OUTPUT_BUFFER (32*1024)
 static const char rounded_up_channels_shift[] = {0,0,1,2,2,3,3,3,3};
 
-COMXAudioCodecOMX::COMXAudioCodecOMX()
-{
-  m_pBufferOutput = NULL;
-  m_iBufferOutputAlloced = 0;
-  m_iBufferOutputUsed = 0;
-
-  m_pCodecContext = NULL;
-  m_pConvert = NULL;
-  m_bOpenedCodec = false;
-
-  m_channels = 0;
-  m_pFrame1 = NULL;
-  m_frameSize = 0;
-  m_bGotFrame = false;
-  m_bNoConcatenate = false;
-  m_iSampleFormat = AV_SAMPLE_FMT_NONE;
-  m_desiredSampleFormat = AV_SAMPLE_FMT_NONE;
-}
-
-COMXAudioCodecOMX::~COMXAudioCodecOMX()
-{
-  av_free(m_pBufferOutput);
-  m_pBufferOutput = NULL;
-  m_iBufferOutputAlloced = 0;
-  m_iBufferOutputUsed = 0;
-  Dispose();
-}
-
-bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
+COMXAudioCodecOMX::COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layout)
 {
   AVCodec* pCodec;
-  m_bOpenedCodec = false;
 
   pCodec = avcodec_find_decoder(hints.codec);
   if (!pCodec)
   {
     CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to find codec %d", hints.codec);
-    return false;
+    throw "Failed to open audio codec";
   }
 
   m_bFirstFrame = true;
   m_pCodecContext = avcodec_alloc_context3(pCodec);
-  m_pCodecContext->debug_mv = 0;
+  if (!m_pCodecContext)
+  {
+    CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Failed to allocate codec context");
+    throw "Failed to allocate codec context";
+  }
+
   m_pCodecContext->debug = 0;
   m_pCodecContext->workaround_bugs = 1;
 
@@ -115,42 +90,31 @@ bool COMXAudioCodecOMX::Open(COMXStreamInfo &hints, enum PCMLayout layout)
   if (avcodec_open2(m_pCodecContext, pCodec, NULL) < 0)
   {
     CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to open codec");
-    Dispose();
-    return false;
+    avcodec_free_context(&m_pCodecContext);
+    throw "Failed to open audio codec";
   }
 
   m_pFrame1 = av_frame_alloc();
-  m_bOpenedCodec = true;
   m_iSampleFormat = AV_SAMPLE_FMT_NONE;
   m_desiredSampleFormat = m_pCodecContext->sample_fmt == AV_SAMPLE_FMT_S16 ? AV_SAMPLE_FMT_S16 : AV_SAMPLE_FMT_FLTP;
-  return true;
 }
 
-void COMXAudioCodecOMX::Dispose()
+COMXAudioCodecOMX::~COMXAudioCodecOMX()
 {
-  if (m_pFrame1) av_free(m_pFrame1);
-    m_pFrame1 = NULL;
+  if (m_pBufferOutput)
+    av_free(m_pBufferOutput);
+
+  if (m_pFrame1)
+    av_free(m_pFrame1);
 
   if (m_pConvert)
     swr_free(&m_pConvert);
 
-  if (m_pCodecContext)
-  {
-    if (m_pCodecContext->extradata) av_free(m_pCodecContext->extradata);
-    m_pCodecContext->extradata = NULL;
-    if (m_bOpenedCodec) avcodec_close(m_pCodecContext);
-    m_bOpenedCodec = false;
-    av_free(m_pCodecContext);
-    m_pCodecContext = NULL;
-  }
-
-  m_bGotFrame = false;
+  avcodec_free_context(&m_pCodecContext);
 }
 
 bool COMXAudioCodecOMX::SendPacket(OMXPacket *pkt)
 {
-  if (!m_pCodecContext) return false;
-
   if (!m_iBufferOutputUsed)
   {
     m_dts = pkt->dts;
@@ -168,8 +132,6 @@ bool COMXAudioCodecOMX::SendPacket(OMXPacket *pkt)
 
 bool COMXAudioCodecOMX::GetFrame()
 {
-  if (!m_pCodecContext) return false;
-
   if (m_bGotFrame)
     return true;
 
@@ -200,7 +162,7 @@ bool COMXAudioCodecOMX::GetFrame()
   }
 }
 
-int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
+int COMXAudioCodecOMX::GetData(unsigned char** dst, int64_t &dts, int64_t &pts)
 {
   if (!m_bGotFrame)
     return 0;
@@ -232,7 +194,7 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
 
   if (m_iBufferOutputAlloced < m_iBufferOutputUsed + outputSize)
   {
-     m_pBufferOutput = (BYTE*)av_realloc(m_pBufferOutput, m_iBufferOutputUsed + outputSize + AV_INPUT_BUFFER_PADDING_SIZE);
+     m_pBufferOutput = (unsigned char*)av_realloc(m_pBufferOutput, m_iBufferOutputUsed + outputSize + AV_INPUT_BUFFER_PADDING_SIZE);
      m_iBufferOutputAlloced = m_iBufferOutputUsed + outputSize;
   }
 
@@ -294,29 +256,13 @@ int COMXAudioCodecOMX::GetData(BYTE** dst, int64_t &dts, int64_t &pts)
 
 void COMXAudioCodecOMX::Reset()
 {
-  if (m_pCodecContext) avcodec_flush_buffers(m_pCodecContext);
+  avcodec_flush_buffers(m_pCodecContext);
   m_bGotFrame = false;
   m_iBufferOutputUsed = 0;
 }
 
-int COMXAudioCodecOMX::GetChannels()
-{
-  if (!m_pCodecContext)
-    return 0;
-  return m_pCodecContext->channels;
-}
-
-int COMXAudioCodecOMX::GetSampleRate()
-{
-  if (!m_pCodecContext)
-    return 0;
-  return m_pCodecContext->sample_rate;
-}
-
 int COMXAudioCodecOMX::GetBitsPerSample()
 {
-  if (!m_pCodecContext)
-    return 0;
   return m_pCodecContext->sample_fmt == AV_SAMPLE_FMT_S16 ? 16 : 32;
 }
 
@@ -333,13 +279,14 @@ uint64_t COMXAudioCodecOMX::GetChannelMap()
   uint64_t layout;
   int bits = count_bits(m_pCodecContext->channel_layout);
   if (bits == m_pCodecContext->channels)
+  {
     layout = m_pCodecContext->channel_layout;
+  }
   else
   {
     CLogLog(LOGINFO, "COMXAudioCodecOMX::GetChannelMap - FFmpeg reported %d channels, but the layout contains %d ignoring", m_pCodecContext->channels, bits);
     layout = av_get_default_channel_layout(m_pCodecContext->channels);
   }
-
 
   return layout;
 }
