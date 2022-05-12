@@ -51,19 +51,16 @@ class COMXCoreComponent;
 class COMXCoreTunel
 {
 public:
-  COMXCoreTunel();
-  ~COMXCoreTunel();
-
   void Initialize(COMXCoreComponent *src_component, unsigned int src_port, COMXCoreComponent *dst_component, unsigned int dst_port);
   bool IsInitialized() const { return m_tunnel_set; }
   OMX_ERRORTYPE Deestablish(bool noWait = false);
-  OMX_ERRORTYPE Establish(bool enable_ports = true, bool disable_ports = false);
+  OMX_ERRORTYPE Establish();
 private:
-  COMXCoreComponent *m_src_component;
-  COMXCoreComponent *m_dst_component;
-  unsigned int      m_src_port;
-  unsigned int      m_dst_port;
-  bool              m_tunnel_set;
+  COMXCoreComponent *m_src_component = NULL;
+  COMXCoreComponent *m_dst_component = NULL;
+  unsigned int      m_src_port       = 0;
+  unsigned int      m_dst_port       = 0;
+  bool              m_tunnel_set     = false;
 };
 
 class COMXCoreComponent
@@ -128,7 +125,7 @@ public:
   OMX_BUFFERHEADERTYPE *GetInputBuffer(long timeout=200);
   OMX_BUFFERHEADERTYPE *GetOutputBuffer(long timeout=200);
 
-  OMX_ERRORTYPE AllocInputBuffers(bool use_buffers = false);
+  OMX_ERRORTYPE AllocInputBuffers();
 
   OMX_ERRORTYPE FreeInputBuffers();
   OMX_ERRORTYPE FreeOutputBuffers();
