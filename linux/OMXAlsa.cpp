@@ -28,6 +28,9 @@ extern "C" {
 #include <libswresample/swresample.h>
 }
 
+#include "OMXAlsa.h"
+#include "../utils/log.h"
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 struct _GOMX_COMMAND;
@@ -53,7 +56,6 @@ template <class X> static void omx_init(X &omx)
 	omx.nVersion.nVersion = OMX_VERSION;
 }
 
-#include <utils/log.h>
 #define CLOG(notice, comp, port, msg, ...) do { \
 	struct _GOMX_PORT *_port = (struct _GOMX_PORT *) port; \
 	if (_port) { CLogLog(notice ? LOGNOTICE : LOGDEBUG, "[%p port %d]: %s: " msg, comp, _port->def.nPortIndex, __func__ , ##__VA_ARGS__); } \
@@ -1328,8 +1330,6 @@ static OMX_ERRORTYPE omxalsasink_create(OMX_HANDLETYPE *pHandle, OMX_PTR pAppDat
 }
 
 /* OMX Glue to get the handle */
-
-#include <OMXAlsa.h>
 
 OMX_ERRORTYPE OMXALSA_GetHandle(OMX_OUT OMX_HANDLETYPE* pHandle, OMX_IN OMX_STRING cComponentName,
 				OMX_IN  OMX_PTR pAppData, OMX_IN OMX_CALLBACKTYPE* pCallbacks)

@@ -24,7 +24,7 @@
 #include "OMXCore.h"
 #include "utils/log.h"
 
-#include "OMXAlsa.h"
+#include "linux/OMXAlsa.h"
 
 //#define OMX_DEBUG_EVENTS
 //#define OMX_DEBUG_EVENTHANDLER

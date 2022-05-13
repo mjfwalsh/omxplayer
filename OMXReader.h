@@ -99,7 +99,7 @@ protected:
   OMXStream                 m_audio_streams[MAX_AUDIO_STREAMS];
   OMXStream                 m_video_streams[MAX_VIDEO_STREAMS];
   OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
-  int                       m_chapter_count;
+  int                       m_chapter_count   = 0;
   int                       m_speed;
   pthread_mutex_t           m_lock;
   double                    m_aspect          = 0.0f;
@@ -107,8 +107,7 @@ protected:
   int                       m_height          = 0;
   void Lock();
   void UnLock();
-  bool                      m_seek;
-  OMXDvdPlayer              *m_DvdPlayer;
+  OMXDvdPlayer              *m_DvdPlayer      = NULL;
   unordered_map<int, int>   m_subtitle_hash;
 
 public:

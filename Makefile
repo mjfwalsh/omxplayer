@@ -10,7 +10,7 @@ LDLIBS+=-lasound -lavcodec -lavformat -lavutil -lbcm_host -lbrcmEGL -lbrcmGLESv2
 LDLIBS+=-ldbus-1 -ldl -lopenmaxil -lpcre2-8 -lpthread -lrt -lswresample -lswscale -lvchiq_arm
 LDLIBS+=-lvchostif -lvcos -lz
 
-INCLUDES+=-I./ -Ilinux -isystem ffmpeg -isystem/usr/include/dbus-1.0
+INCLUDES+=-I./ -isystem ffmpeg -isystem/usr/include/dbus-1.0
 INCLUDES+=-isystem/usr/lib/arm-linux-gnueabihf/dbus-1.0/include -isystem/usr/include/cairo
 INCLUDES+=-isystem/opt/vc/include -isystem/opt/vc/include/interface/vcos/pthreads
 
