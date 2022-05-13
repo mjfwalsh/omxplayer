@@ -37,24 +37,22 @@ using namespace std;
 class OMXPlayerVideo : public OMXThread
 {
 protected:
-  AVStream                  *m_pStream;
-  int                       m_stream_id;
+  AVStream                  *m_pStream = NULL;
+  int                       m_stream_id = -1;
   std::deque<OMXPacket *>   m_packets;
-  bool                      m_open;
-  int64_t                   m_iCurrentPts;
+  bool                      m_open = false;
+  int64_t                   m_iCurrentPts = 0;
   pthread_cond_t            m_packet_cond;
   pthread_cond_t            m_picture_cond;
   pthread_mutex_t           m_lock_decoder;
-  OMXClock                  *m_av_clock;
-  COMXVideo                 *m_decoder;
-  float                     m_fps;
-  double                    m_frametime;
-  float                     m_display_aspect;
+  OMXClock                  *m_av_clock = NULL;
+  COMXVideo                 *m_decoder = NULL;
+  float                     m_fps = 25.0f;
   bool                      m_bAbort;
-  bool                      m_flush;
+  bool                      m_flush = false;
   std::atomic<bool>         m_flush_requested;
-  unsigned int              m_cached_size;
-  double                    m_iVideoDelay;
+  unsigned int              m_cached_size = 0;
+  double                    m_iVideoDelay = 0;
   OMXVideoConfig            m_config;
 
   void Lock();

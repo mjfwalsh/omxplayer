@@ -48,25 +48,6 @@
 #define OMX_THEORA_DECODER      OMX_VIDEO_DECODER
 #define OMX_MJPEG_DECODER       OMX_VIDEO_DECODER
 
-COMXVideo::COMXVideo() : m_video_codec_name("")
-{
-  m_is_open           = false;
-  m_deinterlace       = false;
-  m_drop_state        = false;
-  m_omx_clock         = NULL;
-  m_av_clock          = NULL;
-  m_submitted_eos     = false;
-  m_failed_eos        = false;
-  m_settings_changed  = false;
-  m_setStartTime      = false;
-  m_transform         = OMX_DISPLAY_ROT0;
-  m_pixel_aspect      = 1.0f;
-}
-
-COMXVideo::~COMXVideo()
-{
-  Close();
-}
 
 bool COMXVideo::SendDecoderConfig()
 {
@@ -360,11 +341,11 @@ bool COMXVideo::PortSettingsChanged()
   return true;
 }
 
-bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
+COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
 {
   CSingleLock lock (m_critSection);
   bool vflip = false;
-  Close();
+
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
   std::string decoder_name;
   m_settings_changed = false;
@@ -379,7 +360,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   m_failed_eos    = false;
 
   if(!m_config.hints.width || !m_config.hints.height)
-    return false;
+    throw "Video codec must have width or height specified";
 
   switch (m_config.hints.codec)
   {
@@ -492,31 +473,29 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
       break;    
     default:
       printf("Vcodec id unknown: %x\n", m_config.hints.codec);
-      return false;
+      throw "Unknown video codec";
     break;
   }
 
   if(!m_omx_decoder.Initialize(decoder_name, OMX_IndexParamVideoInit))
-    return false;
+    throw "Video decoder initalization failed";
 
   if(clock == NULL)
-    return false;
+    throw "invalid clock";
 
   m_av_clock = clock;
   m_omx_clock = m_av_clock->GetOMXClock();
 
   if(m_omx_clock->GetComponent() == NULL)
   {
-    m_av_clock = NULL;
-    m_omx_clock = NULL;
-    return false;
+    throw "invalid clock component";
   }
 
   omx_err = m_omx_decoder.SetStateForComponent(OMX_StateIdle);
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open m_omx_decoder.SetStateForComponent");
-    return false;
+    throw "SetStateForComponent OMX_StateIdle failed";
   }
 
   OMX_VIDEO_PARAM_PORTFORMATTYPE formatType;
@@ -535,7 +514,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
 
   omx_err = m_omx_decoder.SetParameter(OMX_IndexParamVideoPortFormat, &formatType);
   if(omx_err != OMX_ErrorNone)
-    return false;
+    throw "SetParameter OMX_IndexParamVideoPortFormat failed";
   
   OMX_PARAM_PORTDEFINITIONTYPE portParam;
   OMX_INIT_STRUCTURE(portParam);
@@ -545,7 +524,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open error OMX_IndexParamPortDefinition omx_err(0x%08x)", omx_err);
-    return false;
+    throw "GetParameter failed";
   }
 
   portParam.nPortIndex = m_omx_decoder.GetInputPort();
@@ -558,7 +537,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open error OMX_IndexParamPortDefinition omx_err(0x%08x)", omx_err);
-    return false;
+    throw "SetParameter OMX_IndexParamPortDefinition failed";
   }
 
   // request portsettingschanged on aspect ratio change
@@ -572,7 +551,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open OMX_IndexConfigRequestCallback error (0%08x)", omx_err);
-    return false;
+    throw "SetParameter OMX_IndexConfigRequestCallback failed";
   }
 
   OMX_PARAM_BRCMVIDEODECODEERRORCONCEALMENTTYPE concanParam;
@@ -584,7 +563,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open error OMX_IndexParamBrcmVideoDecodeErrorConcealment omx_err(0x%08x)", omx_err);
-    return false;
+    throw "SetParameter OMX_IndexParamBrcmVideoDecodeErrorConcealment failed";
   }
 
   if(NaluFormatStartCodes(m_config.hints.codec, (uint8_t *)m_config.hints.extradata, m_config.hints.extrasize))
@@ -598,7 +577,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
     if (omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXVideo::Open OMX_IndexParamNalStreamFormatSelect error (0%08x)", omx_err);
-      return false;
+      throw "SetParameter OMX_IndexParamNalStreamFormatSelect failed";
     }
   }
 
@@ -607,19 +586,18 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open AllocOMXInputBuffers error (0%08x)", omx_err);
-    return false;
+    throw "AllocInputBuffers failed";
   }
 
   omx_err = m_omx_decoder.SetStateForComponent(OMX_StateExecuting);
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXVideo::Open error m_omx_decoder.SetStateForComponent");
-    return false;
+    throw "SetStateForComponent OMX_StateExecuting failed";
   }
 
   SendDecoderConfig();
 
-  m_is_open           = true;
   m_drop_state        = false;
   m_setStartTime      = true;
 
@@ -654,7 +632,7 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
       m_transform = OMX_DISPLAY_MIRROR_ROT180;
 
   if(m_omx_decoder.BadState())
-    return false;
+    throw "Decoded in bad state";
 
   CLogLog(LOGDEBUG,
     "%s::%s - decoder_component(0x%p), input_port(0x%x), output_port(0x%x) deinterlace %d hdmiclocksync %d",
@@ -663,11 +641,9 @@ bool COMXVideo::Open(OMXClock *clock, const OMXVideoConfig &config)
 
   float fAspect = m_config.hints.aspect ? (float)m_config.hints.aspect / (float)m_config.hints.width * (float)m_config.hints.height : 1.0f;
   m_pixel_aspect = fAspect / m_config.display_aspect;
-
-  return true;
 }
 
-void COMXVideo::Close()
+COMXVideo::~COMXVideo()
 {
   CSingleLock lock (m_critSection);
   m_omx_tunnel_clock.Deestablish();
@@ -683,13 +659,6 @@ void COMXVideo::Close()
   if(m_deinterlace || m_config.anaglyph)
     m_omx_image_fx.Deinitialize();
   m_omx_render.Deinitialize();
-
-  m_is_open       = false;
-
-  m_video_codec_name.clear();
-  m_deinterlace       = false;
-  m_config.anaglyph          = OMX_ImageFilterAnaglyphNone;
-  m_av_clock          = NULL;
 }
 
 unsigned int COMXVideo::GetFreeSpace()
@@ -709,7 +678,7 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
 
-  if( m_drop_state || !m_is_open )
+  if( m_drop_state)
     return true;
 
   unsigned int demuxer_bytes = (unsigned int)iSize;
@@ -790,8 +759,6 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
 void COMXVideo::Reset(void)
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return;
 
   m_setStartTime      = true;
   m_omx_decoder.FlushInput();
@@ -817,8 +784,6 @@ void COMXVideo::SetVideoRect(int aspectMode)
 void COMXVideo::SetVideoRect()
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return;
 
   OMX_ERRORTYPE omx_err;
   OMX_CONFIG_DISPLAYREGIONTYPE configDisplay;
@@ -868,8 +833,6 @@ void COMXVideo::SetVideoRect()
 void COMXVideo::SetLayer(int layer)
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return;
 
   OMX_ERRORTYPE omx_err;
   OMX_CONFIG_DISPLAYREGIONTYPE configDisplay;
@@ -890,8 +853,6 @@ void COMXVideo::SetLayer(int layer)
 void COMXVideo::SetAlpha(int alpha)
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return;
 
   OMX_ERRORTYPE omx_err;
   OMX_CONFIG_DISPLAYREGIONTYPE configDisplay;
@@ -921,8 +882,6 @@ int COMXVideo::GetInputBufferSize()
 void COMXVideo::SubmitEOS()
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return;
 
   m_submitted_eos = true;
   m_failed_eos = false;
@@ -956,8 +915,6 @@ void COMXVideo::SubmitEOS()
 bool COMXVideo::IsEOS()
 {
   CSingleLock lock (m_critSection);
-  if(!m_is_open)
-    return true;
   if (!m_failed_eos && !m_omx_render.IsEOS())
     return false;
   if (m_submitted_eos)

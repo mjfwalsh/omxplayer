@@ -60,27 +60,19 @@ public:
   int layer = 0;
   float queue_size = 10.0f;
   float fifo_size = (float)80*1024*60 / (1024*1024);
-
-  OMXVideoConfig()
-  {
-    dst_rect.SetRect(0, 0, 0, 0);
-    src_rect.SetRect(0, 0, 0, 0);
-  }
 };
 
 class COMXVideo
 {
 public:
-  COMXVideo();
+  COMXVideo(OMXClock *clock, const OMXVideoConfig &config);
   ~COMXVideo();
 
   // Required overrides
   bool SendDecoderConfig();
   bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
-  bool Open(OMXClock *clock, const OMXVideoConfig &config);
   bool PortSettingsChanged();
   void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
-  void Close(void);
   unsigned int GetFreeSpace();
   unsigned int GetSize();
   int  Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts);
@@ -98,7 +90,7 @@ public:
   bool BadState() { return m_omx_decoder.BadState(); };
 protected:
   // Video format
-  bool              m_drop_state;
+  bool              m_drop_state = false;
 
   OMX_VIDEO_CODINGTYPE m_codingType;
 
@@ -106,26 +98,25 @@ protected:
   COMXCoreComponent m_omx_render;
   COMXCoreComponent m_omx_sched;
   COMXCoreComponent m_omx_image_fx;
-  COMXCoreComponent *m_omx_clock;
-  OMXClock           *m_av_clock;
+  COMXCoreComponent *m_omx_clock = NULL;
+  OMXClock           *m_av_clock = NULL;
 
   COMXCoreTunel     m_omx_tunnel_decoder;
   COMXCoreTunel     m_omx_tunnel_clock;
   COMXCoreTunel     m_omx_tunnel_sched;
   COMXCoreTunel     m_omx_tunnel_image_fx;
-  bool              m_is_open;
 
-  bool              m_setStartTime;
+  bool              m_setStartTime = false;
 
   std::string       m_video_codec_name;
 
-  bool              m_deinterlace;
+  bool              m_deinterlace = false;
   OMXVideoConfig    m_config;
 
-  float             m_pixel_aspect;
-  bool              m_submitted_eos;
-  bool              m_failed_eos;
-  OMX_DISPLAYTRANSFORMTYPE m_transform;
-  bool              m_settings_changed;
+  float             m_pixel_aspect = 1.0f;
+  bool              m_submitted_eos = false;
+  bool              m_failed_eos = false;
+  OMX_DISPLAYTRANSFORMTYPE m_transform = OMX_DISPLAY_ROT0;
+  bool              m_settings_changed = false;
   CCriticalSection  m_critSection;
 };

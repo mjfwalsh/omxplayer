@@ -34,17 +34,7 @@ class CRect;
 
 OMXPlayerVideo::OMXPlayerVideo()
 {
-  m_open          = false;
-  m_stream_id     = -1;
-  m_pStream       = NULL;
-  m_av_clock      = NULL;
-  m_decoder       = NULL;
-  m_fps           = 25.0f;
-  m_flush         = false;
   m_flush_requested = false;
-  m_cached_size   = 0;
-  m_iVideoDelay   = 0;
-  m_iCurrentPts   = 0;
 
   pthread_cond_init(&m_packet_cond, NULL);
   pthread_cond_init(&m_picture_cond, NULL);
@@ -97,7 +87,6 @@ bool OMXPlayerVideo::Open(OMXClock *av_clock, const OMXVideoConfig &config)
   m_config      = config;
   m_av_clock    = av_clock;
   m_fps         = 25.0f;
-  m_frametime   = 0;
   m_iCurrentPts = AV_NOPTS_VALUE;
   m_bAbort      = false;
   m_flush       = false;
@@ -128,7 +117,6 @@ bool OMXPlayerVideo::Reset()
   m_stream_id         = -1;
   m_pStream           = NULL;
   m_iCurrentPts       = AV_NOPTS_VALUE;
-  m_frametime         = 0;
   m_bAbort            = false;
   m_flush             = false;
   m_flush_requested   = false;
@@ -325,19 +313,16 @@ bool OMXPlayerVideo::OpenDecoder()
     m_fps = 25;
   }
 
-  m_frametime = (double)AV_TIME_BASE / m_fps;
-
-  m_decoder = new COMXVideo();
-  if(!m_decoder->Open(m_av_clock, m_config))
-  {
-    CloseDecoder();
+  try {
+    m_decoder = new COMXVideo(m_av_clock, m_config);
+  }
+  catch(const char* msg) {
+    m_decoder = NULL;
     return false;
   }
-  else
-  {
-    printf("Video codec %s width %d height %d profile %d fps %f\n",
-        m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
-  }
+
+  printf("Video codec %s width %d height %d profile %d fps %f\n",
+      m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
 
   return true;
 }
