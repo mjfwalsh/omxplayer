@@ -25,7 +25,7 @@
 
 #include <IL/OMX_Video.h>
 
-#include "guilib/Geometry.h"
+#include "utils/simple_geometry.h"
 #include "utils/SingleLock.h"
 
 class OMXClock;
@@ -46,8 +46,8 @@ class OMXVideoConfig
 public:
   COMXStreamInfo hints;
   bool use_thread = true;
-  CRect dst_rect;
-  CRect src_rect;
+  Rect dst_rect;
+  Rect src_rect;
   float display_aspect = 0.0f;
   EDEINTERLACEMODE deinterlace = VS_DEINTERLACEMODE_AUTO;
   bool advanced_hd_deinterlace = true;
@@ -78,7 +78,7 @@ public:
   int  Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts);
   void Reset(void);
   std::string GetDecoderName() { return m_video_codec_name; };
-  void SetVideoRect(const CRect& SrcRect, const CRect& DestRect);
+  void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
   void SetVideoRect();
   void SetAlpha(int alpha);

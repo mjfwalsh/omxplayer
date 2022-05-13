@@ -30,7 +30,7 @@
 #include "OMXReader.h"
 #include "OMXStreamInfo.h"
 
-class CRect;
+class Rect;
 
 OMXPlayerVideo::OMXPlayerVideo()
 {
@@ -165,7 +165,7 @@ void OMXPlayerVideo::SetLayer(int layer)
   m_decoder->SetLayer(layer);
 }
 
-void OMXPlayerVideo::SetVideoRect(const CRect& SrcRect, const CRect& DestRect)
+void OMXPlayerVideo::SetVideoRect(const Rect& SrcRect, const Rect& DestRect)
 {
   m_decoder->SetVideoRect(SrcRect, DestRect);
 }

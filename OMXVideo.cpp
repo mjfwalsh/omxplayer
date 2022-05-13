@@ -191,7 +191,7 @@ bool COMXVideo::PortSettingsChanged()
   configDisplay.layer = m_config.layer;
   configDisplay.transform = m_transform;
 
-  if (!(m_config.dst_rect.x2 > m_config.dst_rect.x1 && m_config.dst_rect.y2 > m_config.dst_rect.y1))
+  if (!(m_config.dst_rect.width > 0 && m_config.dst_rect.height > 0))
     configDisplay.alpha |= OMX_DISPLAY_ALPHA_FLAGS_DISCARD_LOWER_LAYERS;
 
   omx_err = m_omx_render.SetConfig(OMX_IndexConfigDisplayRegion, &configDisplay);
@@ -768,7 +768,7 @@ void COMXVideo::Reset(void)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-void COMXVideo::SetVideoRect(const CRect& SrcRect, const CRect& DestRect)
+void COMXVideo::SetVideoRect(const Rect& SrcRect, const Rect& DestRect)
 {
   m_config.src_rect = SrcRect;
   m_config.dst_rect = DestRect;
@@ -794,12 +794,12 @@ void COMXVideo::SetVideoRect()
   configDisplay.noaspect   = m_config.aspectMode == 3 ? OMX_TRUE : OMX_FALSE;
   configDisplay.mode       = m_config.aspectMode == 2 ? OMX_DISPLAY_MODE_FILL : OMX_DISPLAY_MODE_LETTERBOX;
 
-  configDisplay.src_rect.x_offset   = m_config.src_rect.x1;
-  configDisplay.src_rect.y_offset   = m_config.src_rect.y1;
-  configDisplay.src_rect.width      = m_config.src_rect.Width();
-  configDisplay.src_rect.height     = m_config.src_rect.Height();
+  configDisplay.src_rect.x_offset   = m_config.src_rect.x;
+  configDisplay.src_rect.y_offset   = m_config.src_rect.y;
+  configDisplay.src_rect.width      = m_config.src_rect.width;
+  configDisplay.src_rect.height     = m_config.src_rect.height;
 
-  if (m_config.dst_rect.x2 > m_config.dst_rect.x1 && m_config.dst_rect.y2 > m_config.dst_rect.y1) {
+  if (m_config.dst_rect.width > 0 && m_config.dst_rect.height > 0) {
     configDisplay.set        = (OMX_DISPLAYSETTYPE)(configDisplay.set | OMX_DISPLAY_SET_DEST_RECT);
     configDisplay.fullscreen = OMX_FALSE;
 
@@ -807,10 +807,10 @@ void COMXVideo::SetVideoRect()
       configDisplay.noaspect = OMX_TRUE;
     }
 
-    configDisplay.dest_rect.x_offset  = m_config.dst_rect.x1;
-    configDisplay.dest_rect.y_offset  = m_config.dst_rect.y1;
-    configDisplay.dest_rect.width     = m_config.dst_rect.Width();
-    configDisplay.dest_rect.height    = m_config.dst_rect.Height();
+    configDisplay.dest_rect.x_offset  = m_config.dst_rect.x;
+    configDisplay.dest_rect.y_offset  = m_config.dst_rect.y;
+    configDisplay.dest_rect.width     = m_config.dst_rect.width;
+    configDisplay.dest_rect.height    = m_config.dst_rect.height;
   } else {
     configDisplay.fullscreen = OMX_TRUE;
   }
@@ -862,7 +862,7 @@ void COMXVideo::SetAlpha(int alpha)
   configDisplay.set = OMX_DISPLAY_SET_ALPHA;
   configDisplay.alpha = alpha;
 
-  if (!(m_config.dst_rect.x2 > m_config.dst_rect.x1 && m_config.dst_rect.y2 > m_config.dst_rect.y1))
+  if (!(m_config.dst_rect.width > 0 && m_config.dst_rect.height > 0))
     configDisplay.alpha |= OMX_DISPLAY_ALPHA_FLAGS_DISCARD_LOWER_LAYERS;
 
   omx_err = m_omx_render.SetConfig(OMX_IndexConfigDisplayRegion, &configDisplay);

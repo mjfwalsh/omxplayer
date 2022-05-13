@@ -1461,7 +1461,7 @@ int run_play_loop()
 
     // sub_dim and sub_aspect asre passed through FindDVDSubs in case
     // the subtitles have a different size
-    Dimension sub_dim = {m_config_video.hints.width, m_config_video.hints.height};
+    Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
     float sub_aspect = m_config_video.hints.aspect;
     uint32_t *palette = m_DvdPlayer ? m_DvdPlayer->getPalette() : NULL;
     if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect, &palette))

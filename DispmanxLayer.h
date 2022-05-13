@@ -35,7 +35,7 @@
 class DispmanxLayer
 {
 public:
-	DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension src_image = {-1, -1},
+	DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
 		uint32_t *palette = NULL);
 	~DispmanxLayer();
 

@@ -67,7 +67,7 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 	int assumed_longest_subtitle_line_in_pixels = 1300;
 
 	// Calculate image dimensions - must be evenly divisible by 16
-	Rectangle text_subtitle_rect;
+	Rect text_subtitle_rect;
 	text_subtitle_rect.height = (m_max_lines * line_height + 20) & ~15; // grow to fit
 	text_subtitle_rect.y = screen.height - text_subtitle_rect.height - (line_height / 2);
 
@@ -129,7 +129,7 @@ void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio, in
 	Dimension screen = DispmanxLayer::getScreenDimensions();
 
 	// Calculate position of view port
-	Rectangle view_port {.width = screen.width, .height = screen.height};
+	Rect view_port(0, 0, screen.width, screen.height);
 	float screen_aspect_ratio = (float)screen.width / screen.height;
 	if((aspect_mode == 1 || aspect_mode == 0) && video_aspect_ratio != screen_aspect_ratio) {
 		if(video_aspect_ratio > screen_aspect_ratio) {

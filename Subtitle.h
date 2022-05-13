@@ -38,7 +38,7 @@ class Subtitle {
 
   struct {
     std::basic_string<unsigned char> data;
-    Rectangle rect;
+    Rect rect;
   } image;
 
   std::string text;

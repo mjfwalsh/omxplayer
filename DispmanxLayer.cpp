@@ -63,7 +63,7 @@ Dimension DispmanxLayer::getScreenDimensions()
 	if(result != 0)
 		throw "Dispamnx Error: Failed to get screen dimensions";
 
-	return {screen_info.width, screen_info.height};
+	return Dimension(screen_info.width, screen_info.height);
 }
 
 void DispmanxLayer::closeDisplay()
@@ -73,7 +73,7 @@ void DispmanxLayer::closeDisplay()
 		throw "Dispamnx Error: Failed to close display layer";
 }
 
-DispmanxLayer::DispmanxLayer(int bytesperpixel, Rectangle dest_rect, Dimension src_image,
+DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image,
 		uint32_t *palette)
 {
 	// image type
