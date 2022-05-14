@@ -85,7 +85,7 @@ void OMXPlayerAudio::UnLockDecoder()
     pthread_mutex_unlock(&m_lock_decoder);
 }
 
-bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader)
+bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int stream_count)
 {
   if(ThreadHandle())
     Close();
@@ -96,6 +96,7 @@ bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXR
   m_config      = config;
   m_av_clock    = av_clock;
   m_omx_reader  = omx_reader;
+  m_stream_count = stream_count;
   m_passthrough = false;
   m_hw_decode   = false;
   m_iCurrentPts = AV_NOPTS_VALUE;
@@ -153,6 +154,33 @@ bool OMXPlayerAudio::Close()
   return true;
 }
 
+int OMXPlayerAudio::GetActiveStream()
+{
+  return m_stream_index;
+}
+
+bool OMXPlayerAudio::SetActiveStream(int new_index)
+{
+  bool ret = true;
+
+  if(new_index < 0) ret = false;
+  else if(new_index >= m_stream_count) ret = false;
+  else m_stream_index = new_index;
+
+  return ret;
+}
+
+int OMXPlayerAudio::SetActiveStreamDelta(int delta)
+{
+  int new_index = m_stream_index + delta;
+
+  // wrap around
+  if(new_index < 0) m_stream_index = m_stream_count - 1;
+  else if(new_index >= m_stream_count) m_stream_index = 0;
+  else m_stream_index = new_index;
+
+  return m_stream_index;
+}
 
 bool OMXPlayerAudio::Decode(OMXPacket *pkt)
 {
@@ -163,7 +191,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
   if(!m_decoder || !m_pAudioCodec)
     return true;
 
-  if(!m_omx_reader->IsActive(OMXSTREAM_AUDIO, pkt->stream_index))
+  if(m_stream_index != pkt->index)
     return true; 
 
   int channels = pkt->hints.channels;
@@ -406,8 +434,8 @@ bool OMXPlayerAudio::OpenDecoder()
 
   bAudioRenderOpen = m_decoder->Initialize(m_av_clock, m_config, m_pAudioCodec->GetChannelMap(), m_pAudioCodec->GetBitsPerSample());
 
-  m_codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO);
-  
+  m_codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, m_stream_index);
+
   if(!bAudioRenderOpen)
   {
     delete m_decoder; 

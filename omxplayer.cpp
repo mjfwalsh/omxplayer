@@ -592,12 +592,11 @@ int ExitFileNotFound(const std::string& path)
 
 void ChangeSubtitle(int delta)
 {
-  m_player_subtitles.SetActiveStreamDelta(delta);
-  if(!m_player_subtitles.GetVisible()) {
+  int new_index = m_player_subtitles.SetActiveStreamDelta(delta);
+  if(new_index == -1) {
     m_subtitle_lang[0] = '\0';
     osd_print("Subtitles Off");
   } else {
-    int new_index = m_player_subtitles.GetActiveStream();
     strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
         new_index).c_str());
     if(m_subtitle_lang[0] != '\0')
@@ -1407,23 +1406,24 @@ int run_play_loop()
   }
 
   m_has_video     = m_omx_reader.VideoStreamCount();
-  m_has_audio     = m_audio_index == -2 ? false : m_omx_reader.AudioStreamCount();
-  m_has_subtitle  = m_has_external_subtitles || m_omx_reader.SubtitleStreamCount();
+  m_has_audio     = m_audio_index == -2 ? false : m_omx_reader.AudioStreamCount() > 0;
+  m_has_subtitle  = m_has_external_subtitles || m_omx_reader.SubtitleStreamCount() > 0;
   m_loop          = m_loop && m_omx_reader.CanSeek();
 
   m_av_clock->OMXStateIdle();
   m_av_clock->OMXStop();
   m_av_clock->OMXPause();
 
-  m_omx_reader.GetHints(OMXSTREAM_AUDIO, m_config_audio.hints);
-  m_omx_reader.GetHints(OMXSTREAM_VIDEO, m_config_video.hints);
+  m_omx_reader.GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
 
   if (m_fps > 0.0f)
     m_config_video.hints.fpsrate = m_fps * AV_TIME_BASE, m_config_video.hints.fpsscale = AV_TIME_BASE;
 
   if(m_audio_index > -1)
-    m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, m_audio_index);
-          
+    m_player_audio.SetActiveStream(m_audio_index);
+
+  m_omx_reader.GetHints(OMXSTREAM_AUDIO, m_player_audio.GetActiveStream(), m_config_audio.hints);
+
   if(m_has_video && m_refresh)
   {
     memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
@@ -1482,8 +1482,6 @@ int run_play_loop()
     m_player_subtitles.SetActiveStream(m_subtitle_index);
   }
 
-  m_omx_reader.GetHints(OMXSTREAM_AUDIO, m_config_audio.hints);
-
   if (m_config_audio.device.empty())
   {
     if (vc_tv_hdmi_audio_supported(EDID_AudioFormat_ePCM, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) == 0)
@@ -1503,7 +1501,7 @@ int run_play_loop()
       vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) != 0)
     m_config_audio.passthrough = false;
 
-  if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, &m_omx_reader))
+  if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, &m_omx_reader, m_omx_reader.AudioStreamCount()))
     return exit_with_message("Failed to open audio out");
 
   if(m_has_audio)
@@ -1588,21 +1586,12 @@ int run_play_loop()
         }
         break;
       case KeyConfig::ACTION_PREVIOUS_AUDIO:
-        if(m_has_audio)
-        {
-          int new_index = m_omx_reader.GetAudioIndex() - 1;
-          if(new_index < 0) new_index = m_omx_reader.AudioStreamCount() - 1;
-          m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
-          strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
-          osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
-        }
-        break;
       case KeyConfig::ACTION_NEXT_AUDIO:
         if(m_has_audio)
         {
-          int new_index = m_omx_reader.GetAudioIndex() + 1;
-          if(new_index >= m_omx_reader.AudioStreamCount()) new_index = 0;
-          m_omx_reader.SetActiveStream(OMXSTREAM_AUDIO, new_index);
+          int delta = result.getKey() ==  KeyConfig::ACTION_PREVIOUS_AUDIO ? -1 : 1;
+
+          int new_index = m_player_audio.SetActiveStreamDelta(delta);
           strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
           osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
@@ -1950,7 +1939,7 @@ int run_play_loop()
     }
     else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
     {
-      if(m_has_video && m_omx_reader.IsActive(OMXSTREAM_VIDEO, m_omx_pkt->stream_index))
+      if(m_has_video && m_omx_pkt->index == 0)
       {
         if(m_player_video.AddPacket(m_omx_pkt))
           m_omx_pkt = NULL;
@@ -1972,8 +1961,7 @@ int run_play_loop()
     {
       if(m_has_subtitle && playspeed_current == playspeed_normal)
       {
-        m_player_subtitles.AddPacket(m_omx_pkt,
-                        m_omx_reader.GetSubtitleIndexFromId(m_omx_pkt->stream_index));
+        m_player_subtitles.AddPacket(m_omx_pkt);
         m_omx_pkt = NULL;
       }
     }

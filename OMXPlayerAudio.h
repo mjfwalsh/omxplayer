@@ -55,6 +55,8 @@ protected:
   OMXClock                  *m_av_clock;
   OMXReader                 *m_omx_reader;
   COMXAudio                 *m_decoder;
+  std::atomic<int>          m_stream_index;
+  int                       m_stream_count;
   std::string               m_codec_name;
   std::string               m_device;
   bool                      m_passthrough;
@@ -79,11 +81,14 @@ private:
 public:
   OMXPlayerAudio();
   ~OMXPlayerAudio();
-  bool Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader);
+  bool Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int stream_count);
   bool Close();
   bool Decode(OMXPacket *pkt);
   void Process() override;
   void Flush();
+  int GetActiveStream();
+  bool SetActiveStream(int new_index);
+  int SetActiveStreamDelta(int delta);
   bool AddPacket(OMXPacket *pkt);
   bool OpenAudioCodec();
   void CloseAudioCodec();      

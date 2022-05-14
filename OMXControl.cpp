@@ -932,15 +932,13 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListSubtitles"))
   {
     int count = reader->SubtitleStreamCount();
-    char** values = new char*[count];
+    char *values[count];
 
     for (int i=0; i < count; i++)
     {
-       asprintf(&values[i], "%d:%s:%s:%s:%s", i,
-                                              reader->GetStreamLanguage(OMXSTREAM_SUBTITLE, i).c_str(),
-                                              reader->GetStreamName(OMXSTREAM_SUBTITLE, i).c_str(),
-                                              reader->GetCodecName(OMXSTREAM_SUBTITLE, i).c_str(),
-                                              ((int)subtitles->GetActiveStream() == i) ? "active" : "");
+       asprintf(&values[i], "%d:%s:%s", i,
+                reader->GetStreamMetaData(OMXSTREAM_SUBTITLE, i).c_str(),
+                subtitles->GetActiveStream() == i ? "active" : "");
     }
 
     dbus_respond_array(m, (const char**)values, count);
@@ -948,7 +946,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Cleanup
     for (int i=0; i < count; i++)
     {
-      delete[] values[i];
+      free(values[i]);
     }
 
     return KeyConfig::ACTION_BLANK;
@@ -966,15 +964,14 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListAudio"))
   {
     int count = reader->AudioStreamCount();
-    char** values = new char*[count];
+    char *values[count];
+    int active_stream = audio->GetActiveStream();
 
     for (int i=0; i < count; i++)
     {
-       asprintf(&values[i], "%d:%s:%s:%s:%s", i,
-                                              reader->GetStreamLanguage(OMXSTREAM_AUDIO, i).c_str(),
-                                              reader->GetStreamName(OMXSTREAM_AUDIO, i).c_str(),
-                                              reader->GetCodecName(OMXSTREAM_AUDIO, i).c_str(),
-                                              (reader->GetAudioIndex() == i) ? "active" : "");
+       asprintf(&values[i], "%d:%s:%s", i,
+                reader->GetStreamMetaData(OMXSTREAM_AUDIO, i).c_str(),
+                i == active_stream ? "active" : "");
     }
 
     dbus_respond_array(m, (const char**)values, count);
@@ -982,7 +979,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Cleanup
     for (int i=0; i < count; i++)
     {
-      delete[] values[i];
+      free(values[i]);
     }
 
     return KeyConfig::ACTION_BLANK;
@@ -990,15 +987,13 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListVideo"))
   {
     int count = reader->VideoStreamCount();
-    char** values = new char*[count];
+    char *values[count];
 
     for (int i=0; i < count; i++)
     {
-       asprintf(&values[i], "%d:%s:%s:%s:%s", i,
-                                              reader->GetStreamLanguage(OMXSTREAM_VIDEO, i).c_str(),
-                                              reader->GetStreamName(OMXSTREAM_VIDEO, i).c_str(),
-                                              reader->GetCodecName(OMXSTREAM_VIDEO, i).c_str(),
-                                              (reader->GetVideoIndex() == i) ? "active" : "");
+       asprintf(&values[i], "%d:%s:%s", i,
+                reader->GetStreamMetaData(OMXSTREAM_VIDEO, i).c_str(),
+                i == 0 ? "active" : "");
     }
 
     dbus_respond_array(m, (const char**)values, count);
@@ -1006,7 +1001,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     // Cleanup
     for (int i=0; i < count; i++)
     {
-      delete[] values[i];
+      free(values[i]);
     }
 
     return KeyConfig::ACTION_BLANK;
@@ -1026,9 +1021,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     }
     else
     {
-      if (reader->SetActiveStream(OMXSTREAM_SUBTITLE, index))
+      if (subtitles->SetActiveStream(index))
       {
-        subtitles->SetActiveStream(reader->GetSubtitleIndex());
         dbus_respond_boolean(m, 1);
       }
       else {
@@ -1052,7 +1046,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     }
     else
     {
-      if (reader->SetActiveStream(OMXSTREAM_AUDIO, index))
+      if (audio->SetActiveStream(index))
       {
         dbus_respond_boolean(m, 1);
       }

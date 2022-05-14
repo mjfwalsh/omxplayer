@@ -55,6 +55,7 @@ class OMXPacket : public AVPacket
   
   COMXStreamInfo hints;
   enum AVMediaType codec_type;
+  int index;
 };
 
 enum OMXStreamType
@@ -65,23 +66,23 @@ enum OMXStreamType
   OMXSTREAM_SUBTITLE  = 3
 };
 
-class OMXStream
-{
-public:
-  char language[4];
-  std::string name;
-  std::string codec_name;
-  AVStream    *stream     = NULL;
-  OMXStreamType type      = OMXSTREAM_NONE;
-  int         id          = 0;
-  void        *extradata  = NULL;
-  unsigned int extrasize  = 0;
-  COMXStreamInfo hints;
-};
-
 class OMXReader
 {
-protected:
+private:
+  class OMXStream
+  {
+  public:
+    std::string    language;
+    std::string    name;
+    std::string    codec_name;
+    AVStream       *stream     = NULL;
+    OMXStreamType  type      = OMXSTREAM_NONE;
+    int            id          = 0;
+    void           *extradata  = NULL;
+    unsigned int   extrasize  = 0;
+    COMXStreamInfo hints;
+  };
+
   int                       m_video_index     = -1;
   int                       m_audio_index     = -1;
   int                       m_subtitle_index  = -1;
@@ -108,7 +109,7 @@ protected:
   void Lock();
   void UnLock();
   OMXDvdPlayer              *m_DvdPlayer      = NULL;
-  unordered_map<int, int>   m_subtitle_hash;
+  unordered_map<int, int>   m_steam_map;
 
 public:
   // results for chapter seek function
@@ -127,36 +128,29 @@ public:
   bool Close();
   bool SeekTime(int64_t time, bool backwords, int64_t *startpts);
   OMXPacket *Read();
-  bool IsActive(OMXStreamType type, int stream_index);
   bool GetHints(AVStream *stream, COMXStreamInfo *hints);
-  bool GetHints(OMXStreamType type, COMXStreamInfo &hints);
+  void GetHints(OMXStreamType type, int index, COMXStreamInfo &hints);
   bool IsEof();
   int  AudioStreamCount() { return m_audio_count; };
   int  VideoStreamCount() { return m_video_count; };
   int  SubtitleStreamCount() { return m_subtitle_count; };
-  bool SetActiveStream(OMXStreamType type, int index);
   double GetAspectRatio() { return m_aspect; };
   int GetWidth() { return m_width; };
   int GetHeight() { return m_height; };
   void SetSpeed(int iSpeed);
   SeekResult SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts);
-  int GetAudioIndex() { return m_audio_index; };
-  int GetSubtitleIndex() { return m_subtitle_index; };
-  int GetVideoIndex() { return m_video_index; };
   std::string getFilename() const { return m_filename; }
-  int GetSubtitleIndexFromId(int id);
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
-  std::string GetCodecName(OMXStreamType type);
   std::string GetCodecName(OMXStreamType type, unsigned int index);
-  std::string GetStreamCodecName(AVStream *stream);
+  std::string GetStreamMetaData(OMXStreamType type, unsigned int index);
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
-  std::string GetStreamName(OMXStreamType type, unsigned int index);
   bool CanSeek();
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
 private:
+  std::string GetStreamCodecName(AVStream *stream);
   void GetStreams();
   void GetDvdStreams();
   void GetChapters();

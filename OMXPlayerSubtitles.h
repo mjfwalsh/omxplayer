@@ -65,13 +65,12 @@ public:
     return m_visible;
   }
   
-  void SetActiveStream(int index) BOOST_NOEXCEPT;
+  bool SetActiveStream(int index) BOOST_NOEXCEPT;
 
-  void SetActiveStreamDelta(int index) BOOST_NOEXCEPT;
+  int SetActiveStreamDelta(int index) BOOST_NOEXCEPT;
 
-  size_t GetActiveStream() BOOST_NOEXCEPT
+  int GetActiveStream() BOOST_NOEXCEPT
   {
-    assert(!m_subtitle_buffers.empty() || m_use_external_subtitles);
     return m_active_index;
   }
 
@@ -84,7 +83,7 @@ public:
 
   void DisplayText(const char *text, int duration) BOOST_NOEXCEPT;
 
-  void AddPacket(OMXPacket *pkt, size_t stream_index) BOOST_NOEXCEPT;
+  void AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT;
 
 protected:
   AVCodecContext           *m_dvd_codec_context;

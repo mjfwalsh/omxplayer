@@ -4,7 +4,6 @@
 #include <dvdread/ifo_types.h>
 #include <string>
 
-struct OMXStream;
 class DVD;
 
 class OMXDvdPlayer
