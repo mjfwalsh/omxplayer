@@ -21,7 +21,6 @@
 
 #include <string>
 #include <string.h>
-#include <assert.h>
 #include "RegExp.h"
 #include "log.h"
 
@@ -42,7 +41,7 @@ CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
   if (!m_re)
   {
     printf("PCRE: Compilation failed for expression '%s'\n", re);
-    assert(0);
+    throw "PCRE: Compilation failed";
   }
 }
 

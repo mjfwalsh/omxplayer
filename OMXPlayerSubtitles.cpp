@@ -395,7 +395,7 @@ RenderLoop(float font_size,
 
 void OMXPlayerSubtitles::FlushRenderer()
 {
-  assert(m_visible);
+  if(!m_visible) return;
 
   if(m_use_external_subtitles)
   {
@@ -403,8 +403,9 @@ void OMXPlayerSubtitles::FlushRenderer()
   }
   else
   {
+    if(m_subtitle_buffers.empty()) return;
+
     Message::Flush flush;
-    assert(!m_subtitle_buffers.empty());
     for(auto& s : m_subtitle_buffers[m_active_index])
       flush.subtitles.push_back(s);
     SendToRenderer(std::move(flush));
