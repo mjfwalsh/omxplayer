@@ -30,14 +30,14 @@
 class DVD
 {
 private:
-	typedef dvd_reader_t* (*DVDOpen_t)(const char *);
-	typedef void (*DVDClose_t)(dvd_reader_t*);
-	typedef dvd_file_t* (*DVDOpenFile_t)(dvd_reader_t *, int, dvd_read_domain_t);
-	typedef void (*DVDCloseFile_t)(dvd_file_t *);
-	typedef ssize_t (*DVDReadBlocks_t)(dvd_file_t *, int, size_t, unsigned char *);
-	typedef int (*DVDDiscID_t)(dvd_reader_t *, unsigned char *);
-	typedef ifo_handle_t* (*ifoOpen_t)(dvd_reader_t *, int);
-	typedef void(*ifoClose_t)(ifo_handle_t *);
+    typedef decltype(::DVDOpen)* DVDOpen_t;
+    typedef decltype(::DVDClose)* DVDClose_t;
+    typedef decltype(::DVDOpenFile)* DVDOpenFile_t;
+    typedef decltype(::DVDCloseFile)* DVDCloseFile_t;
+    typedef decltype(::DVDReadBlocks)* DVDReadBlocks_t;
+    typedef decltype(::DVDDiscID)* DVDDiscID_t;
+    typedef decltype(::ifoOpen)* ifoOpen_t;
+    typedef decltype(::ifoClose)* ifoClose_t;
 
 	void *load_function(const char *func_name)
 	{
