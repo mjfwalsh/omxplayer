@@ -222,363 +222,14 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   //TODO: implement GetAll
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Get"))
   {
-    DBusError error;
-    dbus_error_init(&error);
-
-    //Retrieve interface and property name
-    const char *interface, *property;
-    dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
-    //Root interface:
-    if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_ROOT)==0)
-    {
-      if (strcmp(property, "CanRaise")==0)
-      {
-        dbus_respond_boolean(m, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanQuit")==0)
-      {
-        dbus_respond_boolean(m, 1);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanSetFullscreen")==0)
-      {
-        dbus_respond_boolean(m, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Fullscreen")==0) //Fullscreen is read/write in theory not read only, but read only at the moment so...
-      {
-        dbus_respond_boolean(m, 1);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "HasTrackList")==0)
-      {
-        dbus_respond_boolean(m, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Identity")==0)
-      {
-        dbus_respond_string(m, "OMXPlayer");
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "SupportedUriSchemes")==0) //TODO: Update ?
-      {
-        const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
-        dbus_respond_array(m, UriSchemes, 4); // Array is of length 4
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "SupportedMimeTypes")==0) //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
-      {
-        const char *MimeTypes[] = {}; // Needs supplying
-        dbus_respond_array(m, MimeTypes, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      //Wrong property
-      else
-      {
-        //Error
-        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-        return KeyConfig::ACTION_BLANK;
-      }
-    }
-    //Player interface:
-    else if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
-    {
-      //MPRIS2 properties:
-      if (strcmp(property, "CanGoNext")==0)
-      {
-        dbus_respond_boolean(m, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanGoPrevious")==0)
-      {
-        dbus_respond_boolean(m, 0);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanSeek")==0)
-      {
-        dbus_respond_boolean(m, reader->CanSeek());
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanControl")==0)
-      {
-        dbus_respond_boolean(m, 1);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanPlay")==0)
-      {
-        dbus_respond_boolean(m, 1);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "CanPause")==0)
-      {
-        dbus_respond_boolean(m, 1);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Position")==0)
-      {
-        // Returns the current position in microseconds
-        int64_t pos = clock->OMXMediaTime();
-        dbus_respond_int64(m, pos);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "PlaybackStatus")==0)
-      {
-        const char *status;
-        if (clock->OMXIsPaused())
-        {
-          status = "Paused";
-        }
-        else
-        {
-          status = "Playing";
-        }
-        dbus_respond_string(m, status);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "MinimumRate")==0)
-      {
-        dbus_respond_double(m, (MIN_RATE)/1000.);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "MaximumRate")==0)
-      {
-        dbus_respond_double(m, (MAX_RATE)/1000.);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Rate")==0)
-      {
-        //return current playing rate
-        dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Volume")==0)
-      {
-        //return current volume
-        dbus_respond_double(m, audio->GetVolume());
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Metadata")==0)
-      {
-        DBusMessage *reply;
-        reply = dbus_message_new_method_return(m);
-        if(reply)
-        {
-          //Create iterator: Array of dict entries, composed of string (key)) and variant (value)
-          DBusMessageIter array_cont, dict_cont, dict_entry_cont, var;
-          dbus_message_iter_init_append(reply, &array_cont);
-          dbus_message_iter_open_container(&array_cont, DBUS_TYPE_ARRAY, "{sv}", &dict_cont);
-            //First dict entry: URI
-            const char *key1 = "xesam:url";
-            char uri[PATH_MAX+7];
-            ToURI(reader->getFilename(), uri);
-            const char *value1=uri;
-            dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
-              dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key1);
-              dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &var);
-              dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &value1);
-              dbus_message_iter_close_container(&dict_entry_cont, &var);
-            dbus_message_iter_close_container(&dict_cont, &dict_entry_cont);
-            //Second dict entry: duration in us
-            const char *key2 = "mpris:length";
-            dbus_int64_t value2 = reader->GetStreamLengthMicro();
-            dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
-              dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key2);
-              dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_INT64_AS_STRING, &var);
-              dbus_message_iter_append_basic(&var, DBUS_TYPE_INT64, &value2);
-              dbus_message_iter_close_container(&dict_entry_cont, &var);
-            dbus_message_iter_close_container(&dict_cont, &dict_entry_cont);
-          dbus_message_iter_close_container(&array_cont, &dict_cont);
-          //Send message
-          dbus_connection_send(bus, reply, NULL);
-          dbus_message_unref(reply);
-        }
-        return KeyConfig::ACTION_BLANK;
-      }
-
-      //Non-MPRIS2 properties:
-      else if (strcmp(property, "Aspect")==0)
-      {
-        // Returns aspect ratio
-        double ratio = reader->GetAspectRatio();
-        dbus_respond_double(m, ratio);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "VideoStreamCount")==0)
-      {
-        // Returns number of video streams
-        int64_t vcount = reader->VideoStreamCount();
-        dbus_respond_int64(m, vcount);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "ResWidth")==0)
-      {
-        // Returns width of video
-        int64_t width = reader->GetWidth();
-        dbus_respond_int64(m, width);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "ResHeight")==0)
-      {
-        // Returns height of video
-        int64_t height = reader->GetHeight();
-        dbus_respond_int64(m, height);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property,  "Duration")==0)
-      {
-        // Returns the duration in microseconds
-        int64_t dur = reader->GetStreamLengthMicro();
-        dbus_respond_int64(m, dur);
-        return KeyConfig::ACTION_BLANK;
-      }
-      //Wrong property
-      else
-      {
-        //Error
-        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-        return KeyConfig::ACTION_BLANK;
-      }
-    }
-    //Wrong interface:
-    else
-    {
-        //Error
-        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-        return KeyConfig::ACTION_BLANK;
-    }
+    return GetProperty(m);
   }
+
   //Properties Set method:
   //TODO: implement signal generation on some property changes
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Set"))
   {
-    DBusError error;
-    dbus_error_init(&error);
-
-    //Retrieve interface, property name and value
-    //Message has the form message[STRING:interface STRING:property DOUBLE:value] or message[STRING:interface STRING:property VARIANT[DOUBLE:value]]
-    const char *interface, *property;
-    double new_property_value;
-    DBusMessageIter args;
-    dbus_message_iter_init(m, &args);
-    if(dbus_message_iter_has_next(&args))
-    {
-		//The interface name
-		if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) ) 
-			dbus_message_iter_get_basic (&args, &interface);
-		else
-		{
-			puts("setE1");
-			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-			dbus_error_free(&error);
-			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-			return KeyConfig::ACTION_BLANK;
-		}
-		//The property name
-		if( dbus_message_iter_next(&args) && DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
-			dbus_message_iter_get_basic (&args, &property);
-		else
-		{
-			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-			dbus_error_free(&error);
-			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-			return KeyConfig::ACTION_BLANK;
-		}
-		//The value (either double or double in variant)
-		if (dbus_message_iter_next(&args))
-		{
-			//Simply a double
-			if (DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&args))
-			{
-				dbus_message_iter_get_basic(&args, &new_property_value);
-			}
-			//A double within a variant
-			else if(DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))
-			{
-				DBusMessageIter variant;
-				dbus_message_iter_recurse(&args, &variant);
-				if(DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&variant))
-				{
-					dbus_message_iter_get_basic(&variant, &new_property_value);
-				}
-			}
-			else
-			{
-				CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-				dbus_error_free(&error);
-				dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-				return KeyConfig::ACTION_BLANK;
-			}
-		}
-	}
-    if ( dbus_error_is_set(&error) )
-    {
-        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-        dbus_error_free(&error);
-        dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-        return KeyConfig::ACTION_BLANK;
-    }
-    //Player interface:
-    if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
-    {
-      if (strcmp(property, "Volume")==0)
-      {
-        double volume=new_property_value;
-        //Min value is 0
-        if(volume<.0)
-        {
-          volume=.0;
-        }
-        audio->SetVolume(volume);
-        dbus_respond_double(m, volume);
-        return KeyConfig::ACTION_BLANK;
-      }
-      else if (strcmp(property, "Rate")==0)
-      {
-        double rate=new_property_value;
-        if(rate>MAX_RATE/1000.)
-        {
-          rate=MAX_RATE/1000.;
-        }
-        if(rate<MIN_RATE/1000.)
-        {
-          //Set to Pause according to MPRIS2 specs (no actual change of playing rate)
-          dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
-          return KeyConfig::ACTION_PAUSE;
-        }
-        int iSpeed=(int)(rate*1000.);
-        if(!clock)
-        {
-          dbus_respond_double(m, .0);//What value ????
-          return KeyConfig::ACTION_BLANK;
-        }
-        //Can't do trickplay here so limit max speed
-        if(iSpeed > MAX_RATE)
-          iSpeed=MAX_RATE;
-        dbus_respond_double(m, iSpeed/1000.);//Reply before applying to be faster
-        clock->OMXSetSpeed(iSpeed, false, true);
-        return KeyConfig::ACTION_PLAY;
-      }
-      //Wrong property
-      else
-      {
-        //Error
-        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-        return KeyConfig::ACTION_BLANK;
-      }
-    }
-    //Wrong interface:
-    else
-    {
-        //Error
-        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-        return KeyConfig::ACTION_BLANK;
-    }
+    return SetProperty(m);
   }
   //----------------------------------------------------------------------------
 
@@ -1118,6 +769,366 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   }
 
   return KeyConfig::ACTION_BLANK;
+}
+
+OMXControlResult OMXControl::GetProperty(DBusMessage *m)
+{
+  DBusError error;
+  dbus_error_init(&error);
+
+  //Retrieve interface and property name
+  const char *interface, *property;
+  dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
+  //Root interface:
+  if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_ROOT)==0)
+  {
+    if (strcmp(property, "CanRaise")==0)
+    {
+      dbus_respond_boolean(m, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanQuit")==0)
+    {
+      dbus_respond_boolean(m, 1);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanSetFullscreen")==0)
+    {
+      dbus_respond_boolean(m, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Fullscreen")==0) //Fullscreen is read/write in theory not read only, but read only at the moment so...
+    {
+      dbus_respond_boolean(m, 1);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "HasTrackList")==0)
+    {
+      dbus_respond_boolean(m, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Identity")==0)
+    {
+      dbus_respond_string(m, "OMXPlayer");
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "SupportedUriSchemes")==0) //TODO: Update ?
+    {
+      const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
+      dbus_respond_array(m, UriSchemes, 4); // Array is of length 4
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "SupportedMimeTypes")==0) //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
+    {
+      const char *MimeTypes[] = {}; // Needs supplying
+      dbus_respond_array(m, MimeTypes, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    //Wrong property
+    else
+    {
+      //Error
+      CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
+      return KeyConfig::ACTION_BLANK;
+    }
+  }
+  //Player interface:
+  else if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
+  {
+    //MPRIS2 properties:
+    if (strcmp(property, "CanGoNext")==0)
+    {
+      dbus_respond_boolean(m, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanGoPrevious")==0)
+    {
+      dbus_respond_boolean(m, 0);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanSeek")==0)
+    {
+      dbus_respond_boolean(m, reader->CanSeek());
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanControl")==0)
+    {
+      dbus_respond_boolean(m, 1);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanPlay")==0)
+    {
+      dbus_respond_boolean(m, 1);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "CanPause")==0)
+    {
+      dbus_respond_boolean(m, 1);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Position")==0)
+    {
+      // Returns the current position in microseconds
+      int64_t pos = clock->OMXMediaTime();
+      dbus_respond_int64(m, pos);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "PlaybackStatus")==0)
+    {
+      const char *status;
+      if (clock->OMXIsPaused())
+      {
+        status = "Paused";
+      }
+      else
+      {
+        status = "Playing";
+      }
+      dbus_respond_string(m, status);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "MinimumRate")==0)
+    {
+      dbus_respond_double(m, (MIN_RATE)/1000.);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "MaximumRate")==0)
+    {
+      dbus_respond_double(m, (MAX_RATE)/1000.);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Rate")==0)
+    {
+      //return current playing rate
+      dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Volume")==0)
+    {
+      //return current volume
+      dbus_respond_double(m, audio->GetVolume());
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Metadata")==0)
+    {
+      DBusMessage *reply;
+      reply = dbus_message_new_method_return(m);
+      if(reply)
+      {
+        //Create iterator: Array of dict entries, composed of string (key)) and variant (value)
+        DBusMessageIter array_cont, dict_cont, dict_entry_cont, var;
+        dbus_message_iter_init_append(reply, &array_cont);
+        dbus_message_iter_open_container(&array_cont, DBUS_TYPE_ARRAY, "{sv}", &dict_cont);
+          //First dict entry: URI
+          const char *key1 = "xesam:url";
+          char uri[PATH_MAX+7];
+          ToURI(reader->getFilename(), uri);
+          const char *value1=uri;
+          dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
+            dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key1);
+            dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &var);
+            dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &value1);
+            dbus_message_iter_close_container(&dict_entry_cont, &var);
+          dbus_message_iter_close_container(&dict_cont, &dict_entry_cont);
+          //Second dict entry: duration in us
+          const char *key2 = "mpris:length";
+          dbus_int64_t value2 = reader->GetStreamLengthMicro();
+          dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
+            dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key2);
+            dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_INT64_AS_STRING, &var);
+            dbus_message_iter_append_basic(&var, DBUS_TYPE_INT64, &value2);
+            dbus_message_iter_close_container(&dict_entry_cont, &var);
+          dbus_message_iter_close_container(&dict_cont, &dict_entry_cont);
+        dbus_message_iter_close_container(&array_cont, &dict_cont);
+        //Send message
+        dbus_connection_send(bus, reply, NULL);
+        dbus_message_unref(reply);
+      }
+      return KeyConfig::ACTION_BLANK;
+    }
+
+    //Non-MPRIS2 properties:
+    else if (strcmp(property, "Aspect")==0)
+    {
+      // Returns aspect ratio
+      double ratio = reader->GetAspectRatio();
+      dbus_respond_double(m, ratio);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "VideoStreamCount")==0)
+    {
+      // Returns number of video streams
+      int64_t vcount = reader->VideoStreamCount();
+      dbus_respond_int64(m, vcount);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "ResWidth")==0)
+    {
+      // Returns width of video
+      int64_t width = reader->GetWidth();
+      dbus_respond_int64(m, width);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "ResHeight")==0)
+    {
+      // Returns height of video
+      int64_t height = reader->GetHeight();
+      dbus_respond_int64(m, height);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property,  "Duration")==0)
+    {
+      // Returns the duration in microseconds
+      int64_t dur = reader->GetStreamLengthMicro();
+      dbus_respond_int64(m, dur);
+      return KeyConfig::ACTION_BLANK;
+    }
+    //Wrong property
+    else
+    {
+      //Error
+      CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
+      return KeyConfig::ACTION_BLANK;
+    }
+  }
+  //Wrong interface:
+  else
+  {
+      //Error
+      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
+      return KeyConfig::ACTION_BLANK;
+  }
+}
+
+OMXControlResult OMXControl::SetProperty(DBusMessage *m)
+{
+  DBusError error;
+  dbus_error_init(&error);
+
+  //Retrieve interface, property name and value
+  //Message has the form message[STRING:interface STRING:property DOUBLE:value] or message[STRING:interface STRING:property VARIANT[DOUBLE:value]]
+  const char *interface, *property;
+  double new_property_value;
+  DBusMessageIter args;
+  dbus_message_iter_init(m, &args);
+  if(dbus_message_iter_has_next(&args))
+  {
+		//The interface name
+		if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) ) 
+			dbus_message_iter_get_basic (&args, &interface);
+		else
+		{
+			puts("setE1");
+			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+			dbus_error_free(&error);
+			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+			return KeyConfig::ACTION_BLANK;
+		}
+		//The property name
+		if( dbus_message_iter_next(&args) && DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
+			dbus_message_iter_get_basic (&args, &property);
+		else
+		{
+			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+			dbus_error_free(&error);
+			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+			return KeyConfig::ACTION_BLANK;
+		}
+		//The value (either double or double in variant)
+		if (dbus_message_iter_next(&args))
+		{
+			//Simply a double
+			if (DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&args))
+			{
+				dbus_message_iter_get_basic(&args, &new_property_value);
+			}
+			//A double within a variant
+			else if(DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))
+			{
+				DBusMessageIter variant;
+				dbus_message_iter_recurse(&args, &variant);
+				if(DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&variant))
+				{
+					dbus_message_iter_get_basic(&variant, &new_property_value);
+				}
+			}
+			else
+			{
+				CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+				dbus_error_free(&error);
+				dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+				return KeyConfig::ACTION_BLANK;
+			}
+		}
+	}
+  if ( dbus_error_is_set(&error) )
+  {
+      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+      dbus_error_free(&error);
+      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+      return KeyConfig::ACTION_BLANK;
+  }
+  //Player interface:
+  if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
+  {
+    if (strcmp(property, "Volume")==0)
+    {
+      double volume=new_property_value;
+      //Min value is 0
+      if(volume<.0)
+      {
+        volume=.0;
+      }
+      audio->SetVolume(volume);
+      dbus_respond_double(m, volume);
+      return KeyConfig::ACTION_BLANK;
+    }
+    else if (strcmp(property, "Rate")==0)
+    {
+      double rate=new_property_value;
+      if(rate>MAX_RATE/1000.)
+      {
+        rate=MAX_RATE/1000.;
+      }
+      if(rate<MIN_RATE/1000.)
+      {
+        //Set to Pause according to MPRIS2 specs (no actual change of playing rate)
+        dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
+        return KeyConfig::ACTION_PAUSE;
+      }
+      int iSpeed=(int)(rate*1000.);
+      if(!clock)
+      {
+        dbus_respond_double(m, .0);//What value ????
+        return KeyConfig::ACTION_BLANK;
+      }
+      //Can't do trickplay here so limit max speed
+      if(iSpeed > MAX_RATE)
+        iSpeed=MAX_RATE;
+      dbus_respond_double(m, iSpeed/1000.);//Reply before applying to be faster
+      clock->OMXSetSpeed(iSpeed, false, true);
+      return KeyConfig::ACTION_PLAY;
+    }
+    //Wrong property
+    else
+    {
+      //Error
+      CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
+      return KeyConfig::ACTION_BLANK;
+    }
+  }
+  //Wrong interface:
+  else
+  {
+      //Error
+      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
+      return KeyConfig::ACTION_BLANK;
+  }
 }
 
 DBusHandlerResult OMXControl::dbus_respond_error(DBusMessage *m, const char *name, const char *msg)

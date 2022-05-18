@@ -40,11 +40,13 @@ public:
   ~OMXControl();
   int init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPlayerSubtitles *m_player_subtitles, OMXReader *m_omx_reader, std::string& dbus_name);
   OMXControlResult getEvent();
-  void dispatch();
 private:
+  void dispatch();
   int dbus_connect(std::string& dbus_name);
   void dbus_disconnect();
   OMXControlResult handle_event(DBusMessage *m);
+  OMXControlResult GetProperty(DBusMessage *m);
+  OMXControlResult SetProperty(DBusMessage *m);
   DBusHandlerResult dbus_respond_error(DBusMessage *m, const char *name, const char *msg);
   DBusHandlerResult dbus_respond_ok(DBusMessage *m);
   DBusHandlerResult dbus_respond_int64(DBusMessage *m, int64_t i);
