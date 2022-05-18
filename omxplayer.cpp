@@ -397,6 +397,7 @@ int main(int argc, char *argv[])
   const int track_opt       = 0x402;
   const int start_paused_opt = 0x403;
   const int ffmpeg_log_level = 0x404;
+  const int omxplayer_log_level = 0x405;
 
   struct option longopts[] = {
     { "info",         no_argument,        NULL,          'i' },
@@ -459,6 +460,7 @@ int main(int argc, char *argv[])
     { "track",        required_argument,  NULL,          track_opt },
     { "start-paused", no_argument,        NULL,          start_paused_opt },
     { "ffmpeg-log",   required_argument,  NULL,          ffmpeg_log_level },
+    { "log",          required_argument,  NULL,          omxplayer_log_level },
     { 0, 0, 0, 0 }
   };
 
@@ -469,8 +471,10 @@ int main(int argc, char *argv[])
   unsigned int      subtitle_lines      = 3;
   float             font_size           = 0.055f;
   bool              no_hdmi_clock_sync  = false;
-  uint32_t          background  = 0;
+  uint32_t          background          = 0;
   std::string       keymap_file;
+  int               log_level           = LOGNONE;
+  char              *log_file           = NULL;
 
   while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
@@ -480,7 +484,35 @@ int main(int argc, char *argv[])
         m_refresh = true;
         break;
       case 'g':
-        CLogInit(LOGDEBUG, optarg ? optarg : "./omxplayer.log");
+        {
+          int size = optarg ? strlen(optarg) + 1 : 16;
+          log_file = (char *)calloc(size, sizeof(char));
+          if(log_file == NULL) return EXIT_FAILURE;
+          strcpy(log_file, optarg ? optarg : "./omxplayer.log");
+
+          if(log_level == LOGNONE)
+            log_level = LOGDEBUG;
+        }
+        break;
+      case omxplayer_log_level:
+        if(strcmp("none", optarg) == 0)
+          log_level = LOGNONE;
+        else if(strcmp("fatal", optarg) == 0)
+          log_level = LOGFATAL;
+        else if(strcmp("severe", optarg) == 0)
+          log_level = LOGSEVERE;
+        else if(strcmp("error", optarg) == 0)
+          log_level = LOGERROR;
+        else if(strcmp("warning", optarg) == 0)
+          log_level = LOGWARNING;
+        else if(strcmp("notice", optarg) == 0)
+          log_level = LOGNOTICE;
+        else if(strcmp("info", optarg) == 0)
+          log_level = LOGINFO;
+        else if(strcmp("debug", optarg) == 0)
+          log_level = LOGDEBUG;
+        else
+          return EXIT_FAILURE;
         break;
       case ffmpeg_log_level:
         {
@@ -793,6 +825,11 @@ int main(int argc, char *argv[])
         break;
     }
   }
+
+  // start logging
+  CLogInit(log_level, log_file);
+  if(log_file != NULL)
+    free(log_file);
 
   if (optind >= argc) {
     print_usage();

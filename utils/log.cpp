@@ -54,28 +54,25 @@ static void CLogClose()
 
 void _CLogLog(int loglevel, const char *format, ... )
 {
-  if (m_stream == NULL)
+  if (m_stream == NULL || loglevel > m_logLevel)
     return;
 
   pthread_mutex_lock(&m_log_mutex);
 
-  if (loglevel <= m_logLevel)
-  {
-    struct timeval now;
-    gettimeofday(&now, NULL);
-    struct tm *time = localtime( &now.tv_sec );
-    uint64_t stamp = now.tv_usec + now.tv_sec * 1000000;
+  struct timeval now;
+  gettimeofday(&now, NULL);
+  struct tm *time = localtime( &now.tv_sec );
+  uint64_t stamp = now.tv_usec + now.tv_sec * 1000000;
 
-    fprintf(m_stream, "%02d:%02d:%02d T:%llu %7s: ", time->tm_hour, time->tm_min, time->tm_sec, stamp, levelNames[loglevel]);
+  fprintf(m_stream, "%02d:%02d:%02d T:%llu %7s: ", time->tm_hour, time->tm_min, time->tm_sec, stamp, levelNames[loglevel]);
 
-    va_list va;
-    va_start(va, format);
-    vfprintf(m_stream, format, va);
-    va_end(va);
+  va_list va;
+  va_start(va, format);
+  vfprintf(m_stream, format, va);
+  va_end(va);
 
-    fputs("\n", m_stream);
-    fflush(m_stream);
-  }
+  fputs("\n", m_stream);
+  fflush(m_stream);
 
   pthread_mutex_unlock(&m_log_mutex);
 }
@@ -90,10 +87,16 @@ bool CLogInit(int level, const char* path)
   logging_enabled = true;
   atexit(CLogClose);
 
-  m_stream = fopen(path, "w");
-  m_file_is_open = m_stream != NULL;
-
-  logging_enabled = m_stream != NULL;
+  if(path == NULL)
+  {
+    m_stream = stdout;
+    m_file_is_open = logging_enabled = true;
+  }
+  else
+  {
+    m_stream = fopen(path, "w");
+    m_file_is_open = logging_enabled = m_stream != NULL;
+  }
 
   return logging_enabled;
 }
