@@ -36,23 +36,13 @@ using namespace std;
 using namespace boost;
 
 OMXPlayerSubtitles::OMXPlayerSubtitles() BOOST_NOEXCEPT
-: m_visible(),
-  m_use_external_subtitles(),
-  m_active_index(),
-  m_delay(),
-  m_thread_stopped(),
-  m_font_size(),
-  m_centered(),
-  m_ghost_box(),
-  m_lines(),
-  m_av_clock()
 {}
 
 OMXPlayerSubtitles::~OMXPlayerSubtitles() BOOST_NOEXCEPT
 {
   if(Running())
   {
-    SendToRenderer(Message::Stop{});
+    SendToRenderer(Message::Exit{});
     StopThread();
   }
 
@@ -74,7 +64,7 @@ bool OMXPlayerSubtitles::Init(int display,
                               OMXClock* clock) BOOST_NOEXCEPT
 {
   m_visible = false;
-  m_use_external_subtitles = false;
+  m_external_subtitle_stream = -1;
   m_active_index = 0;
   m_delay = 0;
   m_thread_stopped.store(false, memory_order_relaxed);
@@ -97,24 +87,19 @@ bool OMXPlayerSubtitles::Init(int display,
 bool OMXPlayerSubtitles::Open(size_t stream_count,
                               string &subtitle_path) BOOST_NOEXCEPT
 {
+
+
   if(subtitle_path.size() > 0)
   {
-    m_subtitle_buffers.clear();
-
-    vector<Subtitle> s;
-    if(!ReadSrt(subtitle_path, s))
+    if(!ReadSrt(subtitle_path, m_external_subtitles))
       return false;
 
-    SendToRenderer(Message::SendExternalSubs{std::move(s)});
+    m_external_subtitle_stream = stream_count;
+    stream_count++;
+  }
 
-    m_use_external_subtitles = true;
-    m_stream_count = 1;
-  }
-  else
-  {
-    m_subtitle_buffers.resize(stream_count, circular_buffer<Subtitle>(32));
-    m_stream_count = stream_count;
-  }
+  m_stream_count = stream_count;
+  m_subtitle_buffers.resize(stream_count, circular_buffer<Subtitle>(32));
 
   return true;
 }
@@ -166,13 +151,14 @@ void OMXPlayerSubtitles::Close() BOOST_NOEXCEPT
   m_mailbox.clear();
   m_subtitle_buffers.clear();
   m_stream_count = 0;
+  m_external_subtitle_stream = -1;
 }
 
 void OMXPlayerSubtitles::Process()
 {
   try
   {
-    RenderLoop(m_font_size, m_centered, m_ghost_box, m_lines, m_av_clock);
+    RenderLoop();
   }
   catch(const char *e)
   {
@@ -192,47 +178,40 @@ Iterator FindSubtitle(Iterator begin, Iterator end, int time)
     [](int a, const Subtitle& b) { return a < b.stop; });
 }
 
-void OMXPlayerSubtitles::
-RenderLoop(float font_size,
-           bool centered,
-           bool ghost_box,
-           unsigned int lines,
-           OMXClock* clock)
+void OMXPlayerSubtitles::RenderLoop()
 {
   SubtitleRenderer renderer(m_display, m_layer,
-                            font_size,
-                            centered,
-                            ghost_box,
-                            lines);
+                            m_font_size,
+                            m_centered,
+                            m_ghost_box,
+                            m_lines);
 
-  vector<Subtitle> external_subtitles;
-  vector<Subtitle> subtitles;
+  vector<Subtitle> internal_subtitles;
+  vector<Subtitle> *subtitles = &internal_subtitles;
 
-  bool external_subtitles_enabled = false;
-
-  int prev_now{};
-  size_t next_index{};
-  bool exit{};
-  bool paused{};
-  bool have_next{};
+  int prev_now = 0;
+  size_t next_index = 0;
+  bool exit = false;
+  bool paused = false;
+  bool have_next = false;
   int current_stop = INT_MIN;
-  bool showing{};
-  bool osd{};
+  bool showing = false;
+  bool osd = false;
   chrono::time_point<std::chrono::steady_clock> osd_stop;
-  int delay{};
+  int delay = false;
 
   auto GetCurrentTime = [&]
   {
-    return static_cast<int>(clock->OMXMediaTime()/1000) - delay;
+    return static_cast<int>(m_av_clock->OMXMediaTime()/1000) - delay;
   };
 
   auto TryPrepare = [&](int time)
   {
-    for(; next_index != subtitles.size(); ++next_index)
+    for(; next_index != subtitles->size(); ++next_index)
     {
-      if(subtitles[next_index].stop > time)
+      if(subtitles->at(next_index).stop > time)
       {
-        renderer.prepare(subtitles[next_index]);
+        renderer.prepare(subtitles->at(next_index));
         have_next = true;
         break;
       }
@@ -244,14 +223,14 @@ RenderLoop(float font_size,
     renderer.unprepare();
     current_stop = INT_MIN;
 
-    auto it = FindSubtitle(subtitles.begin(),
-                           subtitles.end(),
+    auto it = FindSubtitle(subtitles->begin(),
+                           subtitles->end(),
                            time);
-    next_index = it - subtitles.begin();
+    next_index = it - subtitles->begin();
 
-    if(next_index != subtitles.size())
+    if(next_index != subtitles->size())
     {
-      renderer.prepare(subtitles[next_index]);
+      renderer.prepare(subtitles->at(next_index));
       have_next = true;
     }
     else
@@ -273,7 +252,7 @@ RenderLoop(float font_size,
                 : INT_MAX;
 
       int till_next_start =
-        have_next ? subtitles[next_index].start - now
+        have_next ? subtitles->at(next_index).start - now
                   : INT_MAX;
 
       timeout = min(min(till_stop, till_next_start), 1000);
@@ -297,30 +276,26 @@ RenderLoop(float font_size,
       },
       [&](Message::Push&& args) // Add internal subs from muxer
       {
-        subtitles.push_back(std::move(args.subtitle));
+        internal_subtitles.push_back(std::move(args.subtitle));
       },
-      [&](Message::SendExternalSubs&& args)
+      [&](Message::ToggleInternalSubs&& args) // Sets or clears internal subs
       {
-        subtitles.swap(args.subtitles);
-        external_subtitles_enabled = true;
+        internal_subtitles.swap(args.subtitles);
         prev_now = INT_MAX;
       },
       [&](Message::ToggleExternalSubs&& args)
       {
-        if(external_subtitles_enabled != args.enable_subs)
-        {
-          subtitles.swap(external_subtitles);
-          external_subtitles_enabled = args.enable_subs;
-        }
+        if(args.visible)
+          subtitles = &m_external_subtitles;
+        else
+          subtitles = &internal_subtitles;
+
         prev_now = INT_MAX;
       },
-      [&](Message::Flush&& args) // Sets or clears internal subs
+
+      [&](Message::UnsetTime&&) // External subs
       {
-        subtitles.swap(args.subtitles);
         prev_now = INT_MAX;
-      },
-      [&](Message::Touch&&) // External subs
-      {
       },
       [&](Message::SetPaused&& args)
       {
@@ -330,10 +305,6 @@ RenderLoop(float font_size,
       {
         delay = args.value;
         prev_now = INT_MAX;
-      },
-      [&](Message::Stop&&)
-      {
-        exit = true;
       },
       [&](Message::DisplayText&& args) // display osd
       {
@@ -345,18 +316,23 @@ RenderLoop(float font_size,
                    chrono::milliseconds(args.duration);
         prev_now = INT_MAX;
       },
-      [&](Message::Clear&&)
+      [&](Message::ClearRenderer&&)
       {
         renderer.clear();
-        external_subtitles.clear();
-        subtitles.clear();
+        internal_subtitles.clear();
+        subtitles = &internal_subtitles;
+        prev_now = INT_MAX;
+      },
+      [&](Message::Exit&&)
+      {
+        exit = true;
       });
 
     if(exit) break;
 
     auto now = GetCurrentTime();
 
-    if(now < prev_now || (have_next && subtitles[next_index].stop <= now))
+    if(now < prev_now || (have_next && subtitles->at(next_index).stop <= now))
     {
       Reset(now);
     }
@@ -372,12 +348,12 @@ RenderLoop(float font_size,
 
     if(!osd && current_stop <= now)
     {
-      if(have_next && subtitles[next_index].start <= now)
+      if(have_next && subtitles->at(next_index).start <= now)
       {
         renderer.show_next();
         // printf("show error: %i ms\n", now - subtitles[next_index].start);
         showing = true;
-        current_stop = subtitles[next_index].stop;
+        current_stop = subtitles->at(next_index).stop;
 
         ++next_index;
         have_next = false;
@@ -393,37 +369,9 @@ RenderLoop(float font_size,
   }
 }
 
-void OMXPlayerSubtitles::FlushRenderer()
-{
-  if(!m_visible) return;
-
-  if(m_use_external_subtitles)
-  {
-    SendToRenderer(Message::ToggleExternalSubs{true});
-  }
-  else
-  {
-    if(m_subtitle_buffers.empty()) return;
-
-    Message::Flush flush;
-    for(auto& s : m_subtitle_buffers[m_active_index])
-      flush.subtitles.push_back(s);
-    SendToRenderer(std::move(flush));
-  }
-}
-
 void OMXPlayerSubtitles::Flush() BOOST_NOEXCEPT
 {
-  for(auto& q : m_subtitle_buffers)
-    q.clear();
-
-  if(m_visible)
-  {
-    if(m_use_external_subtitles)
-      SendToRenderer(Message::Touch{});
-    else
-      SendToRenderer(Message::Flush{});
-  }
+  SendToRenderer(Message::UnsetTime{});
 }
 
 void OMXPlayerSubtitles::Resume() BOOST_NOEXCEPT
@@ -444,7 +392,7 @@ void OMXPlayerSubtitles::SetDelay(int value) BOOST_NOEXCEPT
 
 void OMXPlayerSubtitles::Clear() BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::Clear{});
+  SendToRenderer(Message::ClearRenderer{});
 }
 
 void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
@@ -452,20 +400,9 @@ void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
   if(m_stream_count == 0 || visible == m_visible)
     return;
 
-  m_visible = visible;
-
-  if(m_visible)
-  {
-    FlushRenderer();
-  }
-  else
-  {
-    if(m_use_external_subtitles)
-      SendToRenderer(Message::ToggleExternalSubs{false});
-    else
-      SendToRenderer(Message::Flush{});
-  }
+  SetActiveStream(visible ? m_active_index : -1);
 }
+
 
 int OMXPlayerSubtitles::SetActiveStreamDelta(int delta) BOOST_NOEXCEPT
 {
@@ -478,34 +415,54 @@ int OMXPlayerSubtitles::SetActiveStreamDelta(int delta) BOOST_NOEXCEPT
   else
     index = m_stream_count - 1;
 
-  if(index < 0 || index >= m_stream_count) {
-    SetVisible(false);
-    return -1;
-  } else {
-    SetVisible(true);
-    m_active_index = index;
-    if(m_visible)
-      FlushRenderer();
-    return m_active_index;
-  }
+  return SetActiveStream(index);
 }
 
-bool OMXPlayerSubtitles::SetActiveStream(int index) BOOST_NOEXCEPT
+int OMXPlayerSubtitles::SetActiveStream(int new_index) BOOST_NOEXCEPT
 {
-  if(index < 0 || index >= m_stream_count) {
-    SetVisible(false);
-    return false;
-  } else {
-    SetVisible(true);
+  // disable whatever subs are there
+  if(new_index < 0 || new_index >= m_stream_count) {
+    if(m_active_index == m_external_subtitle_stream)
+      SendToRenderer(Message::ToggleExternalSubs{false});
+    else
+      SendToRenderer(Message::ToggleInternalSubs{});
 
-    if(m_stream_count > 1) {
-      m_active_index = index;
-      if(m_visible)
-        FlushRenderer();
-    }
-
-    return true;
+    m_visible = false;
+    return -1;
   }
+
+  // nothing to do here
+  if(m_visible && new_index == m_active_index)
+    return m_active_index;
+
+  // only visible for here on...
+  m_visible = true;
+
+  // enable external subs and disable internal subs
+  if(new_index == m_external_subtitle_stream)
+  {
+    SendToRenderer(Message::ToggleExternalSubs{true});
+    SendToRenderer(Message::ToggleInternalSubs{}); // empty these
+    m_active_index = new_index;
+    return m_active_index;
+  }
+
+  // disable external subs
+  if(m_active_index == m_external_subtitle_stream)
+  {
+    SendToRenderer(Message::ToggleExternalSubs{false});
+  }
+
+  // safe to change m_active_index now
+  m_active_index = new_index;
+
+  // Send internal subtitle buffer to renderer
+  Message::ToggleInternalSubs subs;
+  for(auto& s : m_subtitle_buffers[m_active_index])
+    subs.subtitles.push_back(s);
+  SendToRenderer(std::move(subs));
+
+  return m_active_index;
 }
 
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
@@ -629,7 +586,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
 
   m_subtitle_buffers[pkt->index].push_back(sub);
 
-  if(!m_use_external_subtitles && m_visible && pkt->index == m_active_index)
+  if(m_visible && pkt->index == m_active_index)
   {
     SendToRenderer(Message::Push{std::move(sub)});
   }

@@ -65,7 +65,7 @@ public:
     return m_visible;
   }
   
-  bool SetActiveStream(int index) BOOST_NOEXCEPT;
+  int SetActiveStream(int index) BOOST_NOEXCEPT;
 
   int SetActiveStreamDelta(int index) BOOST_NOEXCEPT;
 
@@ -97,38 +97,33 @@ private:
       int aspect_mode;
       uint32_t *palette;
     };
-    struct Stop {};
-    struct Flush
-    {
-      std::vector<Subtitle> subtitles;
-    };
-    struct SendExternalSubs
-    {
-      std::vector<Subtitle> subtitles;
-    };
-    struct ToggleExternalSubs
-    {
-      bool enable_subs;
-    };
     struct Push
     {
       Subtitle subtitle;
     };
-    struct Touch {};
-    struct SetDelay
+    struct ToggleInternalSubs
     {
-      int value;
+      std::vector<Subtitle> subtitles;
     };
+    struct ToggleExternalSubs {
+      bool visible;
+    };
+    struct UnsetTime {};
     struct SetPaused
     {
       bool value;
+    };
+    struct SetDelay
+    {
+      int value;
     };
     struct DisplayText
     {
       std::string text_lines;
       int duration;
     };
-    struct Clear {};
+    struct ClearRenderer {};
+    struct Exit {};
   };
 
   template <typename T>
@@ -143,29 +138,25 @@ private:
   }
 
   void Process();
-  void RenderLoop(float font_size,
-                  bool centered,
-                  bool ghost_box,
-                  unsigned int lines,
-                  OMXClock* clock);
+  void RenderLoop();
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);
   bool GetImageData(OMXPacket *pkt, Subtitle &sub);
   void FlushRenderer();
 
   std::vector<boost::circular_buffer<Subtitle>> m_subtitle_buffers;
   Mailbox<Message::DVDSubs,
-          Message::Stop,
-          Message::SendExternalSubs,
-          Message::ToggleExternalSubs,
-          Message::Flush,
           Message::Push,
-          Message::Touch,
+          Message::ToggleInternalSubs,
+          Message::ToggleExternalSubs,
+          Message::UnsetTime,
           Message::SetPaused,
           Message::SetDelay,
           Message::DisplayText,
-          Message::Clear>                       m_mailbox;
+          Message::ClearRenderer,
+          Message::Exit>                        m_mailbox;
   bool                                          m_visible;
-  bool                                          m_use_external_subtitles;
+  int                                           m_external_subtitle_stream;
+  std::vector<Subtitle>                         m_external_subtitles;
   int                                           m_active_index;
   int                                           m_stream_count;
   int                                           m_delay;

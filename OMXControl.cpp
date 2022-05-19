@@ -672,7 +672,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     }
     else
     {
-      if (subtitles->SetActiveStream(index))
+      if (subtitles->SetActiveStream(index) == index)
       {
         dbus_respond_boolean(m, 1);
       }
