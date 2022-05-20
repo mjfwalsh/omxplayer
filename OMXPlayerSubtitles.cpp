@@ -26,10 +26,6 @@
 #include "Srt.h"
 
 #include <signal.h>
-#include <boost/algorithm/string.hpp>
-#include <utility>
-#include <algorithm>
-#include <typeinfo>
 #include <cstdint>
 
 using namespace std;
@@ -42,7 +38,7 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles() BOOST_NOEXCEPT
 {
   if(Running())
   {
-    SendToRenderer(Message::Exit{});
+    SendToRenderer(new Mailbox::Exit());
     StopThread();
   }
 
@@ -118,7 +114,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
     m_palette = NULL;
   }
 
-  SendToRenderer(Message::DVDSubs{video, video_aspect, aspect_mode, m_palette});
+  SendToRenderer(new Mailbox::DVDSubs(video, video_aspect, aspect_mode, m_palette));
 
   AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
@@ -169,6 +165,19 @@ void OMXPlayerSubtitles::Process()
     pthread_kill(OMXThread::main_thread, SIGUSR1);
   }
   m_thread_stopped.store(true, memory_order_relaxed);
+  m_mailbox.clear();
+}
+
+void OMXPlayerSubtitles::SendToRenderer(Mailbox::Item *msg)
+{
+  if(m_thread_stopped.load(std::memory_order_relaxed))
+  {
+    CLogLog(LOGERROR, "Subtitle rendering thread not running, message discarded");
+    delete msg;
+    return;
+  }
+  if(msg != NULL)
+    m_mailbox.send(msg);
 }
 
 template <typename Iterator>
@@ -191,7 +200,6 @@ void OMXPlayerSubtitles::RenderLoop()
 
   int prev_now = 0;
   size_t next_index = 0;
-  bool exit = false;
   bool paused = false;
   bool have_next = false;
   int current_stop = INT_MIN;
@@ -245,7 +253,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
     if(!paused)
     {
-      auto now = GetCurrentTime();
+      int now = GetCurrentTime();
 
       int till_stop =
         showing ? current_stop - now
@@ -264,73 +272,98 @@ void OMXPlayerSubtitles::RenderLoop()
       if (cap < timeout) timeout = cap;
     }
 
-    m_mailbox.receive_wait(chrono::milliseconds(timeout),
-      [&](Message::DVDSubs&& args)
-      {
-        renderer.initDVDSubs(
-          args.video,
-          args.video_aspect,
-          args.aspect_mode,
-          args.palette
-        );
-      },
-      [&](Message::Push&& args) // Add internal subs from muxer
-      {
-        internal_subtitles.push_back(std::move(args.subtitle));
-      },
-      [&](Message::ToggleInternalSubs&& args) // Sets or clears internal subs
-      {
-        internal_subtitles.swap(args.subtitles);
-        prev_now = INT_MAX;
-      },
-      [&](Message::ToggleExternalSubs&& args)
-      {
-        if(args.visible)
-          subtitles = &m_external_subtitles;
-        else
+    // wait for next message or to timeout
+    m_mailbox.wait(chrono::milliseconds(timeout));
+
+
+    while(1)
+    {
+      Mailbox::Item *args = m_mailbox.receive();
+      if(args == NULL)
+        break;
+
+      switch(args->type) {
+        case Mailbox::DVD_SUBS:
+          {
+            Mailbox::DVDSubs *a = (Mailbox::DVDSubs *)args;
+
+            renderer.initDVDSubs(
+              a->video,
+              a->video_aspect,
+              a->aspect_mode,
+              a->palette
+            );
+          }
+          break;
+        case Mailbox::PUSH:
+          {
+            Mailbox::Push *a = (Mailbox::Push *)args;
+            internal_subtitles.push_back(std::move(a->subtitle));
+          }
+          break;
+        case Mailbox::SEND_INTERNAL_SUBS:
+          {
+            Mailbox::SendInternalSubs *a = (Mailbox::SendInternalSubs *)args;
+            internal_subtitles.swap(a->subtitles);
+          }
+          prev_now = INT_MAX;
+          break;
+        case Mailbox::CLEAR_INTERNAL_SUBS:
+          internal_subtitles.clear();
+          prev_now = INT_MAX;
+          break;
+        case Mailbox::TOGGLE_EXTERNAL_SUBS:
+          {
+            Mailbox::ToggleExternalSubs *a = (Mailbox::ToggleExternalSubs *)args;
+            subtitles = a->visible ? &m_external_subtitles : &internal_subtitles;
+            internal_subtitles.clear();
+            prev_now = INT_MAX;
+          }
+          break;
+        case Mailbox::UNSET_TIME:
+          prev_now = INT_MAX;
+          break;
+        case Mailbox::SET_PAUSED:
+          {
+            Mailbox::SetPaused *a = (Mailbox::SetPaused *)args;
+            paused = a->value;
+          }
+          break;
+        case Mailbox::SET_DELAY:
+          {
+            Mailbox::SetDelay *a = (Mailbox::SetDelay *)args;
+            delay = a->value;
+            prev_now = INT_MAX;
+          }
+          break;
+        case Mailbox::DISPLAY_TEXT:
+          {
+            Mailbox::DisplayText *a = (Mailbox::DisplayText *)args;
+
+            renderer.prepare(a->text_lines);
+            renderer.show_next();
+            showing = true;
+            osd = true;
+            osd_stop = chrono::steady_clock::now() +
+                       chrono::milliseconds(a->duration);
+            prev_now = INT_MAX;
+          }
+          break;
+        case Mailbox::CLEAR_RENDERER:
+          renderer.clear();
+          internal_subtitles.clear();
           subtitles = &internal_subtitles;
+          prev_now = INT_MAX;
+          break;
+        case Mailbox::EXIT:
+          return;
+          break;
+      }
 
-        prev_now = INT_MAX;
-      },
+      delete args;
+    }
 
-      [&](Message::UnsetTime&&) // External subs
-      {
-        prev_now = INT_MAX;
-      },
-      [&](Message::SetPaused&& args)
-      {
-        paused = args.value;
-      },
-      [&](Message::SetDelay&& args)
-      {
-        delay = args.value;
-        prev_now = INT_MAX;
-      },
-      [&](Message::DisplayText&& args) // display osd
-      {
-        renderer.prepare(args.text_lines);
-        renderer.show_next();
-        showing = true;
-        osd = true;
-        osd_stop = chrono::steady_clock::now() +
-                   chrono::milliseconds(args.duration);
-        prev_now = INT_MAX;
-      },
-      [&](Message::ClearRenderer&&)
-      {
-        renderer.clear();
-        internal_subtitles.clear();
-        subtitles = &internal_subtitles;
-        prev_now = INT_MAX;
-      },
-      [&](Message::Exit&&)
-      {
-        exit = true;
-      });
-
-    if(exit) break;
-
-    auto now = GetCurrentTime();
+    int now = GetCurrentTime();
 
     if(now < prev_now || (have_next && subtitles->at(next_index).stop <= now))
     {
@@ -371,28 +404,28 @@ void OMXPlayerSubtitles::RenderLoop()
 
 void OMXPlayerSubtitles::Flush() BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::UnsetTime{});
+  SendToRenderer(new Mailbox::UnsetTime());
 }
 
 void OMXPlayerSubtitles::Resume() BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::SetPaused{false});
+  SendToRenderer(new Mailbox::SetPaused(false));
 }
 
 void OMXPlayerSubtitles::Pause() BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::SetPaused{true});
+  SendToRenderer(new Mailbox::SetPaused(true));
 }
 
 void OMXPlayerSubtitles::SetDelay(int value) BOOST_NOEXCEPT
 {
   m_delay = value;
-  SendToRenderer(Message::SetDelay{value});
+  SendToRenderer(new Mailbox::SetDelay(value));
 }
 
 void OMXPlayerSubtitles::Clear() BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::ClearRenderer{});
+  SendToRenderer(new Mailbox::ClearRenderer());
 }
 
 void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
@@ -423,9 +456,9 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index) BOOST_NOEXCEPT
   // disable whatever subs are there
   if(new_index < 0 || new_index >= m_stream_count) {
     if(m_active_index == m_external_subtitle_stream)
-      SendToRenderer(Message::ToggleExternalSubs{false});
+      SendToRenderer(new Mailbox::ToggleExternalSubs(false));
     else
-      SendToRenderer(Message::ToggleInternalSubs{});
+      SendToRenderer(new Mailbox::ClearInternalSubs());
 
     m_visible = false;
     return -1;
@@ -435,32 +468,30 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index) BOOST_NOEXCEPT
   if(m_visible && new_index == m_active_index)
     return m_active_index;
 
-  // only visible for here on...
-  m_visible = true;
-
   // enable external subs and disable internal subs
   if(new_index == m_external_subtitle_stream)
   {
-    SendToRenderer(Message::ToggleExternalSubs{true});
-    SendToRenderer(Message::ToggleInternalSubs{}); // empty these
-    m_active_index = new_index;
+    SendToRenderer(new Mailbox::ToggleExternalSubs(true));
+    m_active_index = m_external_subtitle_stream;
+    m_visible = true;
     return m_active_index;
   }
 
   // disable external subs
   if(m_active_index == m_external_subtitle_stream)
   {
-    SendToRenderer(Message::ToggleExternalSubs{false});
+    SendToRenderer(new Mailbox::ToggleExternalSubs(false));
   }
 
-  // safe to change m_active_index now
+  // set new index and set visible to true
   m_active_index = new_index;
+  m_visible = true;
 
   // Send internal subtitle buffer to renderer
-  Message::ToggleInternalSubs subs;
+  Mailbox::SendInternalSubs *subs = new Mailbox::SendInternalSubs;
   for(auto& s : m_subtitle_buffers[m_active_index])
-    subs.subtitles.push_back(s);
-  SendToRenderer(std::move(subs));
+    subs->subtitles.push_back(s);
+  SendToRenderer(subs);
 
   return m_active_index;
 }
@@ -588,11 +619,11 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
 
   if(m_visible && pkt->index == m_active_index)
   {
-    SendToRenderer(Message::Push{std::move(sub)});
+    SendToRenderer(new Mailbox::Push(std::move(sub)));
   }
 }
 
 void OMXPlayerSubtitles::DisplayText(const char *text, int duration) BOOST_NOEXCEPT
 {
-  SendToRenderer(Message::DisplayText{text, duration});
+  SendToRenderer(new Mailbox::DisplayText(text, duration));
 }

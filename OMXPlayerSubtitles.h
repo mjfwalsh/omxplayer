@@ -89,54 +89,7 @@ protected:
   AVCodecContext           *m_dvd_codec_context;
 
 private:
-  struct Message {
-    struct DVDSubs
-    {
-      Dimension video;
-      float video_aspect;
-      int aspect_mode;
-      uint32_t *palette;
-    };
-    struct Push
-    {
-      Subtitle subtitle;
-    };
-    struct ToggleInternalSubs
-    {
-      std::vector<Subtitle> subtitles;
-    };
-    struct ToggleExternalSubs {
-      bool visible;
-    };
-    struct UnsetTime {};
-    struct SetPaused
-    {
-      bool value;
-    };
-    struct SetDelay
-    {
-      int value;
-    };
-    struct DisplayText
-    {
-      std::string text_lines;
-      int duration;
-    };
-    struct ClearRenderer {};
-    struct Exit {};
-  };
-
-  template <typename T>
-  void SendToRenderer(T&& msg)
-  {
-    if(m_thread_stopped.load(std::memory_order_relaxed))
-    {
-      CLogLog(LOGERROR, "Subtitle rendering thread not running, message discarded");
-      return;
-    }
-    m_mailbox.send(std::forward<T>(msg));
-  }
-
+  void SendToRenderer(Mailbox::Item *msg);
   void Process();
   void RenderLoop();
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);
@@ -144,16 +97,7 @@ private:
   void FlushRenderer();
 
   std::vector<boost::circular_buffer<Subtitle>> m_subtitle_buffers;
-  Mailbox<Message::DVDSubs,
-          Message::Push,
-          Message::ToggleInternalSubs,
-          Message::ToggleExternalSubs,
-          Message::UnsetTime,
-          Message::SetPaused,
-          Message::SetDelay,
-          Message::DisplayText,
-          Message::ClearRenderer,
-          Message::Exit>                        m_mailbox;
+  Mailbox                                       m_mailbox;
   bool                                          m_visible;
   int                                           m_external_subtitle_stream;
   std::vector<Subtitle>                         m_external_subtitles;

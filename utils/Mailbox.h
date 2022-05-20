@@ -26,69 +26,161 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-#include <type_traits>
-#include <utility>
-#include <deque>
 #include <mutex>
 #include <condition_variable>
 
-#include "variant.hpp"
 #include "LockBlock.h"
-#include "FunctorVisitor.h"
 
-template <typename... Ts>
 class Mailbox {
 public:
-  template <typename T>
-  void send(T&& msg) {
-    LOCK_BLOCK (messages_lock_) {
-      messages_.push_back(std::forward<T>(msg));
-      messages_cond_.notify_one();
-    }
-  }
+  enum Type {
+    DVD_SUBS,
+    PUSH,
+    SEND_INTERNAL_SUBS,
+    CLEAR_INTERNAL_SUBS,
+    TOGGLE_EXTERNAL_SUBS,
+    UNSET_TIME,
+    SET_PAUSED,
+    SET_DELAY,
+    DISPLAY_TEXT,
+    CLEAR_RENDERER,
+    EXIT,
+  };
 
-  template <typename... Funs>
-  void receive(Funs&&... funs) {
-    for (;;) {
-      LOCK_BLOCK (messages_lock_)
-        if (messages_.empty()) break;
+  class Item {
+    public:
+    Item(enum Type t) : type(t), next(NULL) {};
 
-      auto extract_message = [&]() {
-        LOCK_BLOCK (messages_lock_) {
-          utils::variant<Ts...> msg(std::move(messages_.front()));
-          messages_.pop_front();
-          return msg;
-        }
-        assert(0);
-      };
-
-      utils::apply_visitor(functor_visitor<Funs&...>(funs...),
-                           extract_message());
-    }
-  }
-
-  template <typename Rep, typename Period, typename... Funs>
-  void receive_wait(const std::chrono::duration<Rep, Period>& rel_time,
-                    Funs&&... funs)
+    enum Type type;
+    Item *next;
+  };
+  class DVDSubs : public Item
   {
-    {
-      std::unique_lock<std::mutex> lock(messages_lock_);
-      if (!messages_cond_.wait_for(lock,
-                                   rel_time,
-                                   [&]{return !messages_.empty();}))
-        return;
+    public:
+    DVDSubs(Dimension v, float va, int am, uint32_t *p) :
+      Item(DVD_SUBS), video(v), video_aspect(va), aspect_mode(am), palette(p) {};
+
+    Dimension video;
+    float video_aspect;
+    int aspect_mode;
+    uint32_t *palette;
+  };
+  class Push : public Item
+  {
+    public:
+    Push(Subtitle s) : Item(PUSH), subtitle(s) {};
+
+    Subtitle subtitle;
+  };
+  class SendInternalSubs : public Item
+  {
+    public:
+    SendInternalSubs() : Item(SEND_INTERNAL_SUBS) {};
+
+    std::vector<Subtitle> subtitles;
+  };
+  class ClearInternalSubs : public Item
+  {
+    public:
+    ClearInternalSubs() : Item(CLEAR_INTERNAL_SUBS) {};
+  };
+  class ToggleExternalSubs : public Item
+  {
+    public:
+    ToggleExternalSubs(bool v) : Item(TOGGLE_EXTERNAL_SUBS), visible(v) {};
+
+    bool visible;
+  };
+  class UnsetTime  : public Item {
+    public:
+    UnsetTime() : Item(UNSET_TIME) {};
+  };
+  class SetPaused : public Item
+  {
+    public:
+    SetPaused(bool v) : Item(SET_PAUSED), value(v) {};
+
+    bool value;
+  };
+  class SetDelay : public Item
+  {
+    public:
+    SetDelay(bool v) : Item(SET_DELAY), value(v) {};
+
+    int value;
+  };
+  class DisplayText : public Item
+  {
+    public:
+    DisplayText(std::string tl, int d) : Item(DISPLAY_TEXT), text_lines(tl), duration(d) {};
+
+    std::string text_lines;
+    int duration;
+  };
+  class ClearRenderer : public Item
+  {
+    public:
+    ClearRenderer() : Item(CLEAR_RENDERER) {};
+  };
+  class Exit : public Item
+  {
+    public:
+    Exit() : Item(EXIT) {};
+  };
+
+  void send(Item *elem) {
+    LOCK_BLOCK (messages_lock) {
+      if(tail == NULL) {
+        head = tail = elem;
+      } else {
+        tail->next = elem;
+        tail = elem;
+      }
+      messages_cond.notify_one();
     }
-    receive(std::forward<Funs>(funs)...);
   }
 
-  void clear() {
-    LOCK_BLOCK(messages_lock_)
-      messages_.clear();
+  Item *receive() {
+    LOCK_BLOCK (messages_lock) {
+      if(head == NULL) {
+        return NULL;
+      } else {
+        Item *old_head = head;
+        head = head->next;
+
+        if(head == NULL)
+          tail = NULL;
+
+        return old_head;
+      }
+    }
+    return NULL; // this never happens
   }
 
+  void wait(const chrono::milliseconds &rel_time)
+  {
+    std::unique_lock<std::mutex> lock(messages_lock);
+    messages_cond.wait_for(lock, rel_time, [&]{return head != NULL;});
+  }
+
+  void clear()
+  {
+    LOCK_BLOCK(messages_lock)
+    {
+      while(head != NULL)
+      {
+        Item *old_head = head;
+        head = head->next;
+        delete old_head;
+      }
+      tail = NULL;
+    }
+  }
 
 private:
-  std::deque<utils::variant<Ts...>> messages_;
-  std::mutex messages_lock_;
-  std::condition_variable messages_cond_;
+  Item *head = NULL;
+  Item *tail = NULL;
+
+  std::mutex messages_lock;
+  std::condition_variable messages_cond;
 };
