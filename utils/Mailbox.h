@@ -157,7 +157,7 @@ public:
     return NULL; // this never happens
   }
 
-  void wait(const chrono::milliseconds &rel_time)
+  void wait(const std::chrono::milliseconds &rel_time)
   {
     std::unique_lock<std::mutex> lock(messages_lock);
     messages_cond.wait_for(lock, rel_time, [&]{return head != NULL;});

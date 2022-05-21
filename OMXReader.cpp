@@ -22,12 +22,15 @@
 #include "OMXReader.h"
 #include "OMXClock.h"
 #include "OMXDvdPlayer.h"
+#include "utils/log.h"
 
 #include <stdio.h>
 #include <unordered_map>
 
-#include "DllAvUtil.h"
-#include "utils/log.h"
+extern "C" {
+#include <libavutil/avutil.h>
+#include <libavutil/opt.h>
+}
 
 #define MAX_DATA_SIZE_VIDEO    8 * 1024 * 1024
 #define MAX_DATA_SIZE_AUDIO    2 * 1024 * 1024
@@ -43,6 +46,8 @@ static int64_t timeout_duration;
   timeout_start = OMXClock::CurrentHostCounter(); \
   timeout_duration = (x) * timeout_default_duration; \
 } while (0)
+
+using namespace std;
 
 OMXPacket::OMXPacket()
 {
@@ -119,7 +124,7 @@ static int dvd_read(void *h, uint8_t* buf, int size)
   return ret;
 }
 
-static offset_t dvd_seek(void *h, offset_t pos, int whence)
+static int64_t dvd_seek(void *h, int64_t pos, int whence)
 {
   RESET_TIMEOUT(1);
   if(interrupt_cb(NULL))

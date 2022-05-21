@@ -21,8 +21,10 @@
  *
  */
 
-#include "DllAvCodec.h"
-#include "DllSwResample.h"
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libswresample/swresample.h>
+}
 
 #include "utils/PCMRemap.h"
 

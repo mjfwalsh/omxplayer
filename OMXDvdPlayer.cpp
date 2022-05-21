@@ -24,7 +24,6 @@
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
 
-#include "OMXReader.h"
 #include "OMXDvdPlayer.h"
 
 class DVD

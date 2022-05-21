@@ -21,15 +21,12 @@
 #include <string>
 #include <vector>
 
-#include <cairo.h>
-
-#include "utils/simple_geometry.h"
+#include <cairo/cairo.h>
 
 class CRegExp;
 class DispmanxLayer;
 class Subtitle;
-
-using namespace std;
+class Dimension;
 
 class SubtitleRenderer {
 	public:
@@ -46,7 +43,7 @@ class SubtitleRenderer {
 		~SubtitleRenderer();
 
 		void prepare(Subtitle &sub);
-		void prepare(string &lines);
+		void prepare(std::string &lines);
 		void show_next();
 		void hide();
 		void unprepare();
@@ -59,7 +56,7 @@ class SubtitleRenderer {
 		class SubtitleText
 		{
 			public:
-				string text;
+				std::string text;
 				int font;
 				int color;
 
@@ -74,7 +71,7 @@ class SubtitleRenderer {
 		};
 
 		void parse_lines(const char *text, int lines_length);
-		void make_subtitle_image(vector<vector<SubtitleText> > &parsed_lines);
+		void make_subtitle_image(std::vector<std::vector<SubtitleText> > &parsed_lines);
 		void make_subtitle_image(Subtitle &sub);
 		int hex2int(const char *hex);
 

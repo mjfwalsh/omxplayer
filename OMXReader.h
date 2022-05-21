@@ -22,19 +22,19 @@
 #ifndef _OMX_READER_H_
 #define _OMX_READER_H_
 
-#include "DllAvFormat.h"
+extern "C" {
+#include <libavformat/avformat.h>
+}
+
 #include "OMXStreamInfo.h"
 #include "OMXThread.h"
 #include "utils/simple_geometry.h"
 
-#include <sys/types.h>
+#include <stdint.h>
 #include <string>
-#include <cassert>
 #include <unordered_map>
 
 class OMXDvdPlayer;
-
-using namespace std;
 
 
 #ifndef FFMPEG_FILE_BUFFER_SIZE
@@ -83,9 +83,6 @@ private:
     COMXStreamInfo hints;
   };
 
-  int                       m_video_index     = -1;
-  int                       m_audio_index     = -1;
-  int                       m_subtitle_index  = -1;
   int                       m_video_count     = 0;
   int                       m_audio_count     = 0;
   int                       m_subtitle_count  = 0;
@@ -109,7 +106,7 @@ private:
   void Lock();
   void UnLock();
   OMXDvdPlayer              *m_DvdPlayer      = NULL;
-  unordered_map<int, int>   m_steam_map;
+  std::unordered_map<int, int>   m_steam_map;
 
 public:
   // results for chapter seek function

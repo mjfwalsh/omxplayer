@@ -25,6 +25,7 @@
 #include "OMXClock.h"
 
 #include <stdio.h>
+#include <assert.h>
 
 #include "utils/log.h"
 

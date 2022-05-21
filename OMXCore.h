@@ -21,11 +21,9 @@
 
 #include <string>
 #include <queue>
-#include <cstring>
+#include <string.h>
 
 #include "DllOMX.h"
-
-#include <semaphore.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
@@ -157,14 +155,12 @@ private:
   unsigned int  m_input_alignment;
   unsigned int  m_input_buffer_size;
   unsigned int  m_input_buffer_count;
-  bool          m_omx_input_use_buffers;
 
   // OMXCore output buffers (video frames)
   pthread_mutex_t   m_omx_output_mutex;
   std::queue<OMX_BUFFERHEADERTYPE*> m_omx_output_available;
   std::vector<OMX_BUFFERHEADERTYPE*> m_omx_output_buffers;
   unsigned int  m_output_alignment;
-  unsigned int  m_output_buffer_size;
   unsigned int  m_output_buffer_count;
 
   bool          m_exit;

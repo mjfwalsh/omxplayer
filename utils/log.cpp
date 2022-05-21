@@ -19,13 +19,13 @@
  *
  */
 
-#include <cstdlib>
+#include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
-#include <cstring>
+#include <string.h>
 #include <stdarg.h>
 #include <pthread.h>
-#include <cstdint>
+#include <stdint.h>
 
 #include "log.h"
 

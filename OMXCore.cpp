@@ -19,7 +19,7 @@
  */
 
 #include <sys/time.h>
-#include <cassert>
+#include <assert.h>
 
 #include "OMXCore.h"
 #include "utils/log.h"

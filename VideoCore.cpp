@@ -26,6 +26,8 @@ extern "C" {
 
 #include "VideoCore.h"
 
+using namespace std;
+
 TV_DISPLAY_STATE_T   tv_state;
 
 namespace VideoCore {

@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <string>
+#include <assert.h>
 
 #include "utils/log.h"
 

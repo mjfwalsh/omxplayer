@@ -22,7 +22,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <cairo.h>
+#include <cairo/cairo.h>
 
 #include "utils/RegExp.h"
 #include "SubtitleRenderer.h"

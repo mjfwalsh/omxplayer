@@ -20,28 +20,26 @@
 
 #include <string>
 
-using namespace std;
-
 class RecentDVDStore
 {
 public:
 	RecentDVDStore();
 	void readStore();
-	void setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle);
+	void setCurrentDVD(const std::string &key, int &track, int &time, char *audio, char *subtitle);
 	void remember(int &track, int &time, char *audio, char *subtitle);
 	void saveStore();
 
 private:
 	struct DVDInfo {
-		string key;
+		std::string key;
 		int time = -1;
 		int track = -1;
-		string audio;
-		string subtitle;
+		std::string audio;
+		std::string subtitle;
 	};
 
-	vector<DVDInfo> store;
-	string recent_dvd_file;
-	string current_dvd;
+	std::vector<DVDInfo> store;
+	std::string recent_dvd_file;
+	std::string current_dvd;
 	bool m_init = false;
 };

@@ -19,6 +19,10 @@
  *
  */
 
+extern "C" {
+#include <libavformat/avformat.h>
+}
+
 #include "OMXAudioCodecOMX.h"
 #include "OMXReader.h"
 #include "utils/log.h"

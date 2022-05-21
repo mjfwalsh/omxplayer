@@ -20,7 +20,9 @@
  *
  */
 
-#include "DllAvCodec.h"
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
 
 class COMXStreamInfo
 {

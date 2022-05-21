@@ -2,7 +2,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <iostream>
-#include <cstdlib>
+#include <stdlib.h>
 
 #include "KeyConfig.h"
 

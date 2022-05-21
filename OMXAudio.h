@@ -25,8 +25,11 @@
 
 #include <string>
 
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
+
 #include "linux/PlatformDefs.h"
-#include "DllAvCodec.h"
 #include "utils/PCMRemap.h"
 #include "OMXCore.h"
 #include "OMXStreamInfo.h"

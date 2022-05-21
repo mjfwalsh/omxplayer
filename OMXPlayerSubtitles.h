@@ -47,7 +47,7 @@ public:
             unsigned int lines,
             OMXClock* clock) BOOST_NOEXCEPT;
 
-  bool Open(size_t stream_count, string &external_subtitle_path) BOOST_NOEXCEPT;
+  bool Open(size_t stream_count, std::string &external_subtitle_path) BOOST_NOEXCEPT;
 
   bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode,
                    uint32_t *palette) BOOST_NOEXCEPT;

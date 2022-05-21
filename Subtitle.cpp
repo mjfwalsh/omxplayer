@@ -17,13 +17,10 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <vector>
 #include <string>
-#include <cstring>
-#include <cstdio>
+#include <stdio.h>
 
 #include "Subtitle.h"
-#include "utils/simple_geometry.h"
 
 using namespace std;
 

@@ -24,7 +24,10 @@
 
 #include "OMXStreamInfo.h"
 #include "utils/log.h"
-#include "DllAvUtil.h"
+
+extern "C" {
+#include <libavutil/avutil.h>
+}
 
 #ifdef CLASSNAME
 #undef CLASSNAME

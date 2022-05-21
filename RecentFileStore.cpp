@@ -23,7 +23,7 @@
 #include <vector>
 #include <dirent.h>
 #include <sys/stat.h>
-#include <cstring>
+#include <string.h>
 
 #include "utils/RegExp.h"
 #include "RecentFileStore.h"

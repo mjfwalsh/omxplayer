@@ -22,7 +22,9 @@
 #ifndef _OMX_PLAYERAUDIO_H_
 #define _OMX_PLAYERAUDIO_H_
 
-#include "DllAvFormat.h"
+extern "C" {
+#include <libavformat/avformat.h>
+}
 
 #include "OMXStreamInfo.h"
 #include "OMXAudio.h"
@@ -31,14 +33,12 @@
 #include <deque>
 #include <string>
 #include <atomic>
-#include <sys/types.h>
+#include <stdint.h>
 
 class COMXAudioCodecOMX;
 class OMXClock;
 class OMXPacket;
 class OMXReader;
-
-using namespace std;
 
 class OMXPlayerAudio : public OMXThread
 {

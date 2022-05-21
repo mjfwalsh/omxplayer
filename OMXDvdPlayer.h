@@ -58,7 +58,6 @@ class OMXDvdPlayer
 	std::string disc_title;
 	std::string disc_checksum;
 
-	int title_count = 0;
 	typedef struct title_info {
 		int title_num;
 		int audiostream_count;

@@ -21,16 +21,14 @@
 #include <string>
 #include <vector>
 
-using namespace std;
-
 class AutoPlaylist
 {
 public:
-	void readPlaylist(string &indexfilepath);
-	bool ChangeFile(int delta, string &filename);
+	void readPlaylist(std::string &indexfilepath);
+	bool ChangeFile(int delta, std::string &filename);
 
 private:
-	vector<string> playlist;
+	std::vector<std::string> playlist;
 	int playlist_pos = -1;
-	string dirname;
+	std::string dirname;
 };

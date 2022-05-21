@@ -23,9 +23,9 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#include <cstdlib>
-#include <cstring>
-#include <cmath>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
 #include "PCMRemap.h"
 #include "utils/log.h"

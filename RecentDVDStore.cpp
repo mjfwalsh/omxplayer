@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include <cstring>
+#include <string.h>
 
 #include "RecentDVDStore.h"
 

@@ -28,9 +28,6 @@
 
 #include "utils/log.h"
 
-#include "DllAvUtil.h"
-#include "DllAvCodec.h"
-
 #include "OMXVideo.h"
 #include "utils/PCMRemap.h"
 #include "OMXClock.h"
@@ -239,14 +236,14 @@ void show_progress_message(const char *msg, int pos)
 std::string getShortFileName()
 {
   int lastSlash = m_filename.find_last_of('/');
-  string short_filename = m_filename.substr(lastSlash + 1);
+  std::string short_filename = m_filename.substr(lastSlash + 1);
   uri_unescape(short_filename);
   for(unsigned int i = 0; i < short_filename.length(); i++)
     if(short_filename[i] == '_') short_filename[i] = ' ';
   return short_filename;
 }
 
-static void UpdateRaspicastMetaData(const string &msg)
+static void UpdateRaspicastMetaData(const std::string &msg)
 {
   FILE *fp = fopen("/dev/shm/.r_info", "w");
   if(fp == NULL) return;
@@ -1113,12 +1110,12 @@ int run_play_loop()
     printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
     osd_printf(UM_NORM, "%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
 
-    UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + to_string(m_track + 1));
+    UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + std::to_string(m_track + 1));
   }
   else
   {
     printf("Playing: %s\n", m_filename.c_str());
-    string short_filename = getShortFileName();
+    std::string short_filename = getShortFileName();
     osd_print(short_filename.c_str());
     UpdateRaspicastMetaData(short_filename);
   }

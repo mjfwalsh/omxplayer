@@ -1,5 +1,5 @@
 CFLAGS+=-pipe -mfloat-abi=hard -mcpu=arm1176jzf-s -fomit-frame-pointer -mabi=aapcs-linux
-CFLAGS+=-mtune=arm1176jzf-s -mfpu=vfp -Wno-psabi -g -std=c++0x -D__STDC_CONSTANT_MACROS
+CFLAGS+=-mtune=arm1176jzf-s -mfpu=vfp -g -std=c++0x -D__STDC_CONSTANT_MACROS
 CFLAGS+=-D__STDC_LIMIT_MACROS -DTARGET_POSIX -DTARGET_LINUX -fPIC -DPIC -D_REENTRANT
 CFLAGS+=-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DHAVE_CMAKE_CONFIG -D__VIDEOCORE4__
 CFLAGS+=-U_FORTIFY_SOURCE -Wall -DOMX_SKIP64BIT -ftree-vectorize
@@ -11,7 +11,7 @@ LDLIBS+=-ldbus-1 -ldl -lopenmaxil -lpcre2-8 -lpthread -lrt -lswresample -lswscal
 LDLIBS+=-lvchostif -lvcos -lz
 
 INCLUDES+=-I./ -isystem ffmpeg -isystem/usr/include/dbus-1.0
-INCLUDES+=-isystem/usr/lib/arm-linux-gnueabihf/dbus-1.0/include -isystem/usr/include/cairo
+INCLUDES+=-isystem/usr/lib/arm-linux-gnueabihf/dbus-1.0/include
 INCLUDES+=-isystem/opt/vc/include -isystem/opt/vc/include/interface/vcos/pthreads
 
 DIST ?= omxplayer-dist

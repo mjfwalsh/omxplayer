@@ -15,18 +15,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
+
 #include "OMXReader.h"
 #include "OMXClock.h"
 #include "OMXPlayerSubtitles.h"
 #include "SubtitleRenderer.h"
 #include "Subtitle.h"
-#include "DllAvCodec.h"
 #include "utils/ScopeExit.h"
 #include "utils/log.h"
 #include "Srt.h"
 
 #include <signal.h>
-#include <cstdint>
+#include <stdint.h>
 
 using namespace std;
 using namespace boost;

@@ -32,7 +32,6 @@ class OMXClock;
 class OMXPacket;
 struct AVStream;
 
-using namespace std;
 
 class OMXPlayerVideo : public OMXThread
 {

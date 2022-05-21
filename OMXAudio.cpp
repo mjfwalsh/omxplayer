@@ -28,7 +28,7 @@
 #define VOLUME_MINIMUM 0
 #endif
 
-#include <cassert>
+#include <assert.h>
 #include <algorithm>
 
 using namespace std;
