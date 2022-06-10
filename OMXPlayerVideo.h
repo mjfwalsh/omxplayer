@@ -47,7 +47,6 @@ protected:
   OMXClock                  *m_av_clock = NULL;
   COMXVideo                 *m_decoder = NULL;
   float                     m_fps = 25.0f;
-  bool                      m_bAbort;
   bool                      m_flush = false;
   std::atomic<bool>         m_flush_requested;
   unsigned int              m_cached_size = 0;

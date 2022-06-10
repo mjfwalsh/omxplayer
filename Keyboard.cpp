@@ -94,7 +94,7 @@ void Keyboard::Sleep(unsigned int dwMilliSeconds)
 
 void Keyboard::Process() 
 {
-  while(!m_bStop)
+  while(!m_bAbort)
   {
     if (conn)
       dbus_connection_read_write_dispatch(conn, 0);

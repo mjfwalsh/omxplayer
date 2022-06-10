@@ -100,7 +100,6 @@ static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t 
 void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace)
 {
   int32_t num_modes = 0;
-  int i;
   HDMI_RES_GROUP_T prefer_group;
   HDMI_RES_GROUP_T group = HDMI_RES_GROUP_CEA;
   float fps = 60.0f; // better to force to higher rate if no information is known
@@ -133,7 +132,7 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
     uint32_t best_score = 1<<30;
     uint32_t scan_mode = NativeDeinterlace;
 
-    for (i=0; i<num_modes; i++)
+    for (int i=0; i<num_modes; i++)
     {
       TV_SUPPORTED_MODE_NEW_T *tv = supported_modes + i;
       uint32_t score = 0;
@@ -193,11 +192,13 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
 
   if(tv_found)
   {
-    char response[80];
     printf("Output mode %d: %dx%d@%d %s%s:%x\n", tv_found->code, tv_found->width, tv_found->height,
            tv_found->frame_rate, tv_found->native?"N":"", tv_found->scan_mode?"I":"", tv_found->code);
     if (NativeDeinterlace && tv_found->scan_mode)
+    {
+      char response[80];
       vc_gencmd(response, sizeof response, "hvs_update_fields %d", 1);
+    }
 
     // if we are closer to ntsc version of framerate, let gpu know
     int ifps = (int)(fps+0.5f);

@@ -178,7 +178,7 @@ enum {
 void osd_print(int options, const char *msg)
 {
   if(m_osd)
-    m_player_subtitles.DisplayText(msg, options & UM_LONG ? 3000 : 1500);
+    m_player_subtitles.DisplayText(msg, (options & UM_LONG) ? 3000 : 1500);
 
   if(options & UM_STDOUT)
   {
@@ -196,7 +196,7 @@ void osd_print(int options, const char *msg)
   }
 
   // useful when we want to display some osd before exiting the program
-  if(m_osd && (options & UM_SLEEP)) m_av_clock->OMXSleep(options & UM_LONG ? 3000 : 1500);
+  if(m_osd && (options & UM_SLEEP)) m_av_clock->OMXSleep((options & UM_LONG) ? 3000 : 1500);
 }
 
 void osd_print(const char *msg)
@@ -1504,14 +1504,13 @@ int run_play_loop()
     if(m_seek_flush || m_incr != 0)
     {
       int64_t seek_pos     = 0;
-      int64_t pts          = 0;
 
       if(m_has_subtitle)
         m_player_subtitles.Pause();
 
       if (!chapter_seek)
       {
-        pts = m_av_clock->OMXMediaTime();
+        int64_t pts = m_av_clock->OMXMediaTime();
 
         seek_pos = (pts ? pts : last_seek_pos) + (int64_t)m_incr * AV_TIME_BASE;
         last_seek_pos = seek_pos;

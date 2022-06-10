@@ -36,7 +36,7 @@ OMXThread::OMXThread()
   pthread_attr_init(&m_tattr);
   pthread_attr_setdetachstate(&m_tattr, PTHREAD_CREATE_JOINABLE);
   m_thread    = 0;
-  m_bStop     = false;
+  m_bAbort     = false;
   m_running   = false;
 }
 
@@ -56,7 +56,7 @@ bool OMXThread::StopThread()
     return false;
   }
 
-  m_bStop = true;
+  m_bAbort = true;
   pthread_join(m_thread, NULL);
   m_running = false;
 
@@ -74,7 +74,7 @@ bool OMXThread::Create()
     return false;
   }
 
-  m_bStop    = false;
+  m_bAbort    = false;
   m_running = true;
 
   pthread_create(&m_thread, &m_tattr, &OMXThread::Run, this);

@@ -211,10 +211,10 @@ void OMXPlayerVideo::Process()
   while(true)
   {
     Lock();
-    if(!(m_bStop || m_bAbort) && m_packets.empty())
+    if(!m_bAbort && m_packets.empty())
       pthread_cond_wait(&m_packet_cond, &m_lock);
 
-    if (m_bStop || m_bAbort)
+    if (m_bAbort)
     {
       UnLock();
       break;
@@ -284,8 +284,11 @@ void OMXPlayerVideo::Flush()
 
 bool OMXPlayerVideo::AddPacket(OMXPacket *pkt)
 {
-  if(m_bStop || m_bAbort)
-    return false;
+  if(m_bAbort)
+  {
+    delete pkt;
+    return true;
+  }
 
   if((m_cached_size + pkt->size) < m_config.queue_size * 1024 * 1024)
   {

@@ -94,7 +94,6 @@ private:
   void RenderLoop();
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);
   bool GetImageData(OMXPacket *pkt, Subtitle &sub);
-  void FlushRenderer();
 
   std::vector<boost::circular_buffer<Subtitle>> m_subtitle_buffers;
   Mailbox                                       m_mailbox;

@@ -79,6 +79,7 @@ fi
 
 $OMXPLAYER_BIN "$@"
 RESULT=$?
+stty echo
 
 if [[ $@ =~ $refresh_regex ]]; then
     if [ ! -z $fbset_bin ]; then

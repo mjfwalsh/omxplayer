@@ -121,7 +121,6 @@ public:
   void FlushOutput();
 
   OMX_BUFFERHEADERTYPE *GetInputBuffer(long timeout=200);
-  OMX_BUFFERHEADERTYPE *GetOutputBuffer(long timeout=200);
 
   OMX_ERRORTYPE AllocInputBuffers();
 

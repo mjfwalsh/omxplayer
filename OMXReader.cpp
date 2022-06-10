@@ -466,7 +466,7 @@ OMXPacket *OMXReader::Read()
       //FlushRead();
     }
 
-    av_packet_unref(m_omx_pkt);
+    delete m_omx_pkt;
 
     m_eof = true;
     UnLock();

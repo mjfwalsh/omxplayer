@@ -23,6 +23,7 @@
 #define _OMX_THREAD_H_
 
 #include <pthread.h>
+#include <atomic>
 
 class OMXThread 
 {
@@ -32,7 +33,7 @@ protected:
   pthread_mutex_t     m_lock;
   pthread_t           m_thread;
   volatile bool       m_running;
-  volatile bool       m_bStop;
+  std::atomic<bool>   m_bAbort;
 private:
   static void *Run(void *arg);
 public:

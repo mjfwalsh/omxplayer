@@ -483,7 +483,6 @@ static void __gomx_process_mark(GOMX_COMPONENT *comp, OMX_BUFFERHEADERTYPE *hdr)
 static OMX_ERRORTYPE __gomx_port_unpopulate(GOMX_COMPONENT *comp, GOMX_PORT *port)
 {
 	OMX_BUFFERHEADERTYPE *hdr;
-	void *buf;
 
 	if (port->tunnel_supplier) {
 		CINFO(comp, port, "waiting for supplier buffers (%d / %d)",
@@ -493,7 +492,7 @@ static OMX_ERRORTYPE __gomx_port_unpopulate(GOMX_COMPONENT *comp, GOMX_PORT *por
 
 		CINFO(comp, port, "free tunnel buffers");
 		while ((hdr = (OMX_BUFFERHEADERTYPE*)gomxq_dequeue(&port->tunnel_supplierq)) != 0) {
-			buf = hdr->pBuffer;
+			void *buf = hdr->pBuffer;
 			OMX_FreeBuffer(port->tunnel_comp, port->tunnel_port, hdr);
 			free(buf);
 			port->num_buffers--;
@@ -514,14 +513,13 @@ static OMX_ERRORTYPE __gomx_port_populate(GOMX_COMPONENT *comp, GOMX_PORT *port)
 {
 	OMX_ERRORTYPE r;
 	OMX_BUFFERHEADERTYPE *hdr;
-	void *buf;
 
 	if (port->tunnel_supplier) {
 		CINFO(comp, port, "Allocating tunnel buffers");
 		while (port->num_buffers < port->def.nBufferCountActual) {
 			pthread_mutex_unlock(&comp->mutex);
 			r = OMX_ErrorInsufficientResources;
-			buf = malloc(port->def.nBufferSize);
+			void *buf = malloc(port->def.nBufferSize);
 			if (buf) {
 				r = OMX_UseBuffer(port->tunnel_comp, &hdr,
 						port->tunnel_port, 0,

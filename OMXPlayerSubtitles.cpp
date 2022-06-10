@@ -25,7 +25,6 @@ extern "C" {
 #include "OMXPlayerSubtitles.h"
 #include "SubtitleRenderer.h"
 #include "Subtitle.h"
-#include "utils/ScopeExit.h"
 #include "utils/log.h"
 #include "Srt.h"
 
@@ -588,16 +587,12 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
     return;
   }
 
-  SCOPE_EXIT
-  {
-    delete pkt;
-  };
-
   if(pkt->hints.codec != AV_CODEC_ID_SUBRIP && 
      pkt->hints.codec != AV_CODEC_ID_SSA &&
      pkt->hints.codec != AV_CODEC_ID_ASS &&
      pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
   {
+    delete pkt;
     return;
   }
 
@@ -617,7 +612,11 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
     success = GetImageData(pkt, sub);
   else
     success = GetTextLines(pkt, sub);
-  if(!success) return;
+  if(!success)
+  {
+    delete pkt;
+    return;
+  }
 
   m_subtitle_buffers[pkt->index].push_back(sub);
 
@@ -625,6 +624,8 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
   {
     SendToRenderer(new Mailbox::Push(std::move(sub)));
   }
+
+  delete pkt;
 }
 
 void OMXPlayerSubtitles::DisplayText(const char *text, int duration) BOOST_NOEXCEPT

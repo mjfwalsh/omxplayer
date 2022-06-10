@@ -384,39 +384,6 @@ OMX_BUFFERHEADERTYPE *COMXCoreComponent::GetInputBuffer(long timeout /*=200*/)
   return omx_input_buffer;
 }
 
-OMX_BUFFERHEADERTYPE *COMXCoreComponent::GetOutputBuffer(long timeout /*=200*/)
-{
-  OMX_BUFFERHEADERTYPE *omx_output_buffer = NULL;
-  if(!m_handle)
-    return NULL;
-
-  pthread_mutex_lock(&m_omx_output_mutex);
-  struct timespec endtime;
-  clock_gettime(CLOCK_REALTIME, &endtime);
-  add_timespecs(endtime, timeout);
-  while (!m_flush_output)
-  {
-    if (m_resource_error)
-      break;
-    if(!m_omx_output_available.empty())
-    {
-      omx_output_buffer = m_omx_output_available.front();
-      m_omx_output_available.pop();
-      break;
-    }
-
-    int retcode = pthread_cond_timedwait(&m_output_buffer_cond, &m_omx_output_mutex, &endtime);
-    if (retcode != 0) {
-      if (timeout != 0)
-        CLogLog(LOGERROR, "COMXCoreComponent::GetOutputBuffer %s wait event timeout", m_componentName.c_str());
-      break;
-    }
-  }
-  pthread_mutex_unlock(&m_omx_output_mutex);
-
-  return omx_output_buffer;
-}
-
 
 OMX_ERRORTYPE COMXCoreComponent::WaitForInputDone(long timeout /*=200*/)
 {
