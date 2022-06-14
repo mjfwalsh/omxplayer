@@ -23,6 +23,7 @@
 #include "OMXClock.h"
 #include "OMXDvdPlayer.h"
 #include "utils/log.h"
+#include "utils/misc.h"
 
 #include <stdio.h>
 #include <unordered_map>
@@ -119,12 +120,7 @@ void OMXReader::SetDefaultTimeout(float timeout)
   timeout_default_duration = (int64_t) (timeout * 1e9);
 }
 
-OMXReader::OMXReader(
-	std::string &filename,
-	bool is_url,
-	bool dump_format,
-	bool live,
-	OMXDvdPlayer *dvd)
+OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd)
 {
   m_speed       = DVD_PLAYSPEED_NORMAL;
   m_DvdPlayer   = dvd;
@@ -189,33 +185,33 @@ OMXReader::OMXReader(
   }
   else
   {
-    if(is_url)
+    if(IsURL(filename))
     {
       if(filename.substr(0, 8) == "shout://" )
         filename.replace(0, 8, "http://");
 
       // ffmpeg dislikes the useragent from AirPlay urls
-      //int idx = filename.Find("|User-Agent=AppleCoreMedia");
       size_t idx = filename.find("|");
       if(idx != string::npos)
         filename = filename.substr(0, idx);
 
       // Enable seeking if http, ftp
-      if(filename.substr(0,7) == "http://" || filename.substr(0,6) == "ftp://" ||
-         filename.substr(0,7) == "sftp://")
+      if(!live && (filename.substr(0,7) == "http://" ||
+          filename.substr(0,8) == "https://" ||
+          filename.substr(0,6) == "ftp://" ||
+          filename.substr(0,7) == "sftp://"))
       {
-         if(!live)
-         {
-            av_dict_set(&d, "seekable", "1", 0);
-         }
-         if(!s_cookie.empty())
-         {
-            av_dict_set(&d, "cookies", s_cookie.c_str(), 0);
-         }
-         if(!s_user_agent.empty())
-         {
-            av_dict_set(&d, "user_agent", s_user_agent.c_str(), 0);
-         }
+         av_dict_set(&d, "seekable", "1", 0);
+      }
+
+      // set user-agent and cookie
+      if(!s_cookie.empty())
+      {
+         av_dict_set(&d, "cookies", s_cookie.c_str(), 0);
+      }
+      if(!s_user_agent.empty())
+      {
+         av_dict_set(&d, "user_agent", s_user_agent.c_str(), 0);
       }
     }
 

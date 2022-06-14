@@ -17,8 +17,8 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-
 #include <string>
+#include "RegExp.h"
 
 // reads input from r
 // writes a single char output to w
@@ -74,4 +74,27 @@ void uri_unescape(std::string &in)
         }
     }
     in.resize(w - &in[0]);
+}
+
+// Check file exists and is readable
+bool Exists(const std::string& path)
+{
+  FILE *file = fopen(path.c_str(), "r");
+  if(file)
+  {
+    fclose(file);
+    return true;
+  }
+  return false;
+}
+
+bool IsURL(const std::string &str)
+{
+  static CRegExp protocol_match("^[a-zA-Z]+://");
+  return protocol_match.RegFind(str, 0) > -1;
+}
+
+bool IsPipe(const std::string& str)
+{
+  return str.substr(0, 5) == "pipe:";
 }

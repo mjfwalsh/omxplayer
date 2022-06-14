@@ -12,28 +12,12 @@
 #include "OMXPlayerAudio.h"
 #include "OMXReader.h"
 #include "OMXPlayerSubtitles.h"
+#include "utils/misc.h"
 
 static void ToURI(const std::string& str, char *uri)
 {
-  //Test if URL/URI
-  bool isURL=true;
-  auto result = str.find("://");
-  if(result == std::string::npos || result == 0)
-  {
-    isURL=false;
-  }
-
-  if(isURL)
-  {
-    for(size_t i = 0; i < result; ++i)
-    {
-      if(!isalpha(str[i]))
-        isURL=false;
-    }
-  }
-
   //Build URI if needed
-  if(isURL)
+  if(IsURL(str))
   {
     //Just write URL as it is
     strncpy(uri, str.c_str(), PATH_MAX);

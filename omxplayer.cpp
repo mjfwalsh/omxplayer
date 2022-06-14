@@ -41,7 +41,7 @@
 #include "AutoPlaylist.h"
 #include "RecentFileStore.h"
 #include "RecentDVDStore.h"
-#include "utils/uri_unescape.h"
+#include "utils/misc.h"
 #include "VideoCore.h"
 
 #include <string>
@@ -296,29 +296,6 @@ static void FlushStreams(int64_t pts)
     delete m_omx_pkt;
     m_omx_pkt = NULL;
   }
-}
-
-// Check file exists and is readable
-bool Exists(const std::string& path)
-{
-  FILE *file = fopen(path.c_str(), "r");
-  if(file)
-  {
-    fclose(file);
-    return true;
-  }
-  return false;
-}
-
-bool IsURL(const std::string &str)
-{
-  static CRegExp protocol_match("^[a-zA-Z]+://");
-  return protocol_match.RegFind(str, 0) > -1;
-}
-
-bool IsPipe(const std::string& str)
-{
-  return str.substr(0, 5) == "pipe:";
 }
 
 int ExitFileNotFound(const std::string& path)
@@ -1095,8 +1072,7 @@ int change_playlist_item()
 int run_play_loop()
 {
   try {
-    m_omx_reader = new OMXReader(m_filename, IsURL(m_filename), m_dump_format,
-                                 m_config_audio.is_live, m_DvdPlayer);
+    m_omx_reader = new OMXReader(m_filename, m_dump_format, m_config_audio.is_live, m_DvdPlayer);
   }
   catch(const char *msg)
   {

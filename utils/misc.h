@@ -21,3 +21,6 @@
 #include <string>
 
 void uri_unescape(std::string &s);
+bool Exists(const std::string& path);
+bool IsURL(const std::string &str);
+bool IsPipe(const std::string& str);

@@ -116,7 +116,7 @@ public:
     SEEK_NO_CHAPTERS
   };
 
-  OMXReader(std::string &filename, bool is_url, bool dump_format, bool live, OMXDvdPlayer *dvd);
+  OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd);
   ~OMXReader();
 
   bool SeekTime(int64_t time, bool backwords, int64_t *startpts);

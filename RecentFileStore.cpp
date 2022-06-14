@@ -27,7 +27,7 @@
 
 #include "utils/RegExp.h"
 #include "RecentFileStore.h"
-#include "utils/uri_unescape.h"
+#include "utils/misc.h"
 
 using namespace std;
 
@@ -119,7 +119,7 @@ void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, in
 		sub_track = 0;
 }
 
-bool is_valid_link_url(std::string url)
+bool is_valid_link_url(std::string &url)
 {
 	if(url[0] == '/')
 		return true;
@@ -127,11 +127,7 @@ bool is_valid_link_url(std::string url)
 	if(url.substr(0, 5) == "file:")
 		return false;
 
-	unsigned int i = 0;
-	while(url[i] >= 'a' && url[i] <= 'z')
-		i++;
-
-	return i > 3 && url.size() > i + 3 && url.substr(i, 3) == "://";
+	return IsURL(url);
 }
 
 
