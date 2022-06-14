@@ -50,7 +50,7 @@ class OMXDvdPlayer;
 class OMXPacket : public AVPacket
 {
   public: 
-  OMXPacket();
+  OMXPacket(AVFormatContext *format_context);
   ~OMXPacket();
   
   COMXStreamInfo hints;
@@ -86,8 +86,6 @@ private:
   int                       m_video_count     = 0;
   int                       m_audio_count     = 0;
   int                       m_subtitle_count  = 0;
-  bool                      m_open            = false;
-  std::string               m_filename;
   bool                      m_bMatroska       = false;
   bool                      m_bAVI            = false;
   AVFormatContext           *m_pFormatContext = NULL;
@@ -99,12 +97,15 @@ private:
   OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
   int                       m_chapter_count   = 0;
   int                       m_speed;
-  pthread_mutex_t           m_lock;
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
   int                       m_height          = 0;
   OMXDvdPlayer              *m_DvdPlayer      = NULL;
   std::unordered_map<int, int>   m_steam_map;
+  static std::string        s_cookie;
+  static std::string        s_user_agent;
+  static std::string        s_lavfdopts;
+  static std::string        s_avdict;
 
 public:
   // results for chapter seek function
@@ -115,12 +116,9 @@ public:
     SEEK_NO_CHAPTERS
   };
 
-  OMXReader();
+  OMXReader(std::string &filename, bool is_url, bool dump_format, bool live, OMXDvdPlayer *dvd);
   ~OMXReader();
-  bool Open(std::string &filename, bool is_url, bool dump_format, bool live, float timeout,
-    std::string &cookie, std::string &user_agent, std::string &lavfdopts, std::string &avdict,
-    OMXDvdPlayer *dvd);
-  bool Close();
+
   bool SeekTime(int64_t time, bool backwords, int64_t *startpts);
   OMXPacket *Read();
   bool GetHints(AVStream *stream, COMXStreamInfo *hints);
@@ -134,7 +132,6 @@ public:
   int GetHeight() { return m_height; };
   void SetSpeed(int iSpeed);
   SeekResult SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts);
-  std::string getFilename() const { return m_filename; }
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
@@ -144,9 +141,13 @@ public:
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
   bool CanSeek();
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
+  static void SetCookie(const char *c)     { s_cookie.assign(c); }
+  static void SetUserAgent(const char *ua) { s_user_agent.assign(ua); }
+  static void SetLavDopts(const char *lo)  { s_lavfdopts.assign(lo); }
+  static void SetAvDict(const char *ad)    { s_avdict.assign(ad); }
+  static void SetDefaultTimeout(float timeout);
+
 private:
-  void Lock();
-  void UnLock();
   std::string GetStreamCodecName(AVStream *stream);
   void GetStreams();
   void GetDvdStreams();
@@ -157,4 +158,5 @@ private:
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
   void AddMissingSubtitleStream(int id);
 };
+
 #endif

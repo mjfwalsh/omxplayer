@@ -3,6 +3,7 @@
 #define OMXPLAYER_DBUS_INTERFACE_PLAYER "org.mpris.MediaPlayer2.Player"
 
 #include <dbus/dbus.h>
+#include <string>
 
 class OMXPlayerAudio;
 class OMXPlayerSubtitles;
@@ -35,9 +36,12 @@ protected:
   OMXPlayerAudio     *audio;
   OMXReader          *reader;
   OMXPlayerSubtitles *subtitles;
+  std::string (*get_filename)();
 public:
   ~OMXControl();
-  bool init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, OMXReader *omx_reader, std::string& dbus_name);
+  void init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, std::string (*filename)());
+  bool connect(std::string& dbus_name);
+  void set_reader(OMXReader *omx_reader);
   OMXControlResult getEvent();
 private:
   void dispatch();

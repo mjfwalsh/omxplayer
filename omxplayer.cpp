@@ -58,7 +58,7 @@ std::string       m_external_subtitles_path;
 bool              m_has_external_subtitles = false;
 std::string       m_dbus_name           = "org.mpris.MediaPlayer2.omxplayer";
 bool              m_Pause               = false;
-OMXReader         m_omx_reader;
+OMXReader         *m_omx_reader;
 int               m_audio_index     = -1;
 OMXClock          *m_av_clock           = NULL;
 OMXControl        m_omxcontrol;
@@ -93,13 +93,8 @@ bool              m_dump_format_exit    = false;
 FORMAT_3D_T       m_3d                  = CONF_FLAGS_FORMAT_NONE;
 bool              m_refresh             = false;
 float             m_threshold           = -1.0f; // amount of audio/video required to come out of buffering
-float             m_timeout             = 10.0f; // amount of time file/network operation can stall for before timing out
 int               m_orientation         = -1; // unset
 float             m_fps                 = 0.0f; // unset
-std::string       m_cookie;
-std::string       m_user_agent;
-std::string       m_lavfdopts;
-std::string       m_avdict;
 int               m_next_prev_file      = 0;
 char              m_audio_lang[4]       = "\0";
 char              m_subtitle_lang[4]    = "\0";
@@ -223,7 +218,7 @@ int exit_with_message(const char *msg)
 
 void show_progress_message(const char *msg, int pos)
 {
-  int dur = m_omx_reader.GetStreamLengthSeconds();
+  int dur = m_omx_reader->GetStreamLengthSeconds();
   osd_printf(UM_NORM, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
                 msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
@@ -257,7 +252,7 @@ static void PrintSubtitleInfo()
   if(m_has_external_subtitles) {
     count = 1;
   } else if(m_has_subtitle) {
-    count = m_omx_reader.SubtitleStreamCount();
+    count = m_omx_reader->SubtitleStreamCount();
     index = m_player_subtitles.GetActiveStream();
   }
 
@@ -273,7 +268,7 @@ static void SetSpeed(int iSpeed)
   if(!m_av_clock)
     return;
 
-  m_omx_reader.SetSpeed(iSpeed);
+  m_omx_reader->SetSpeed(iSpeed);
 
   m_av_clock->OMXSetSpeed(iSpeed);
   m_av_clock->OMXSetSpeed(iSpeed, true, true);
@@ -335,6 +330,11 @@ int ExitFileNotFound(const std::string& path)
 
   g_OMX.Deinitialize();
   return EXIT_FAILURE;
+}
+
+std::string get_filename()
+{
+  return m_filename;
 }
 
 int change_file();
@@ -724,7 +724,7 @@ int main(int argc, char *argv[])
         m_threshold = atof(optarg);
         break;
       case timeout_opt:
-        m_timeout = atof(optarg);
+        OMXReader::SetDefaultTimeout(atof(optarg));
         break;
       case orientation_opt:
         m_orientation = atoi(optarg);
@@ -778,16 +778,16 @@ int main(int argc, char *argv[])
         m_config_video.display = atoi(optarg);
         break;
       case http_cookie_opt:
-        m_cookie = optarg;
+        OMXReader::SetCookie(optarg);
         break;
       case http_user_agent_opt:
-        m_user_agent = optarg;
+        OMXReader::SetUserAgent(optarg);
         break;    
       case lavfdopts_opt:
-        m_lavfdopts = optarg;
+        OMXReader::SetLavDopts(optarg);
         break;
       case avdict_opt:
-        m_avdict = optarg;
+        OMXReader::SetAvDict(optarg);
         break;
       case track_opt:
         m_track = atoi(optarg) - 1;
@@ -817,6 +817,9 @@ int main(int argc, char *argv[])
         break;
     }
   }
+
+  // get filename
+  m_filename = argv[optind];
 
   // start logging
   CLogInit(log_level, log_file);
@@ -872,12 +875,13 @@ int main(int argc, char *argv[])
   if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
     printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
 
-  m_dbus_enabled = m_omxcontrol.init(
+  m_dbus_enabled = m_omxcontrol.connect(m_dbus_name);
+
+  m_omxcontrol.init(
     m_av_clock,
     &m_player_audio,
     &m_player_subtitles,
-    &m_omx_reader,
-    m_dbus_name
+    get_filename
   );
 
   // 3d modes don't work without switch hdmi mode
@@ -895,9 +899,6 @@ int main(int argc, char *argv[])
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
-
-  // get filename
-  m_filename = argv[optind];
 
   // disable keys when using stdin for input
   if(m_filename == "pipe:" || m_filename == "pipe:0")
@@ -1093,9 +1094,17 @@ int change_playlist_item()
 // we jump here when playing the next track in a dvd
 int run_play_loop()
 {
-  if(!m_omx_reader.Open(m_filename, IsURL(m_filename), m_dump_format, m_config_audio.is_live,
-                        m_timeout, m_cookie, m_user_agent, m_lavfdopts, m_avdict, m_DvdPlayer))
-    return exit_with_message("File read error or format not supported");
+  try {
+    m_omx_reader = new OMXReader(m_filename, IsURL(m_filename), m_dump_format,
+                                 m_config_audio.is_live, m_DvdPlayer);
+  }
+  catch(const char *msg)
+  {
+    printf("OMXReader error: %s\n", msg);
+    return END_PLAY_WITH_ERROR;
+  }
+
+  m_omxcontrol.set_reader(m_omx_reader);
 
   if (m_dump_format_exit)
     return ABORT_PLAY;
@@ -1117,16 +1126,16 @@ int run_play_loop()
 
   // select an audio stream
   if(m_audio_lang[0] != '\0')
-    m_audio_index = m_omx_reader.GetStreamByLanguage(OMXSTREAM_AUDIO, m_audio_lang);
+    m_audio_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_AUDIO, m_audio_lang);
 
   // Where no audio stream has been selected, use the first stream other than audio narrative
   if(m_audio_index == -1)
   {
-    int audiostreamcount = m_omx_reader.AudioStreamCount();
+    int audiostreamcount = m_omx_reader->AudioStreamCount();
 
     for(int i = 0; i < audiostreamcount; i++)
     {
-      if(m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, i) != "NAR")
+      if(m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, i) != "NAR")
       {
         m_audio_index = i;
         break;
@@ -1139,16 +1148,16 @@ int run_play_loop()
       printf("Selecting audio stream: %d\n", m_audio_index + 1);
   }
 
-  m_has_video     = m_omx_reader.VideoStreamCount() > 0;
-  m_has_audio     = m_audio_index != -2 && m_omx_reader.AudioStreamCount() > 0;
-  m_has_subtitle  = m_has_external_subtitles || m_omx_reader.SubtitleStreamCount() > 0;
-  m_loop          = m_loop && m_omx_reader.CanSeek();
+  m_has_video     = m_omx_reader->VideoStreamCount() > 0;
+  m_has_audio     = m_audio_index != -2 && m_omx_reader->AudioStreamCount() > 0;
+  m_has_subtitle  = m_has_external_subtitles || m_omx_reader->SubtitleStreamCount() > 0;
+  m_loop          = m_loop && m_omx_reader->CanSeek();
 
   m_av_clock->OMXStateIdle();
   m_av_clock->OMXStop();
   m_av_clock->OMXPause();
 
-  m_omx_reader.GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
+  m_omx_reader->GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
 
   if (m_fps > 0.0f)
   {
@@ -1159,7 +1168,7 @@ int run_play_loop()
   if(m_audio_index > -1)
     m_player_audio.SetActiveStream(m_audio_index);
 
-  m_omx_reader.GetHints(OMXSTREAM_AUDIO, m_player_audio.GetActiveStream(), m_config_audio.hints);
+  m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_player_audio.GetActiveStream(), m_config_audio.hints);
 
   if(m_has_video && m_refresh)
   {
@@ -1181,7 +1190,7 @@ int run_play_loop()
   {
     if(!m_has_external_subtitles) m_external_subtitles_path.clear();
 
-    if(!m_player_subtitles.Open(m_omx_reader.SubtitleStreamCount(),
+    if(!m_player_subtitles.Open(m_omx_reader->SubtitleStreamCount(),
                                 m_external_subtitles_path))
       return exit_with_message("Failed to open subtitles");
 
@@ -1190,7 +1199,7 @@ int run_play_loop()
     Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
     float sub_aspect = m_config_video.hints.aspect;
     uint32_t *palette = m_DvdPlayer ? m_DvdPlayer->getPalette() : NULL;
-    if(m_omx_reader.FindDVDSubs(sub_dim, sub_aspect, &palette))
+    if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
       if(!m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
         return exit_with_message("Failed to initialise DVD subtitles");
@@ -1203,7 +1212,7 @@ int run_play_loop()
   if(m_has_subtitle)
   {
     if(!m_has_external_subtitles && m_subtitle_lang[0] != '\0')
-      m_subtitle_index = m_omx_reader.GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
+      m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
     m_player_subtitles.SetActiveStream(m_subtitle_index);
   }
@@ -1225,7 +1234,7 @@ int run_play_loop()
   if (m_config_audio.hints.codec == AV_CODEC_ID_DTS && VideoCore::canPassThroughDTS())
     m_config_audio.passthrough = false;
 
-  if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, &m_omx_reader, m_omx_reader.AudioStreamCount()))
+  if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader, m_omx_reader->AudioStreamCount()))
     return exit_with_message("Failed to open audio out");
 
   if(m_has_audio)
@@ -1303,7 +1312,7 @@ int run_play_loop()
         puts("Step");
         {
           unsigned t = (unsigned) (m_av_clock->OMXMediaTime()*1e-3);
-          int dur = m_omx_reader.GetStreamLengthSeconds();
+          int dur = m_omx_reader->GetStreamLengthSeconds();
           osd_printf(UM_NORM, "Step\n%02d:%02d:%02d.%03d / %02d:%02d:%02d",
               (t/3600000), (t/60000)%60, (t/1000)%60, t%1000,
               (dur/3600), (dur/60)%60, dur%60);
@@ -1316,7 +1325,7 @@ int run_play_loop()
           int delta = result.getKey() == KeyConfig::ACTION_NEXT_AUDIO ? 1 : -1;
 
           int new_index = m_player_audio.SetActiveStreamDelta(delta);
-          strcpy(m_audio_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
+          strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
           osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
         break;
@@ -1326,7 +1335,7 @@ int run_play_loop()
           int64_t new_pts;
           int ch = result.getKey() == KeyConfig::ACTION_NEXT_CHAPTER ? 1 : -1;
 
-          switch(m_omx_reader.SeekChapter(&ch, m_av_clock->OMXMediaTime(), &new_pts))
+          switch(m_omx_reader->SeekChapter(&ch, m_av_clock->OMXMediaTime(), &new_pts))
           {
           case OMXReader::SEEK_SUCCESS:
             osd_printf(UM_NORM, "Chapter %d", ch);
@@ -1365,7 +1374,7 @@ int run_play_loop()
             m_subtitle_lang[0] = '\0';
             osd_print("Subtitles Off");
           } else {
-            strcpy(m_subtitle_lang, m_omx_reader.GetStreamLanguage(OMXSTREAM_SUBTITLE,
+            strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
                 new_index).c_str());
             osd_printf(UM_NORM, "Subtitle stream: %d %s", new_index + 1, m_subtitle_lang);
           }
@@ -1410,16 +1419,16 @@ int run_play_loop()
         return END_PLAY;
         break;
       case KeyConfig::ACTION_SEEK_BACK_SMALL:
-        if(m_omx_reader.CanSeek()) m_incr = -30;
+        if(m_omx_reader->CanSeek()) m_incr = -30;
         break;
       case KeyConfig::ACTION_SEEK_FORWARD_SMALL:
-        if(m_omx_reader.CanSeek()) m_incr = 30;
+        if(m_omx_reader->CanSeek()) m_incr = 30;
         break;
       case KeyConfig::ACTION_SEEK_FORWARD_LARGE:
-        if(m_omx_reader.CanSeek()) m_incr = 600;
+        if(m_omx_reader->CanSeek()) m_incr = 600;
         break;
       case KeyConfig::ACTION_SEEK_BACK_LARGE:
-        if(m_omx_reader.CanSeek()) m_incr = -600;
+        if(m_omx_reader->CanSeek()) m_incr = -600;
         break;
       case KeyConfig::ACTION_SEEK_RELATIVE:
         m_incr = result.getArg() * 1e-6;
@@ -1510,7 +1519,7 @@ int run_play_loop()
         seek_pos = (pts ? pts : last_seek_pos) + (int64_t)m_incr * AV_TIME_BASE;
         last_seek_pos = seek_pos;
 
-        if(m_omx_reader.SeekTime(seek_pos, m_incr < 0, &startpts))
+        if(m_omx_reader->SeekTime(seek_pos, m_incr < 0, &startpts))
         {
           int t = (int)(startpts*1e-6);
           show_progress_message("Seek", t);
@@ -1521,7 +1530,7 @@ int run_play_loop()
 
       sentStarted = false;
 
-      if (m_omx_reader.IsEof())
+      if (m_omx_reader->IsEof())
         return END_PLAY;
 
       // Quick reset to reduce delay during loop & seek.
@@ -1589,7 +1598,7 @@ int run_play_loop()
           {
             if (latency > m_threshold)
             {
-              CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
+              CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader->IsEof(), m_omx_pkt);
               m_av_clock->OMXResume();
               m_latency = latency;
             }
@@ -1613,11 +1622,11 @@ int run_play_loop()
           }
         }
       }
-      else if(!m_Pause && (m_omx_reader.IsEof() || m_omx_pkt || (audio_fifo_high && video_fifo_high)))
+      else if(!m_Pause && (m_omx_reader->IsEof() || m_omx_pkt || (audio_fifo_high && video_fifo_high)))
       {
         if (m_av_clock->OMXIsPaused())
         {
-          CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader.IsEof(), m_omx_pkt);
+          CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader->IsEof(), m_omx_pkt);
           m_av_clock->OMXResume();
         }
       }
@@ -1640,12 +1649,12 @@ int run_play_loop()
     }
 
     if(!m_omx_pkt)
-      m_omx_pkt = m_omx_reader.Read();
+      m_omx_pkt = m_omx_reader->Read();
 
     if(m_omx_pkt)
       m_send_eos = false;
 
-    if(m_omx_reader.IsEof() && !m_omx_pkt)
+    if(m_omx_reader->IsEof() && !m_omx_pkt)
     {
       if (!m_send_eos && m_has_video)
         m_player_video.SubmitEOS();
@@ -1718,7 +1727,7 @@ void end_of_play_loop()
   m_player_subtitles.Clear();
 
   int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
-  int dur = m_omx_reader.GetStreamLengthSeconds();
+  int dur = m_omx_reader->GetStreamLengthSeconds();
   printf("Stopped at: %02d:%02d:%02d\n", (t/3600), (t/60)%60, t%60);
   printf("  Duration: %02d:%02d:%02d\n", (dur/3600), (dur/60)%60, dur%60);
 
@@ -1740,7 +1749,7 @@ void end_of_play_loop()
 
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
-  m_omx_reader.Close();
+  delete m_omx_reader;
   m_player_subtitles.Close();
   m_player_video.Close();
   m_player_audio.Close();

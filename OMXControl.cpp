@@ -13,7 +13,7 @@
 #include "OMXReader.h"
 #include "OMXPlayerSubtitles.h"
 
-void ToURI(const std::string& str, char *uri)
+static void ToURI(const std::string& str, char *uri)
 {
   //Test if URL/URI
   bool isURL=true;
@@ -47,7 +47,7 @@ void ToURI(const std::string& str, char *uri)
   }
 }
 
-void deprecatedMessage()
+static void deprecatedMessage()
 {
   CLogLog(LOGWARNING, "DBus property access through direct method is deprecated. Use Get/Set methods instead.");
 }
@@ -86,13 +86,22 @@ OMXControl::~OMXControl()
     dbus_disconnect();
 }
 
-bool OMXControl::init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, OMXReader *omx_reader, std::string& dbus_name)
+void OMXControl::init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, std::string (*filename)())
 {
-  clock     = av_clock;
-  audio     = player_audio;
-  subtitles = player_subtitles;
-  reader    = omx_reader;
+  clock        = av_clock;
+  audio        = player_audio;
+  subtitles    = player_subtitles;
+  get_filename = filename;
+}
 
+
+void OMXControl::set_reader(OMXReader *omx_reader)
+{
+  reader       = omx_reader;
+}
+
+bool OMXControl::connect(std::string& dbus_name)
+{
   if (dbus_connect(dbus_name) < 0)
   {
     CLogLog(LOGWARNING, "DBus connection failed, trying alternate");
@@ -301,7 +310,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   }
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "GetSource"))
   {
-    dbus_respond_string(m, reader->getFilename().c_str());
+    dbus_respond_string(m, get_filename().c_str());
     deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
   }
@@ -414,7 +423,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   //--------------------------Player interface methods--------------------------
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "GetSource"))
   {
-    dbus_respond_string(m, reader->getFilename().c_str());
+    dbus_respond_string(m, get_filename().c_str());
     return KeyConfig::ACTION_BLANK;
   }
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Next"))
@@ -915,7 +924,7 @@ OMXControlResult OMXControl::GetProperty(DBusMessage *m)
           //First dict entry: URI
           const char *key1 = "xesam:url";
           char uri[PATH_MAX+7];
-          ToURI(reader->getFilename(), uri);
+          ToURI(get_filename(), uri);
           const char *value1=uri;
           dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
             dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key1);
