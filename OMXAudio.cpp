@@ -444,7 +444,6 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
     BuildChannelMap(inLayout, channelMap);
     m_OutputChannels = BuildChannelMapCEA(outLayout, GetChannelLayout(m_config.layout));
     CPCMRemap m_remap;
-    m_remap.Reset();
     /*outLayout = */m_remap.SetInputFormat (m_InputChannels, inLayout, uiBitsPerSample / 8, m_config.hints.samplerate, m_config.layout, m_config.boostOnDownmix);
     m_remap.SetOutputFormat(m_OutputChannels, outLayout);
     m_remap.GetDownmixMatrix(m_downmix_matrix);

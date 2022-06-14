@@ -9,7 +9,7 @@
 #include "Keyboard.h"
 #include "KeyConfig.h"
 
-void Keyboard::Init(std::string &filename, const std::string &dbus_name)
+void Keyboard::Init(std::string &filename, bool dbus_enabled, const std::string &dbus_name)
 {
   //setDbusName
   m_dbus_name = dbus_name;
@@ -42,16 +42,20 @@ void Keyboard::Init(std::string &filename, const std::string &dbus_name)
     fcntl(STDIN_FILENO, F_SETFL, orig_fl | O_NONBLOCK);
   }
 
-  if (dbus_connect() < 0)
+  if(dbus_enabled)
   {
-    CLogLog(LOGWARNING, "Keyboard: DBus connection failed");
-  } 
-  else 
-  {
-    CLogLog(LOGDEBUG, "Keyboard: DBus connection succeeded");
+    dbus_threads_init_default();
+
+    if(dbus_connect() < 0)
+    {
+      CLogLog(LOGWARNING, "Keyboard: DBus connection failed");
+    }
+    else
+    {
+      CLogLog(LOGDEBUG, "Keyboard: DBus connection succeeded");
+    }
   }
 
-  dbus_threads_init_default();
   Create();
 
   m_init = true;

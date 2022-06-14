@@ -99,25 +99,17 @@ protected:
 
   bool               m_ignoreLayout;
   bool               m_useable  [PCM_MAX_CH];
-  int                m_inStride, m_outStride;
   struct PCMMapInfo  m_lookupMap[PCM_MAX_CH + 1][PCM_MAX_CH + 1];
   int                m_counts[PCM_MAX_CH];
 
-  float*             m_buf;
-  int                m_bufsize;
   float              m_attenuation;
-  float              m_attenuationInc;
-  float              m_attenuationMin; //lowest attenuation value during a call of Remap(), used for the codec info
   float              m_sampleRate;
-  unsigned int       m_holdCounter;
-  bool               m_limiterEnabled;
   bool               m_dontnormalize;
 
   struct PCMMapInfo* ResolveChannel(enum PCMChannels channel, float level, bool ifExists, std::vector<enum PCMChannels> path, struct PCMMapInfo *tablePtr);
   void               ResolveChannels(); //!< Partial BuildMap(), just enough to see which output channels are active
   void               BuildMap();
   void               DumpMap(std::string info, int unsigned channels, enum PCMChannels *channelMap);
-  void               Dispose();
   const char*        PCMChannelStr(enum PCMChannels ename);
   const char*        PCMLayoutStr(enum PCMLayout ename);
 
@@ -130,12 +122,9 @@ protected:
 public:
 
   CPCMRemap();
-  ~CPCMRemap();
 
-  void Reset();
   enum PCMChannels *SetInputFormat (unsigned int channels, enum PCMChannels *channelMap, unsigned int sampleSize, unsigned int sampleRate, enum PCMLayout channelLayout, bool dontnormalize);
   void SetOutputFormat(unsigned int channels, enum PCMChannels *channelMap, bool ignoreLayout = false);
-  float GetCurrentAttenuation() { return m_attenuationMin; }
   void               GetDownmixMatrix(float *downmix);
 };
 

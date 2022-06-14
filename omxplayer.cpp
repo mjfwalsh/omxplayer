@@ -24,12 +24,9 @@
 #include <getopt.h>
 #include <string.h>
 
-#include "OMXStreamInfo.h"
-
 #include "utils/log.h"
 
 #include "OMXVideo.h"
-#include "utils/PCMRemap.h"
 #include "OMXClock.h"
 #include "OMXAudio.h"
 #include "OMXReader.h"
@@ -38,7 +35,6 @@
 #include "OMXPlayerSubtitles.h"
 #include "OMXDvdPlayer.h"
 #include "OMXControl.h"
-#include "DllOMX.h"
 #include "KeyConfig.h"
 #include "Keyboard.h"
 #include "utils/RegExp.h"
@@ -49,7 +45,6 @@
 #include "VideoCore.h"
 
 #include <string>
-#include <utility>
 
 #include "version.h"
 
@@ -111,7 +106,7 @@ char              m_subtitle_lang[4]    = "\0";
 std::string       m_replacement_filename;
 bool              m_playlist_enabled    = true;
 float             m_latency             = 0.0f;
-int               m_control_err;
+bool              m_dbus_enabled;
 bool              m_ext_subs_showing    = false;
 
 #define S(x) (int)(DVD_PLAYSPEED_NORMAL*(x))
@@ -266,7 +261,7 @@ static void PrintSubtitleInfo()
     index = m_player_subtitles.GetActiveStream();
   }
 
-  printf("Subtitle count: %d, state: %s, index: %u, delay: %d\n",
+  printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
          count,
          m_has_subtitle && m_player_subtitles.GetVisible() ? " on" : "off",
          index+1,
@@ -877,7 +872,7 @@ int main(int argc, char *argv[])
   if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
     printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
 
-  m_control_err = m_omxcontrol.init(
+  m_dbus_enabled = m_omxcontrol.init(
     m_av_clock,
     &m_player_audio,
     &m_player_subtitles,
@@ -909,7 +904,7 @@ int main(int argc, char *argv[])
     m_keys = false;
 
   if(m_keys)
-    m_keyboard.Init(keymap_file, m_dbus_name);
+    m_keyboard.Init(keymap_file, m_dbus_enabled, m_dbus_name);
 
   // Disable seeking and playlists when reading from a pipe
   if(IsPipe(m_filename))
@@ -1270,7 +1265,7 @@ int run_play_loop()
     }
 
     if (update) {
-      OMXControlResult result = m_control_err
+      OMXControlResult result = !m_dbus_enabled
                                ? (OMXControlResult)(m_keyboard.getEvent())
                                : m_omxcontrol.getEvent();
 
@@ -1724,8 +1719,8 @@ void end_of_play_loop()
 
   int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
   int dur = m_omx_reader.GetStreamLengthSeconds();
-  printf("Stopped at: %02u:%02u:%02u\n", (t/3600), (t/60)%60, t%60);
-  printf("  Duration: %02u:%02u:%02u\n", (dur/3600), (dur/60)%60, dur%60);
+  printf("Stopped at: %02d:%02d:%02d\n", (t/3600), (t/60)%60, t%60);
+  printf("  Duration: %02d:%02d:%02d\n", (dur/3600), (dur/60)%60, dur%60);
 
   // Catch eos errors, except for live streams
   if(!m_config_audio.is_live)

@@ -22,8 +22,14 @@
 #include <string>
 #include <queue>
 #include <string.h>
+#include <vector>
 
-#include "DllOMX.h"
+#include <IL/OMX_Core.h>
+#include <IL/OMX_Component.h>
+#include <IL/OMX_Index.h>
+#include <IL/OMX_Image.h>
+#include <IL/OMX_Video.h>
+#include <IL/OMX_Broadcom.h>
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
@@ -83,10 +89,8 @@ public:
   OMX_ERRORTYPE GetParameter(OMX_INDEXTYPE paramIndex, OMX_PTR paramStruct) const;
   OMX_ERRORTYPE SetConfig(OMX_INDEXTYPE configIndex, OMX_PTR configStruct);
   OMX_ERRORTYPE GetConfig(OMX_INDEXTYPE configIndex, OMX_PTR configStruct) const;
-  OMX_ERRORTYPE SendCommand(OMX_COMMANDTYPE cmd, OMX_U32 cmdParam, OMX_PTR cmdParamData);
   OMX_ERRORTYPE EnablePort(unsigned int port, bool wait = true);
   OMX_ERRORTYPE DisablePort(unsigned int port, bool wait = true);
-  OMX_ERRORTYPE UseEGLImage(OMX_BUFFERHEADERTYPE** ppBufferHdr, OMX_U32 nPortIndex, OMX_PTR pAppPrivate, void* eglImage);
 
   bool          Initialize( const std::string &component_name, OMX_INDEXTYPE index, OMX_CALLBACKTYPE *callbacks = NULL);
   bool          IsInitialized() const { return m_handle != NULL; }

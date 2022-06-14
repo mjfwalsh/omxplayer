@@ -4,9 +4,9 @@
 #include <dbus/dbus.h>
 
 #include <string>
-#include <sstream>
 
 #include "utils/log.h"
+#include "OMXClock.h"
 #include "OMXControl.h"
 #include "KeyConfig.h"
 #include "OMXPlayerAudio.h"
@@ -81,37 +81,29 @@ const char *OMXControlResult::getWinArg() {
   return winarg;
 }
 
-OMXControl::OMXControl() 
-{
-
-}
-
 OMXControl::~OMXControl() 
 {
     dbus_disconnect();
 }
 
-int OMXControl::init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPlayerSubtitles *m_player_subtitles, OMXReader *m_omx_reader, std::string& dbus_name)
+bool OMXControl::init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, OMXReader *omx_reader, std::string& dbus_name)
 {
-  int ret = 0;
-  clock     = m_av_clock;
-  audio     = m_player_audio;
-  subtitles = m_player_subtitles;
-  reader    = m_omx_reader;
+  clock     = av_clock;
+  audio     = player_audio;
+  subtitles = player_subtitles;
+  reader    = omx_reader;
 
   if (dbus_connect(dbus_name) < 0)
   {
     CLogLog(LOGWARNING, "DBus connection failed, trying alternate");
     dbus_disconnect();
-    std::stringstream ss;
-    ss << getpid();
     dbus_name += ".instance";
-    dbus_name += ss.str();
+    dbus_name += std::to_string(getpid());
     if (dbus_connect(dbus_name) < 0)
     {
       CLogLog(LOGWARNING, "DBus connection failed, alternate failed, will continue without DBus");
       dbus_disconnect();
-      ret = -1;
+      return false;
     } else {
       CLogLog(LOGDEBUG, "DBus connection succeeded");
       dbus_threads_init_default();
@@ -122,7 +114,7 @@ int OMXControl::init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPl
     CLogLog(LOGDEBUG, "DBus connection succeeded");
     dbus_threads_init_default();
   }
-  return ret;
+  return true;
 }
 
 void OMXControl::dispatch()

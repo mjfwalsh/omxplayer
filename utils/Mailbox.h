@@ -49,7 +49,7 @@ public:
 
   class Item {
     public:
-    Item(enum Type t) : type(t), next(NULL) {};
+    Item(const enum Type &t) : type(t), next(NULL) {};
 
     enum Type type;
     Item *next;
@@ -57,7 +57,7 @@ public:
   class DVDSubs : public Item
   {
     public:
-    DVDSubs(Dimension v, float va, int am, uint32_t *p) :
+    DVDSubs(Dimension &v, float &va, int &am, uint32_t *p) :
       Item(DVD_SUBS), video(v), video_aspect(va), aspect_mode(am), palette(p) {};
 
     Dimension video;

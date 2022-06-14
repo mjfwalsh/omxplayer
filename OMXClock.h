@@ -60,10 +60,7 @@ private:
 public:
   OMXClock();
   ~OMXClock();
-  void Lock();
-  void UnLock();
-  void OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
-  bool OMXSetReferenceClock(bool has_audio, bool lock = true);
+
   bool OMXInitialize();
   void OMXDeinitialize();
   bool OMXIsPaused() { return m_pause; };
@@ -83,6 +80,11 @@ public:
   static int64_t CurrentHostCounter();
   static int64_t GetAbsoluteClock();
   static void OMXSleep(unsigned int dwMilliSeconds);
+private:
+  void Lock();
+  void UnLock();
+  void OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
+  bool OMXSetReferenceClock(bool has_audio, bool lock = true);
 };
 
 #endif

@@ -103,8 +103,6 @@ private:
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
   int                       m_height          = 0;
-  void Lock();
-  void UnLock();
   OMXDvdPlayer              *m_DvdPlayer      = NULL;
   std::unordered_map<int, int>   m_steam_map;
 
@@ -147,6 +145,8 @@ public:
   bool CanSeek();
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
 private:
+  void Lock();
+  void UnLock();
   std::string GetStreamCodecName(AVStream *stream);
   void GetStreams();
   void GetDvdStreams();

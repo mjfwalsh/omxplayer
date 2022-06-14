@@ -164,28 +164,9 @@ CPCMRemap::CPCMRemap() :
   m_outChannels (0),
   m_inSampleSize(0),
   m_ignoreLayout(false),
-  m_buf(NULL),
-  m_bufsize(0),
   m_attenuation (1.0),
-  m_attenuationInc(0.0),
-  m_attenuationMin(1.0),
-  m_sampleRate  (48000.0), //safe default
-  m_holdCounter (0),
-  m_limiterEnabled(false)
+  m_sampleRate  (48000.0) //safe default
 {
-  Dispose();
-}
-
-CPCMRemap::~CPCMRemap()
-{
-  Dispose();
-}
-
-void CPCMRemap::Dispose()
-{
-  free(m_buf);
-  m_buf = NULL;
-  m_bufsize = 0;
 }
 
 /* resolves the channels recursively and returns the new index of tablePtr */
@@ -353,12 +334,8 @@ void CPCMRemap::BuildMap()
 
   if (!m_inSet || !m_outSet) return;
 
-  m_inStride  = m_inSampleSize * m_inChannels ;
-  m_outStride = m_inSampleSize * m_outChannels;
-
   /* see if we need to normalize the levels */
-  bool dontnormalize = m_dontnormalize;
-  CLogLog(LOGDEBUG, "CPCMRemap: Downmix normalization is %s", (dontnormalize ? "disabled" : "enabled"));
+  CLogLog(LOGDEBUG, "CPCMRemap: Downmix normalization is %s", (m_dontnormalize ? "disabled" : "enabled"));
 
   ResolveChannels();
 
@@ -384,7 +361,7 @@ void CPCMRemap::BuildMap()
       dst->copy = true;
     
     /* normalize the levels if it is turned on */
-    if (!dontnormalize)
+    if (!m_dontnormalize)
       for(dst = m_lookupMap[m_outMap[out_ch]]; dst->channel != PCM_INVALID; ++dst)
       {
         dst->level /= scale;
@@ -440,13 +417,6 @@ void CPCMRemap::DumpMap(std::string info, unsigned int channels, enum PCMChannel
   CLogLog(LOGINFO, "CPCMRemap: %s channel map: %s", info.c_str(), mapping.c_str());
 }
 
-void CPCMRemap::Reset()
-{
-  m_inSet  = false;
-  m_outSet = false;
-  Dispose();
-}
-
 /* sets the input format, and returns the requested channel layout */
 enum PCMChannels *CPCMRemap::SetInputFormat(unsigned int channels, enum PCMChannels *channelMap, unsigned int sampleSize, unsigned int sampleRate, enum PCMLayout channelLayout, bool dontnormalize)
 {
@@ -483,8 +453,6 @@ enum PCMChannels *CPCMRemap::SetInputFormat(unsigned int channels, enum PCMChann
     memcpy(m_layoutMap, PCMLayoutMap[m_channelLayout], sizeof(PCMLayoutMap[m_channelLayout]));
 
   m_attenuation = 1.0;
-  m_attenuationInc = 1.0;
-  m_holdCounter = 0;
 
   return m_layoutMap;
 }
@@ -502,8 +470,6 @@ void CPCMRemap::SetOutputFormat(unsigned int channels, enum PCMChannels *channel
   BuildMap();
 
   m_attenuation = 1.0;
-  m_attenuationInc = 1.0;
-  m_holdCounter = 0;
 }
 
 const char *CPCMRemap::PCMChannelStr(enum PCMChannels ename)

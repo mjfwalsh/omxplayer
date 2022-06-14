@@ -3,11 +3,11 @@
 #define OMXPLAYER_DBUS_INTERFACE_PLAYER "org.mpris.MediaPlayer2.Player"
 
 #include <dbus/dbus.h>
-#include "OMXClock.h"
 
 class OMXPlayerAudio;
 class OMXPlayerSubtitles;
 class OMXReader;
+class OMXClock;
 
 #define MIN_RATE (1)
 #define MAX_RATE (4 * DVD_PLAYSPEED_NORMAL)
@@ -36,9 +36,8 @@ protected:
   OMXReader          *reader;
   OMXPlayerSubtitles *subtitles;
 public:
-  OMXControl();
   ~OMXControl();
-  int init(OMXClock *m_av_clock, OMXPlayerAudio *m_player_audio, OMXPlayerSubtitles *m_player_subtitles, OMXReader *m_omx_reader, std::string& dbus_name);
+  bool init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, OMXReader *omx_reader, std::string& dbus_name);
   OMXControlResult getEvent();
 private:
   void dispatch();
