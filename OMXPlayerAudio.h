@@ -61,7 +61,6 @@ protected:
   std::string               m_device;
   bool                      m_passthrough;
   bool                      m_hw_decode;
-  bool                      m_boost_on_downmix;
   bool                      m_flush;
   std::atomic<bool>         m_flush_requested;
   unsigned int              m_cached_size;

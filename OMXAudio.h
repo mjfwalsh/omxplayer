@@ -111,7 +111,6 @@ private:
   bool          m_Initialized;
   float         m_CurrentVolume;
   bool          m_Mute;
-  long          m_drc;
   unsigned int  m_BytesPerSec;
   unsigned int  m_InputBytesPerSec;
   unsigned int  m_BufferLen;

@@ -36,8 +36,8 @@ class OMXPlayerSubtitles : public OMXThread
 public:
   OMXPlayerSubtitles(const OMXPlayerSubtitles&) = delete;
   OMXPlayerSubtitles& operator=(const OMXPlayerSubtitles&) = delete;
-  OMXPlayerSubtitles() BOOST_NOEXCEPT;
-  ~OMXPlayerSubtitles() BOOST_NOEXCEPT;
+  OMXPlayerSubtitles();
+  ~OMXPlayerSubtitles();
 
   bool Init(int display,
             int layer,
@@ -45,45 +45,45 @@ public:
             bool centered,
             bool ghost_box,
             unsigned int lines,
-            OMXClock* clock) BOOST_NOEXCEPT;
+            OMXClock* clock);
 
-  bool Open(size_t stream_count, std::string &external_subtitle_path) BOOST_NOEXCEPT;
+  bool Open(size_t stream_count, std::string &external_subtitle_path);
 
   bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode,
-                   uint32_t *palette) BOOST_NOEXCEPT;
+                   uint32_t *palette);
 
-  void Close() BOOST_NOEXCEPT;
-  void Flush() BOOST_NOEXCEPT;
-  void Resume() BOOST_NOEXCEPT;
-  void Pause() BOOST_NOEXCEPT;
-  void Clear() BOOST_NOEXCEPT;
+  void Close();
+  void Flush();
+  void Resume();
+  void Pause();
+  void Clear();
 
-  void SetVisible(bool visible) BOOST_NOEXCEPT;
+  void SetVisible(bool visible);
 
-  bool GetVisible() BOOST_NOEXCEPT
+  bool GetVisible()
   {
     return m_visible;
   }
   
-  int SetActiveStream(int index) BOOST_NOEXCEPT;
+  int SetActiveStream(int index);
 
-  int SetActiveStreamDelta(int index) BOOST_NOEXCEPT;
+  int SetActiveStreamDelta(int index);
 
-  int GetActiveStream() BOOST_NOEXCEPT
+  int GetActiveStream()
   {
     return m_active_index;
   }
 
-  void SetDelay(int value) BOOST_NOEXCEPT;
+  void SetDelay(int value);
 
-  int GetDelay() BOOST_NOEXCEPT
+  int GetDelay()
   {
     return m_delay;
   }
 
-  void DisplayText(const char *text, int duration) BOOST_NOEXCEPT;
+  void DisplayText(const char *text, int duration);
 
-  void AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT;
+  void AddPacket(OMXPacket *pkt);
 
 protected:
   AVCodecContext           *m_dvd_codec_context;

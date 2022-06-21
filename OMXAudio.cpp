@@ -45,7 +45,6 @@ COMXAudio::COMXAudio() :
   m_Initialized     (false  ),
   m_CurrentVolume   (0      ),
   m_Mute            (false  ),
-  m_drc             (0      ),
   m_BytesPerSec     (0      ),
   m_InputBytesPerSec(0      ),
   m_BufferLen       (0      ),
@@ -423,8 +422,6 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
     SetCodingType(AV_CODEC_ID_PCM_S16LE);
 
   m_omx_clock = m_av_clock->GetOMXClock();
-
-  m_drc         = 0;
 
   memset(m_input_channels, 0x0, sizeof(m_input_channels));
   memset(m_output_channels, 0x0, sizeof(m_output_channels));

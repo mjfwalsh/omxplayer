@@ -34,10 +34,10 @@ extern "C" {
 using namespace std;
 using namespace boost;
 
-OMXPlayerSubtitles::OMXPlayerSubtitles() BOOST_NOEXCEPT
+OMXPlayerSubtitles::OMXPlayerSubtitles()
 {}
 
-OMXPlayerSubtitles::~OMXPlayerSubtitles() BOOST_NOEXCEPT
+OMXPlayerSubtitles::~OMXPlayerSubtitles()
 {
   if(Running())
   {
@@ -60,7 +60,7 @@ bool OMXPlayerSubtitles::Init(int display,
                               bool centered,
                               bool ghost_box,
                               unsigned int lines,
-                              OMXClock* clock) BOOST_NOEXCEPT
+                              OMXClock* clock)
 {
   m_visible = false;
   m_external_subtitle_stream = -1;
@@ -84,7 +84,7 @@ bool OMXPlayerSubtitles::Init(int display,
 
 
 bool OMXPlayerSubtitles::Open(size_t stream_count,
-                              string &subtitle_path) BOOST_NOEXCEPT
+                              string &subtitle_path)
 {
 
 
@@ -104,7 +104,7 @@ bool OMXPlayerSubtitles::Open(size_t stream_count,
 }
 
 bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
-		int aspect_mode, uint32_t *palette) BOOST_NOEXCEPT
+		int aspect_mode, uint32_t *palette)
 {
   if(palette) {
     if(!m_palette)
@@ -145,7 +145,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
   return true;
 }
 
-void OMXPlayerSubtitles::Close() BOOST_NOEXCEPT
+void OMXPlayerSubtitles::Close()
 {
   m_mailbox.clear();
   m_subtitle_buffers.clear();
@@ -405,33 +405,33 @@ void OMXPlayerSubtitles::RenderLoop()
   }
 }
 
-void OMXPlayerSubtitles::Flush() BOOST_NOEXCEPT
+void OMXPlayerSubtitles::Flush()
 {
   SendToRenderer(new Mailbox::UnsetTime());
 }
 
-void OMXPlayerSubtitles::Resume() BOOST_NOEXCEPT
+void OMXPlayerSubtitles::Resume()
 {
   SendToRenderer(new Mailbox::SetPaused(false));
 }
 
-void OMXPlayerSubtitles::Pause() BOOST_NOEXCEPT
+void OMXPlayerSubtitles::Pause()
 {
   SendToRenderer(new Mailbox::SetPaused(true));
 }
 
-void OMXPlayerSubtitles::SetDelay(int value) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::SetDelay(int value)
 {
   m_delay = value;
   SendToRenderer(new Mailbox::SetDelay(value));
 }
 
-void OMXPlayerSubtitles::Clear() BOOST_NOEXCEPT
+void OMXPlayerSubtitles::Clear()
 {
   SendToRenderer(new Mailbox::ClearRenderer());
 }
 
-void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::SetVisible(bool visible)
 {
   if(m_stream_count == 0 || visible == m_visible)
     return;
@@ -440,7 +440,7 @@ void OMXPlayerSubtitles::SetVisible(bool visible) BOOST_NOEXCEPT
 }
 
 
-int OMXPlayerSubtitles::SetActiveStreamDelta(int delta) BOOST_NOEXCEPT
+int OMXPlayerSubtitles::SetActiveStreamDelta(int delta)
 {
   int index;
 
@@ -454,7 +454,7 @@ int OMXPlayerSubtitles::SetActiveStreamDelta(int delta) BOOST_NOEXCEPT
   return SetActiveStream(index);
 }
 
-int OMXPlayerSubtitles::SetActiveStream(int new_index) BOOST_NOEXCEPT
+int OMXPlayerSubtitles::SetActiveStream(int new_index)
 {
   // disable whatever subs are there
   if(new_index < 0 || new_index >= m_stream_count) {
@@ -579,7 +579,7 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   return true;
 }
 
-void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
 {
   if(pkt->index >= (int)m_subtitle_buffers.size())
   {
@@ -628,7 +628,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt) BOOST_NOEXCEPT
   delete pkt;
 }
 
-void OMXPlayerSubtitles::DisplayText(const char *text, int duration) BOOST_NOEXCEPT
+void OMXPlayerSubtitles::DisplayText(const char *text, int duration)
 {
   SendToRenderer(new Mailbox::DisplayText(text, duration));
 }

@@ -157,13 +157,11 @@ void print_version()
   printf("        Repository: %s\n", VERSION_REPO);
 }
 
-enum {
-    UM_STDOUT = 0b00000001,
-    UM_LONG   = 0b00000010,
-    UM_SLEEP  = 0b00000100,
-    UM_NORM   = 0b00000000,
-    UM_ALL    = 0b00000111,
-};
+#define UM_STDOUT 0b00000001
+#define UM_LONG   0b00000010
+#define UM_SLEEP  0b00000100
+#define UM_NORM   0b00000000
+#define UM_ALL    0b00000111
 
 void osd_print(int options, const char *msg)
 {
@@ -265,9 +263,6 @@ static void PrintSubtitleInfo()
 
 static void SetSpeed(int iSpeed)
 {
-  if(!m_av_clock)
-    return;
-
   m_omx_reader->SetSpeed(iSpeed);
 
   m_av_clock->OMXSetSpeed(iSpeed);
@@ -302,8 +297,7 @@ int ExitFileNotFound(const std::string& path)
 {
   osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
 
-  if (m_av_clock)
-    delete m_av_clock;
+  delete m_av_clock;
 
   g_OMX.Deinitialize();
   return EXIT_FAILURE;
@@ -657,6 +651,14 @@ int main(int argc, char *argv[])
         m_external_subtitles_path = optarg;
         m_has_external_subtitles = true;
         m_subtitle_index = 0;
+
+        // check if command line provided subtitles file exists
+        if(!Exists(m_external_subtitles_path))
+        {
+          printf("File \"%s\" not found.", m_external_subtitles_path.c_str());
+          return EXIT_FAILURE;
+        }
+
         break;
       case lines_opt:
         subtitle_lines = std::max(atoi(optarg), 1);
@@ -824,8 +826,7 @@ int main(int argc, char *argv[])
 
   if(!VideoCore::blank_background(background, m_config_video.layer, m_config_video.display))
   {
-    if (m_av_clock)
-      delete m_av_clock;
+    delete m_av_clock;
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
@@ -839,8 +840,7 @@ int main(int argc, char *argv[])
                                 subtitle_lines,
                                 m_av_clock))
   {
-    if (m_av_clock)
-      delete m_av_clock;
+    delete m_av_clock;
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
@@ -871,8 +871,7 @@ int main(int argc, char *argv[])
 
   if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
   {
-    if (m_av_clock)
-      delete m_av_clock;
+    delete m_av_clock;
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
@@ -891,9 +890,10 @@ int main(int argc, char *argv[])
     m_playlist_enabled = false;
   }
 
-  // check if command line provided subtitles file exists
-  if(m_has_external_subtitles && !Exists(m_external_subtitles_path))
-    return ExitFileNotFound(m_external_subtitles_path);
+  // set default buffer threshold depending on whether we're playing a
+  // live stream
+  if (m_threshold < 0.0f)
+    m_threshold = m_config_audio.is_live ? 0.7f : 0.2f;
 
   // control loop
   int rv = CHANGE_FILE;
@@ -1014,6 +1014,7 @@ int change_playlist_item()
   {
     // external subs are not supported for DVDs
     m_has_external_subtitles = false;
+    m_external_subtitles_path.clear();
 
     // try to open the DVD
     try {
@@ -1080,11 +1081,23 @@ int run_play_loop()
     return END_PLAY_WITH_ERROR;
   }
 
-  m_omxcontrol.set_reader(m_omx_reader);
-
   if (m_dump_format_exit)
     return ABORT_PLAY;
 
+  m_omxcontrol.set_reader(m_omx_reader);
+
+  // what do we have
+  m_has_video     = m_omx_reader->VideoStreamCount() > 0;
+  m_has_audio     = m_audio_index != -2 && m_omx_reader->AudioStreamCount() > 0;
+  m_has_subtitle  = m_has_external_subtitles || m_omx_reader->SubtitleStreamCount() > 0;
+  m_loop          = m_loop && m_omx_reader->CanSeek();
+
+  // stop the clock
+  m_av_clock->OMXStateIdle();
+  m_av_clock->OMXStop();
+  m_av_clock->OMXPause();
+
+  // print some useful info
   if(m_DvdPlayer)
   {
     printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
@@ -1100,81 +1113,126 @@ int run_play_loop()
     UpdateRaspicastMetaData(short_filename);
   }
 
-  // select an audio stream
-  if(m_audio_lang[0] != '\0')
-    m_audio_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_AUDIO, m_audio_lang);
+  /* -------------------------------------------------------
+                           Video Setup
+     ------------------------------------------------------- */
 
-  // Where no audio stream has been selected, use the first stream other than audio narrative
-  if(m_audio_index == -1)
+  if(m_has_video)
   {
-    int audiostreamcount = m_omx_reader->AudioStreamCount();
+    m_omx_reader->GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
 
-    for(int i = 0; i < audiostreamcount; i++)
+    if(m_fps > 0.0f)
     {
-      if(m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, i) != "NAR")
-      {
-        m_audio_index = i;
-        break;
-      }
+      m_config_video.hints.fpsrate = m_fps * AV_TIME_BASE;
+      m_config_video.hints.fpsscale = AV_TIME_BASE;
     }
-    if(m_audio_index == -1 && audiostreamcount > 0)
-      m_audio_index = 0;
 
-    if(m_audio_index > -1)
-      printf("Selecting audio stream: %d\n", m_audio_index + 1);
+    if(m_refresh)
+    {
+      VideoCore::saveTVState();
+      VideoCore::SetVideoMode(&m_config_video.hints, m_3d, m_NativeDeinterlace);
+    }
+
+    // get display aspect
+    m_config_video.display_aspect = VideoCore::getDisplayAspect();
+
+    if(m_orientation >= 0)
+      m_config_video.hints.orientation = m_orientation;
+
+    if(!m_player_video.Open(m_av_clock, m_config_video))
+      return exit_with_message("Failed to open video");
   }
 
-  m_has_video     = m_omx_reader->VideoStreamCount() > 0;
-  m_has_audio     = m_audio_index != -2 && m_omx_reader->AudioStreamCount() > 0;
-  m_has_subtitle  = m_has_external_subtitles || m_omx_reader->SubtitleStreamCount() > 0;
-  m_loop          = m_loop && m_omx_reader->CanSeek();
+  /* -------------------------------------------------------
+                           Audio Setup
+     ------------------------------------------------------- */
 
-  m_av_clock->OMXStateIdle();
-  m_av_clock->OMXStop();
-  m_av_clock->OMXPause();
-
-  m_omx_reader->GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
-
-  if (m_fps > 0.0f)
+  if(m_has_audio)
   {
-    m_config_video.hints.fpsrate = m_fps * AV_TIME_BASE;
-    m_config_video.hints.fpsscale = AV_TIME_BASE;
-  }
+    // validate command line provided info
+    if(m_audio_index >= m_omx_reader->AudioStreamCount())
+    {
+      printf("Error: file has only %d audio streams\n", m_omx_reader->AudioStreamCount());
+      return END_PLAY_WITH_ERROR;
+    }
 
-  if(m_audio_index > -1)
+    // an audio string overrides any provided stream number
+    if(m_audio_lang[0] != '\0')
+      m_audio_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_AUDIO, m_audio_lang);
+
+    // select an audio stream to play when not already selected
+    // Where no audio stream has been selected, use the first stream other than audio narrative
+    if(m_audio_index == -1)
+    {
+      for(int i = 0; i < m_omx_reader->AudioStreamCount(); i++)
+      {
+        if(m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, i) != "NAR")
+        {
+          m_audio_index = i;
+          break;
+        }
+      }
+      if(m_audio_index == -1)
+        m_audio_index = 0;
+    }
+
+    // no audio device name has been set on command line
+    if(m_config_audio.device.empty())
+      m_config_audio.device = VideoCore::getAudioDevice();
+
+    // set defaults
+    if(m_config_audio.device == "omx:alsa" && m_config_audio.subdevice.empty())
+      m_config_audio.subdevice = "default";
+
+    // get audio hints (ie params, info) from OMXReader
+    m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_audio_index, m_config_audio.hints);
+
+    if(m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3)
+    {
+      if(VideoCore::canPassThroughAC3())
+        m_config_audio.passthrough = false;
+    }
+    else if(m_config_audio.hints.codec == AV_CODEC_ID_DTS)
+    {
+      if(VideoCore::canPassThroughDTS())
+        m_config_audio.passthrough = false;
+    }
+
+    // start audio decoder encoder
+    if(!m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader, m_omx_reader->AudioStreamCount()))
+      return exit_with_message("Failed to open audio out");
+
+    // set active stream
+    printf("Selecting audio stream: %d\n", m_audio_index + 1);
     m_player_audio.SetActiveStream(m_audio_index);
 
-  m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_player_audio.GetActiveStream(), m_config_audio.hints);
-
-  if(m_has_video && m_refresh)
-  {
-    VideoCore::saveTVState();
-
-    VideoCore::SetVideoMode(&m_config_video.hints, m_3d, m_NativeDeinterlace);
+    // set volume
+    m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
+    if (m_Amplification)
+      m_player_audio.SetDynamicRangeCompression(m_Amplification);
   }
 
-  // get display aspect
-  m_config_video.display_aspect = VideoCore::getDisplayAspect();
+  /* -------------------------------------------------------
+                         Subtitle Setup
+     ------------------------------------------------------- */
 
-  if (m_orientation >= 0)
-    m_config_video.hints.orientation = m_orientation;
-
-  if(m_has_video && !m_player_video.Open(m_av_clock, m_config_video))
-    return exit_with_message("Failed to open video");
-
-  if(m_has_subtitle || m_osd)
+  if(m_has_subtitle)
   {
-    if(!m_has_external_subtitles) m_external_subtitles_path.clear();
+    if(!m_has_external_subtitles && m_subtitle_lang[0] != '\0')
+      m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
     if(!m_player_subtitles.Open(m_omx_reader->SubtitleStreamCount(),
                                 m_external_subtitles_path))
       return exit_with_message("Failed to open subtitles");
 
-    // sub_dim and sub_aspect asre passed through FindDVDSubs in case
-    // the subtitles have a different size
+    m_player_subtitles.SetActiveStream(m_subtitle_index);
+
+    // Check if we have any DVD subtitles (these can be on ordinary media files as well as DVDs)
+    // If so, setup a dispmanx layer to display them
     Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
     float sub_aspect = m_config_video.hints.aspect;
     uint32_t *palette = m_DvdPlayer ? m_DvdPlayer->getPalette() : NULL;
+
     if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
       if(!m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
@@ -1185,50 +1243,20 @@ int run_play_loop()
       free(palette);
   }
 
-  if(m_has_subtitle)
-  {
-    if(!m_has_external_subtitles && m_subtitle_lang[0] != '\0')
-      m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
-
-    m_player_subtitles.SetActiveStream(m_subtitle_index);
-  }
-
-  // we don't use this variable after here
-  // reset to -1 to avoid spillover when playing next file
-  m_subtitle_index = -1;
-
-  if (m_config_audio.device.empty())
-    m_config_audio.device = VideoCore::getAudioDevice();
-
-  if(m_config_audio.device == "omx:alsa" && m_config_audio.subdevice.empty())
-    m_config_audio.subdevice = "default";
-
-  if ((m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3) &&
-      VideoCore::canPassThroughAC3())
-    m_config_audio.passthrough = false;
-
-  if (m_config_audio.hints.codec == AV_CODEC_ID_DTS && VideoCore::canPassThroughDTS())
-    m_config_audio.passthrough = false;
-
-  if(m_has_audio && !m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader, m_omx_reader->AudioStreamCount()))
-    return exit_with_message("Failed to open audio out");
-
-  if(m_has_audio)
-  {
-    m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
-    if (m_Amplification)
-      m_player_audio.SetDynamicRangeCompression(m_Amplification);
-  }
-
-  if (m_threshold < 0.0f)
-    m_threshold = m_config_audio.is_live ? 0.7f : 0.2f;
-
   PrintSubtitleInfo();
 
+  // we don't use these variables after here so reset to avoid
+  // avoid spillover when playing next file in playlist
+  m_subtitle_index = -1;
+
+  if(m_audio_index != -2)
+    m_audio_index = -1;
+
+  // start the clock
   m_av_clock->OMXReset(m_has_video, m_has_audio);
   m_av_clock->OMXStateExecute();
 
-  // forget seek time fo all files being played
+  // forget seek time of all files being played
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
 
   int64_t last_check_time = 0;

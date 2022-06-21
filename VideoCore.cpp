@@ -28,9 +28,10 @@ extern "C" {
 
 using namespace std;
 
-TV_DISPLAY_STATE_T   tv_state;
-
 namespace VideoCore {
+
+bool saved_tv_state = false;
+TV_DISPLAY_STATE_T   tv_state;
 
 void tv_stuff_init()
 {
@@ -49,40 +50,35 @@ int get_mem_gpu()
 
 static float get_display_aspect_ratio(HDMI_ASPECT_T aspect)
 {
-  float display_aspect;
   switch (aspect) {
-    case HDMI_ASPECT_4_3:   display_aspect = 4.0/3.0;   break;
-    case HDMI_ASPECT_14_9:  display_aspect = 14.0/9.0;  break;
-    case HDMI_ASPECT_16_9:  display_aspect = 16.0/9.0;  break;
-    case HDMI_ASPECT_5_4:   display_aspect = 5.0/4.0;   break;
-    case HDMI_ASPECT_16_10: display_aspect = 16.0/10.0; break;
-    case HDMI_ASPECT_15_9:  display_aspect = 15.0/9.0;  break;
-    case HDMI_ASPECT_64_27: display_aspect = 64.0/27.0; break;
-    default:                display_aspect = 16.0/9.0;  break;
+    case HDMI_ASPECT_4_3:   return 4.0/3.0;
+    case HDMI_ASPECT_14_9:  return 14.0/9.0;
+    case HDMI_ASPECT_16_9:  return 16.0/9.0;
+    case HDMI_ASPECT_5_4:   return 5.0/4.0;
+    case HDMI_ASPECT_16_10: return 16.0/10.0;
+    case HDMI_ASPECT_15_9:  return 15.0/9.0;
+    case HDMI_ASPECT_64_27: return 64.0/27.0;
+    default:                return 16.0/9.0;
   }
-  return display_aspect;
 }
 
 static float get_display_aspect_ratio(SDTV_ASPECT_T aspect)
 {
-  float display_aspect;
   switch (aspect) {
-    case SDTV_ASPECT_4_3:  display_aspect = 4.0/3.0;  break;
-    case SDTV_ASPECT_14_9: display_aspect = 14.0/9.0; break;
-    case SDTV_ASPECT_16_9: display_aspect = 16.0/9.0; break;
-    default:               display_aspect = 4.0/3.0;  break;
+    case SDTV_ASPECT_4_3:  return 4.0/3.0;
+    case SDTV_ASPECT_14_9: return 14.0/9.0;
+    case SDTV_ASPECT_16_9: return 16.0/9.0;
+    default:               return 4.0/3.0;
   }
-  return display_aspect;
 }
 
 
 static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t param1, uint32_t param2)
 {
-  sem_t *tv_synced = (sem_t *)userdata;
   switch(reason)
   {
+  default:
   case VC_HDMI_UNPLUGGED:
-    break;
   case VC_HDMI_STANDBY:
     break;
   case VC_SDTV_NTSC:
@@ -90,9 +86,7 @@ static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t 
   case VC_HDMI_HDMI:
   case VC_HDMI_DVI:
     // Signal we are ready now
-    sem_post(tv_synced);
-    break;
-  default:
+    sem_post((sem_t *)userdata);
     break;
   }
 }
@@ -287,13 +281,17 @@ bool blank_background(uint32_t rgba, int layer, int video_display)
 
 void saveTVState()
 {
-  memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
-  vc_tv_get_display_state(&tv_state);
+  if(!saved_tv_state)
+  {
+    memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
+    vc_tv_get_display_state(&tv_state);
+    saved_tv_state = true;
+  }
 }
 
 void restoreTVState()
 {
-  if(tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
+  if(saved_tv_state && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
     vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
 }
 
