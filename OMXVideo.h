@@ -74,7 +74,6 @@ public:
   bool PortSettingsChanged();
   void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
   unsigned int GetFreeSpace();
-  unsigned int GetSize();
   int  Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts);
   void Reset(void);
   std::string GetDecoderName() { return m_video_codec_name; };

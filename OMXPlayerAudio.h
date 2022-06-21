@@ -43,33 +43,32 @@ class OMXReader;
 class OMXPlayerAudio : public OMXThread
 {
 protected:
-  AVStream                  *m_pStream;
-  int                       m_stream_id;
+  AVStream                  *m_pStream           = NULL;
   std::deque<OMXPacket *>   m_packets;
-  bool                      m_open;
+  bool                      m_open               = false;
   COMXStreamInfo            m_hints;
   int64_t                   m_iCurrentPts;
   pthread_cond_t            m_packet_cond;
   pthread_cond_t            m_audio_cond;
   pthread_mutex_t           m_lock_decoder;
-  OMXClock                  *m_av_clock;
-  OMXReader                 *m_omx_reader;
-  COMXAudio                 *m_decoder;
+  OMXClock                  *m_av_clock          = NULL;
+  OMXReader                 *m_omx_reader        = NULL;
+  COMXAudio                 *m_decoder           = NULL;
   std::atomic<int>          m_stream_index;
   int                       m_stream_count;
   std::string               m_codec_name;
   std::string               m_device;
   bool                      m_passthrough;
   bool                      m_hw_decode;
-  bool                      m_flush;
+  bool                      m_flush              = false;
   std::atomic<bool>         m_flush_requested;
-  unsigned int              m_cached_size;
+  unsigned int              m_cached_size        = 0;
   OMXAudioConfig            m_config;
-  COMXAudioCodecOMX         *m_pAudioCodec;
-  float                     m_CurrentVolume;
-  long                      m_amplification;
-  bool                      m_mute;
-  bool   m_player_error;
+  COMXAudioCodecOMX         *m_pAudioCodec       = NULL;
+  float                     m_CurrentVolume      = 0.0f;
+  long                      m_amplification      = 0;
+  bool                      m_mute               = false;
+  bool                      m_player_ok          = true;
 
   void Lock();
   void UnLock();
@@ -79,7 +78,7 @@ private:
 public:
   OMXPlayerAudio();
   ~OMXPlayerAudio();
-  bool Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int stream_count);
+  bool Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader);
   bool Close();
   bool Decode(OMXPacket *pkt);
   void Process() override;
@@ -107,6 +106,6 @@ public:
   float GetVolume()                                      { return m_CurrentVolume; }
   void SetMute(bool bOnOff)                              { m_mute = bOnOff; if(m_decoder) m_decoder->SetMute(bOnOff); }
   void SetDynamicRangeCompression(long drc)              { m_amplification = drc; if(m_decoder) m_decoder->SetDynamicRangeCompression(drc); }
-  bool Error() { return !m_player_error; };
+  bool Error() { return !m_player_ok; };
 };
 #endif

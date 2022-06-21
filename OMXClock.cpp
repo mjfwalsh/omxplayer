@@ -24,16 +24,15 @@
 #define OMX_PRE_ROLL 200
 
 OMXClock::OMXClock()
+:
+m_pause(false),
+m_omx_speed(DVD_PLAYSPEED_NORMAL),
+m_WaitMask(0),
+m_eState(OMX_TIME_ClockStateStopped),
+m_eClock(OMX_TIME_RefClockNone),
+m_last_media_time(0),
+m_last_media_time_read(0)
 {
-  m_pause       = false;
-
-  m_omx_speed = DVD_PLAYSPEED_NORMAL;
-  m_WaitMask = 0;
-  m_eState = OMX_TIME_ClockStateStopped;
-  m_eClock = OMX_TIME_RefClockNone;
-  m_last_media_time = 0;
-  m_last_media_time_read = 0;
-
   pthread_mutex_init(&m_lock, NULL);
 }
 

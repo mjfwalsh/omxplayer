@@ -123,7 +123,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 	// alloc space for tracks
 	int read_track_count = track_count = ifo_zero->tt_srpt->nr_of_srpts;
-	tracks = (track_info *)calloc(read_track_count, sizeof(track_info));
+	tracks = static_cast<track_info *>(calloc(read_track_count, sizeof(track_info)));
 	if(!tracks) {
 		fputs("Memory error\n", stderr);
 		throw "Failed to open DVD";

@@ -225,27 +225,6 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
 
 COMXCoreComponent::COMXCoreComponent()
 {
-  m_input_port  = 0;
-  m_output_port = 0;
-  m_handle      = NULL;
-
-  m_input_alignment     = 0;
-  m_input_buffer_size  = 0;
-  m_input_buffer_count  = 0;
-
-  m_output_alignment    = 0;
-  m_output_buffer_count = 0;
-  m_flush_input         = false;
-  m_flush_output        = false;
-  m_resource_error      = false;
-
-  m_eos                 = false;
-
-  m_exit = false;
-
-  m_omx_events.clear();
-  m_ignore_error = OMX_ErrorNone;
-
   pthread_mutex_init(&m_omx_input_mutex, NULL);
   pthread_mutex_init(&m_omx_output_mutex, NULL);
   pthread_mutex_init(&m_omx_event_mutex, NULL);
@@ -515,6 +494,10 @@ OMX_ERRORTYPE COMXCoreComponent::FreeInputBuffers()
   m_flush_input = true;
 
   omx_err = DisablePort(m_input_port, false);
+  if(omx_err != OMX_ErrorNone)
+  {
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+  }
 
   pthread_mutex_lock(&m_omx_input_mutex);
   pthread_cond_broadcast(&m_input_buffer_cond);
@@ -568,6 +551,10 @@ OMX_ERRORTYPE COMXCoreComponent::FreeOutputBuffers()
   m_flush_output = true;
 
   omx_err = DisablePort(m_output_port, false);
+  if(omx_err != OMX_ErrorNone)
+  {
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+  }
 
   pthread_mutex_lock(&m_omx_output_mutex);
   pthread_cond_broadcast(&m_output_buffer_cond);

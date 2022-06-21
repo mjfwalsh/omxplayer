@@ -34,7 +34,11 @@ using namespace std;
 RecentFileStore::RecentFileStore()
 {
 	// recent dir
-	recent_dir = getenv("HOME");
+	char *home = getenv("HOME");
+	if(!home)
+		throw "Failed to get home directory";
+
+	recent_dir.assign(home);
 	recent_dir += "/OMXPlayerRecent/"; // note the trailing slash
 }
 

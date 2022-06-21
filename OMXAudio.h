@@ -67,7 +67,6 @@ public:
     ENCODED_IEC61937_UNKNOWN,
   };
 
-  unsigned int GetChunkLen();
   float GetDelay();
   float GetCacheTime();
   float GetCacheTotal();
@@ -91,8 +90,6 @@ public:
   bool IsEOS();
 
   void Flush();
-
-  void Process();
 
   bool SetClock(OMXClock *clock);
   void SetCodingType(AVCodecID codec);

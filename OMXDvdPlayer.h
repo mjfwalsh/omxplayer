@@ -12,6 +12,9 @@ class OMXDvdPlayer
 	OMXDvdPlayer(const std::string &filename);
 	~OMXDvdPlayer();
 
+	OMXDvdPlayer(const OMXDvdPlayer&) = delete;
+	OMXDvdPlayer& operator=(const OMXDvdPlayer&) = delete;
+
 	void CloseTrack();
 	bool ChangeTrack(int delta, int &t);
 	bool OpenTrack(int ct);

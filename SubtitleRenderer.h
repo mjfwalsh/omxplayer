@@ -39,6 +39,7 @@ class SubtitleRenderer {
 						unsigned int lines);
 
 		void initDVDSubs(Dimension video, float video_aspect_ratio, int aspect_mode, uint32_t *palette);
+		void deInitDVDSubs();
 
 		~SubtitleRenderer();
 
@@ -50,8 +51,8 @@ class SubtitleRenderer {
 		void clear();
 
 	private:
-		DispmanxLayer *subtitleLayer;
-		DispmanxLayer *dvdSubLayer;
+		DispmanxLayer *subtitleLayer = NULL;
+		DispmanxLayer *dvdSubLayer = NULL;
 
 		class SubtitleText
 		{

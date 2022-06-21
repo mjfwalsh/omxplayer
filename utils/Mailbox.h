@@ -34,7 +34,8 @@
 class Mailbox {
 public:
   enum Type {
-    DVD_SUBS,
+    ADD_DVD_SUBS,
+    REMOVE_DVD_SUBS,
     PUSH,
     SEND_INTERNAL_SUBS,
     CLEAR_INTERNAL_SUBS,
@@ -58,7 +59,7 @@ public:
   {
     public:
     DVDSubs(Dimension &v, float &va, int &am, uint32_t *p) :
-      Item(DVD_SUBS), video(v), video_aspect(va), aspect_mode(am), palette(p) {};
+      Item(ADD_DVD_SUBS), video(v), video_aspect(va), aspect_mode(am), palette(p) {};
 
     Dimension video;
     float video_aspect;
@@ -68,7 +69,7 @@ public:
   class Push : public Item
   {
     public:
-    Push(Subtitle s) : Item(PUSH), subtitle(s) {};
+    Push(Subtitle &s) : Item(PUSH), subtitle(s) {};
 
     Subtitle subtitle;
   };
@@ -112,7 +113,7 @@ public:
   class DisplayText : public Item
   {
     public:
-    DisplayText(std::string tl, int d) : Item(DISPLAY_TEXT), text_lines(tl), duration(d) {};
+    DisplayText(const char *tl, int d) : Item(DISPLAY_TEXT), text_lines(tl), duration(d) {};
 
     std::string text_lines;
     int duration;

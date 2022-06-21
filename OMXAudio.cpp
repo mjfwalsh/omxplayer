@@ -1069,10 +1069,6 @@ float COMXAudio::GetCacheTotal()
 }
 
 //***********************************************************************************************
-unsigned int COMXAudio::GetChunkLen()
-{
-  return m_ChunkLen;
-}
 
 unsigned int COMXAudio::GetAudioRenderingLatency()
 {

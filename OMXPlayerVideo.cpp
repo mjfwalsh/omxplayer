@@ -34,9 +34,9 @@
 class Rect;
 
 OMXPlayerVideo::OMXPlayerVideo()
+:
+m_flush_requested(false)
 {
-  m_flush_requested = false;
-
   pthread_cond_init(&m_packet_cond, NULL);
   pthread_cond_init(&m_picture_cond, NULL);
   pthread_mutex_init(&m_lock, NULL);
@@ -115,7 +115,6 @@ bool OMXPlayerVideo::Reset()
   // Open calls but does away with the DLL unloading/loading, decoder reset, and
   // thread reset.
   Flush();   
-  m_stream_id         = -1;
   m_pStream           = NULL;
   m_iCurrentPts       = AV_NOPTS_VALUE;
   m_bAbort            = false;
@@ -149,7 +148,6 @@ bool OMXPlayerVideo::Close()
   CloseDecoder();
 
   m_open          = false;
-  m_stream_id     = -1;
   m_iCurrentPts   = AV_NOPTS_VALUE;
   m_pStream       = NULL;
 

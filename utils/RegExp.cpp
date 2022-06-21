@@ -85,13 +85,6 @@ int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
   return m_iOvector[0];
 }
 
-int CRegExp::GetCaptureTotal()
-{
-  int c = -1;
-  pcre2_pattern_info(m_re, PCRE2_INFO_CAPTURECOUNT, &c);
-  return c;
-}
-
 std::string CRegExp::GetMatch(int iSub /* = 0 */)
 {
   if (iSub < 0 || iSub >= m_iMatchCount)

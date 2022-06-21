@@ -30,22 +30,9 @@
 #include "utils/log.h"
 
 OMXPlayerAudio::OMXPlayerAudio()
+:
+m_flush_requested(false)
 {
-  m_open          = false;
-  m_stream_id     = -1;
-  m_pStream       = NULL;
-  m_av_clock      = NULL;
-  m_omx_reader    = NULL;
-  m_decoder       = NULL;
-  m_flush         = false;
-  m_flush_requested = false;
-  m_cached_size   = 0;
-  m_pAudioCodec   = NULL;
-  m_player_error  = true;
-  m_CurrentVolume = 0.0f;
-  m_amplification = 0;
-  m_mute          = false;
-
   pthread_cond_init(&m_packet_cond, NULL);
   pthread_cond_init(&m_audio_cond, NULL);
   pthread_mutex_init(&m_lock, NULL);
@@ -86,7 +73,7 @@ void OMXPlayerAudio::UnLockDecoder()
     pthread_mutex_unlock(&m_lock_decoder);
 }
 
-bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int stream_count)
+bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader)
 {
   if(ThreadHandle())
     Close();
@@ -97,7 +84,7 @@ bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXR
   m_config      = config;
   m_av_clock    = av_clock;
   m_omx_reader  = omx_reader;
-  m_stream_count = stream_count;
+  m_stream_count = omx_reader->AudioStreamCount();
   m_passthrough = false;
   m_hw_decode   = false;
   m_iCurrentPts = AV_NOPTS_VALUE;
@@ -107,15 +94,15 @@ bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXR
   m_cached_size = 0;
   m_pAudioCodec = NULL;
 
-  m_player_error = OpenAudioCodec();
-  if(!m_player_error)
+  m_player_ok = OpenAudioCodec();
+  if(!m_player_ok)
   {
     Close();
     return false;
   }
 
-  m_player_error = OpenDecoder();
-  if(!m_player_error)
+  m_player_ok = OpenDecoder();
+  if(!m_player_ok)
   {
     Close();
     return false;
@@ -148,7 +135,6 @@ bool OMXPlayerAudio::Close()
   CloseAudioCodec();
 
   m_open          = false;
-  m_stream_id     = -1;
   m_iCurrentPts   = AV_NOPTS_VALUE;
   m_pStream       = NULL;
 
@@ -224,12 +210,12 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
 
     m_config.hints = pkt->hints;
 
-    m_player_error = OpenAudioCodec();
-    if(!m_player_error)
+    m_player_ok = OpenAudioCodec();
+    if(!m_player_ok)
       return false;
 
-    m_player_error = OpenDecoder();
-    if(!m_player_error)
+    m_player_ok = OpenDecoder();
+    if(!m_player_ok)
       return false;
   }
 
@@ -403,22 +389,8 @@ bool OMXPlayerAudio::IsPassthrough(COMXStreamInfo hints)
   if(m_config.device == "omx:local")
     return false;
 
-  bool passthrough = false;
-
-  if(hints.codec == AV_CODEC_ID_AC3)
-  {
-    passthrough = true;
-  }
-  if(hints.codec == AV_CODEC_ID_EAC3)
-  {
-    passthrough = true;
-  }
-  if(hints.codec == AV_CODEC_ID_DTS)
-  {
-    passthrough = true;
-  }
-
-  return passthrough;
+  return hints.codec == AV_CODEC_ID_AC3 || hints.codec == AV_CODEC_ID_EAC3
+      || hints.codec == AV_CODEC_ID_DTS;
 }
 
 bool OMXPlayerAudio::OpenDecoder()

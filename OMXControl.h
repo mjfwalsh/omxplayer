@@ -16,8 +16,8 @@ class OMXClock;
 
 class OMXControlResult {
   int key;
-  int64_t arg;
-  const char *winarg;
+  int64_t arg = 0;
+  const char *winarg = NULL;
 
 public:
    OMXControlResult(int);

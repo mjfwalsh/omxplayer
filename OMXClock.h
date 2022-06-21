@@ -34,7 +34,7 @@ static inline OMX_TICKS ToOMXTime(int64_t pts)
 {
   OMX_TICKS ticks;
   ticks.nLowPart = pts;
-  ticks.nHighPart = pts >> 32;
+  ticks.nHighPart = ((uint64_t)(pts) >> 32);
   return ticks;
 }
 static inline int64_t FromOMXTime(OMX_TICKS ticks)

@@ -49,8 +49,8 @@ public:
 
   bool Open(size_t stream_count, std::string &external_subtitle_path);
 
-  bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode,
-                   uint32_t *palette);
+  bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode, uint32_t *palette);
+  void deInitDVDSubs();
 
   void Close();
   void Flush();
@@ -86,11 +86,11 @@ public:
   void AddPacket(OMXPacket *pkt);
 
 protected:
-  AVCodecContext           *m_dvd_codec_context;
+  AVCodecContext           *m_dvd_codec_context = NULL;
 
 private:
   void SendToRenderer(Mailbox::Item *msg);
-  void Process();
+  void Process() override;
   void RenderLoop();
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);
   bool GetImageData(OMXPacket *pkt, Subtitle &sub);
@@ -101,7 +101,7 @@ private:
   int                                           m_external_subtitle_stream;
   std::vector<Subtitle>                         m_external_subtitles;
   int                                           m_active_index;
-  int                                           m_stream_count;
+  int                                           m_stream_count = 0;
   int                                           m_delay;
   std::atomic<bool>                             m_thread_stopped;
   float                                         m_font_size;

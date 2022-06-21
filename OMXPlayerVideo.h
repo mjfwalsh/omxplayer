@@ -37,7 +37,6 @@ class OMXPlayerVideo : public OMXThread
 {
 protected:
   AVStream                  *m_pStream = NULL;
-  int                       m_stream_id = -1;
   std::deque<OMXPacket *>   m_packets;
   bool                      m_open = false;
   int64_t                   m_iCurrentPts = 0;

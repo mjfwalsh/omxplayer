@@ -49,7 +49,7 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
     avcodec_free_context(&m_dvd_codec_context);
 
   if(m_palette)
-    delete m_palette;
+    delete[] m_palette;
 
   Close();
 }
@@ -113,7 +113,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
     for(int i = 0; i < 16; i++)
       m_palette[i] = palette[i];
   } else if(m_palette) {
-    delete m_palette;
+    delete[] m_palette;
     m_palette = NULL;
   }
 
@@ -143,6 +143,17 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
   }
 
   return true;
+}
+
+void OMXPlayerSubtitles::deInitDVDSubs()
+{
+  SendToRenderer(new Mailbox::Item(Mailbox::REMOVE_DVD_SUBS));
+
+  if(m_dvd_codec_context)
+    avcodec_free_context(&m_dvd_codec_context);
+
+  if(m_palette)
+    delete[] m_palette;
 }
 
 void OMXPlayerSubtitles::Close()
@@ -286,7 +297,7 @@ void OMXPlayerSubtitles::RenderLoop()
         break;
 
       switch(args->type) {
-        case Mailbox::DVD_SUBS:
+        case Mailbox::ADD_DVD_SUBS:
           {
             Mailbox::DVDSubs *a = (Mailbox::DVDSubs *)args;
 
@@ -297,6 +308,9 @@ void OMXPlayerSubtitles::RenderLoop()
               a->palette
             );
           }
+          break;
+        case Mailbox::REMOVE_DVD_SUBS:
+          renderer.deInitDVDSubs();
           break;
         case Mailbox::PUSH:
           {
@@ -607,12 +621,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
     sub.stop = m_subtitle_buffers[pkt->index].back().stop;
   }
 
-  bool success;
-  if(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE)
-    success = GetImageData(pkt, sub);
-  else
-    success = GetTextLines(pkt, sub);
-  if(!success)
+  if(!(sub.isImage ? GetImageData(pkt, sub) : GetTextLines(pkt, sub)))
   {
     delete pkt;
     return;
@@ -622,7 +631,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
 
   if(m_visible && pkt->index == m_active_index)
   {
-    SendToRenderer(new Mailbox::Push(std::move(sub)));
+    SendToRenderer(new Mailbox::Push(sub));
   }
 
   delete pkt;

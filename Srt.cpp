@@ -30,7 +30,7 @@
 #include <istream>
 #include <fstream>
 
-static int timecode_to_milliseconds(int h, int m, int s, int f)
+static int timecode_to_milliseconds(unsigned h, unsigned m, unsigned s, unsigned f)
 {
     return (h * 3600000) + (m * 60000) + (s * 1000) + f;
 }
@@ -47,7 +47,7 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
 
   std::string text_lines;
   text_lines.reserve(128);
-  int h, m, s, f, h2, m2, s2, f2;
+  unsigned h, m, s, f, h2, m2, s2, f2;
 
   std::string line;
   line.reserve(128);

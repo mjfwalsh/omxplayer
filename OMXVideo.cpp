@@ -670,12 +670,6 @@ unsigned int COMXVideo::GetFreeSpace()
   return m_omx_decoder.GetInputBufferSpace();
 }
 
-unsigned int COMXVideo::GetSize()
-{
-  CSingleLock lock (m_critSection);
-  return m_omx_decoder.GetInputBufferSize();
-}
-
 int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
 {
   CSingleLock lock (m_critSection);

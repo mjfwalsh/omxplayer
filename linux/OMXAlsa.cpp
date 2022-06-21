@@ -722,14 +722,13 @@ static void *gomx_worker(void *ptr)
 {
 	GOMX_COMPONENT *comp = (GOMX_COMPONENT *) ptr;
 	GOMX_PORT *port;
-	GOMX_COMMAND *cmd;
 	OMX_BUFFERHEADERTYPE *hdr;
 	OMX_ERRORTYPE r;
 
 	CINFO(comp, 0, "start");
 	pthread_mutex_lock(&comp->mutex);
 	while (comp->state != OMX_StateInvalid) {
-		cmd = (GOMX_COMMAND *) gomxq_dequeue(&comp->cmdq);
+		GOMX_COMMAND *cmd = (GOMX_COMMAND *) gomxq_dequeue(&comp->cmdq);
 		if (cmd) {
 			r = gomx_do_command(comp, cmd);
 			if (r == OMX_ErrorNone)

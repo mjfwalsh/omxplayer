@@ -31,6 +31,11 @@
 
 using namespace std;
 
+// A fairly unscientific survey showed that with a font size of 59px subtitles lines
+// were rarely longer than 1300px. We also assume that larger font sizes (frequently used
+// in East Asian scripts) would result in shorter not longer subtitles.
+#define MAX_SUBTITLE_LINE_WIDTH 1300
+
 SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_size,
 	bool centered, bool box_opacity, unsigned int lines)
 : m_centered(centered),
@@ -61,11 +66,6 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 	// And line_height combines the two
 	int line_height = m_font_size + m_padding;
 
-	// A fairly unscientific survey showed that with a font size of 59px subtitles lines
-	// were rarely longer than 1300px. We also assume that marger font sizes (frequently used
-	// in East Asian scripts) would result in shorter not longer subtitles.
-	int assumed_longest_subtitle_line_in_pixels = 1300;
-
 	// Calculate image dimensions - must be evenly divisible by 16
 	Rect text_subtitle_rect;
 	text_subtitle_rect.height = (m_max_lines * line_height + 20) & ~15; // grow to fit
@@ -75,8 +75,8 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 		text_subtitle_rect.width = (screen.width - 100) & ~15; // shrink to fit
 		text_subtitle_rect.x = (screen.width - text_subtitle_rect.width) / 2; // centered on screen
 	} else {
-		if(screen.width > assumed_longest_subtitle_line_in_pixels) {
-			text_subtitle_rect.x = (screen.width - assumed_longest_subtitle_line_in_pixels) / 2;
+		if(screen.width > MAX_SUBTITLE_LINE_WIDTH) {
+			text_subtitle_rect.x = (screen.width - MAX_SUBTITLE_LINE_WIDTH) / 2;
 		} else if(screen.width > screen.height) {
 			text_subtitle_rect.x = (screen.width - screen.height) / 2;
 		} else {
@@ -147,6 +147,12 @@ void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio, in
 
 	// create layer
 	dvdSubLayer = new DispmanxLayer(1, view_port, video, palette);
+}
+
+void SubtitleRenderer::deInitDVDSubs()
+{
+	if(dvdSubLayer)
+		delete dvdSubLayer;
 }
 
 void SubtitleRenderer::set_font(int new_font_type)

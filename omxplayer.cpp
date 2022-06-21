@@ -1199,7 +1199,7 @@ int run_play_loop()
     }
 
     // start audio decoder encoder
-    if(!m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader, m_omx_reader->AudioStreamCount()))
+    if(!m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader))
       return exit_with_message("Failed to open audio out");
 
     // set active stream
@@ -1260,17 +1260,15 @@ int run_play_loop()
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
 
   int64_t last_check_time = 0;
-  bool update = false;
-  bool chapter_seek = false;
   int64_t startpts = 0;
   bool sentStarted = true;
-  int64_t last_seek_pos   = 0.0f;
+  int64_t last_seek_pos   = 0;
 
   while(!m_stopped)
   {
     int64_t now = OMXClock::GetAbsoluteClock();
-    update = false;
-    chapter_seek = false;
+    bool update = false;
+    bool chapter_seek = false;
     if (last_check_time == 0 || last_check_time + 20000 <= now)
     {
       update = true;

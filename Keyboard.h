@@ -19,7 +19,7 @@ class Keyboard : public OMXThread
  public:
   ~Keyboard();
   void Init(std::string &filename, bool dbus_enabled, const std::string &dbus_name);
-  void Process();
+  void Process() override;
   void Sleep(unsigned int dwMilliSeconds);
   int getEvent();
  private:

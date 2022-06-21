@@ -29,7 +29,11 @@ using namespace std;
 RecentDVDStore::RecentDVDStore()
 {
 	// recent DVD file store
-	recent_dvd_file = getenv("HOME");
+	char *home = getenv("HOME");
+	if(!home)
+		throw "Failed to get home directory";
+
+	recent_dvd_file.assign(home);
 	recent_dvd_file += "/.omxplayer_dvd_store";
 }
 

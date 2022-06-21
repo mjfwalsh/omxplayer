@@ -140,14 +140,14 @@ public:
   void IgnoreNextError(OMX_S32 error) { m_ignore_error = error; }
 
 private:
-  OMX_HANDLETYPE m_handle;
-  unsigned int   m_input_port;
-  unsigned int   m_output_port;
+  OMX_HANDLETYPE m_handle = NULL;
+  unsigned int   m_input_port = 0;
+  unsigned int   m_output_port = 0;
   std::string    m_componentName;
   pthread_mutex_t   m_omx_event_mutex;
   pthread_mutex_t   m_omx_eos_mutex;
   std::vector<omx_event> m_omx_events;
-  OMX_S32 m_ignore_error;
+  OMX_S32 m_ignore_error = OMX_ErrorNone;
 
   OMX_CALLBACKTYPE  m_callbacks;
 
@@ -155,25 +155,25 @@ private:
   pthread_mutex_t   m_omx_input_mutex;
   std::queue<OMX_BUFFERHEADERTYPE*> m_omx_input_avaliable;
   std::vector<OMX_BUFFERHEADERTYPE*> m_omx_input_buffers;
-  unsigned int  m_input_alignment;
-  unsigned int  m_input_buffer_size;
-  unsigned int  m_input_buffer_count;
+  unsigned int  m_input_alignment = 0;
+  unsigned int  m_input_buffer_size = 0;
+  unsigned int  m_input_buffer_count = 0;
 
   // OMXCore output buffers (video frames)
   pthread_mutex_t   m_omx_output_mutex;
   std::queue<OMX_BUFFERHEADERTYPE*> m_omx_output_available;
   std::vector<OMX_BUFFERHEADERTYPE*> m_omx_output_buffers;
-  unsigned int  m_output_alignment;
-  unsigned int  m_output_buffer_count;
+  unsigned int  m_output_alignment = 0;
+  unsigned int  m_output_buffer_count = 0;
 
-  bool          m_exit;
+  bool          m_exit = false;
   pthread_cond_t    m_input_buffer_cond;
   pthread_cond_t    m_output_buffer_cond;
   pthread_cond_t    m_omx_event_cond;
-  bool          m_eos;
-  bool          m_flush_input;
-  bool          m_flush_output;
-  bool          m_resource_error;
+  bool          m_eos = false;
+  bool          m_flush_input = false;
+  bool          m_flush_output = false;
+  bool          m_resource_error = false;
 };
 
 class COMXCore

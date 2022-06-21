@@ -54,6 +54,8 @@ static int64_t timeout_duration;
 } while (0)
 
 OMXPacket::OMXPacket(AVFormatContext *format_context)
+:
+codec_type(AVMEDIA_TYPE_UNKNOWN)
 {
   dts  = AV_NOPTS_VALUE;
   pts  = AV_NOPTS_VALUE;
@@ -61,7 +63,6 @@ OMXPacket::OMXPacket(AVFormatContext *format_context)
   size = 0;
   data = NULL;
   stream_index = -1;
-  codec_type = AVMEDIA_TYPE_UNKNOWN;
 
   if(av_read_frame(format_context, this) < 0)
     throw "No packet";
@@ -90,7 +91,7 @@ static int dvd_read(void *h, uint8_t* buf, int size)
   if(interrupt_cb(NULL))
     return -1;
 
-  OMXDvdPlayer *reader =(OMXDvdPlayer*) h;
+  OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
   int ret = reader->Read(buf, size);
 
   if (ret == 0) {
@@ -108,7 +109,7 @@ static int64_t dvd_seek(void *h, int64_t pos, int whence)
   if(interrupt_cb(NULL))
     return -1;
 
-  OMXDvdPlayer *reader =(OMXDvdPlayer*) h;
+  OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
   if(whence == AVSEEK_SIZE)
     return reader->GetSizeInBytes();
   else
