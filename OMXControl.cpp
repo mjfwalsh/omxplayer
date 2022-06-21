@@ -70,10 +70,9 @@ OMXControl::~OMXControl()
     dbus_disconnect();
 }
 
-void OMXControl::init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, std::string (*filename)())
+void OMXControl::init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string (*filename)())
 {
   clock        = av_clock;
-  audio        = player_audio;
   subtitles    = player_subtitles;
   get_filename = filename;
 }
@@ -82,6 +81,11 @@ void OMXControl::init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlaye
 void OMXControl::set_reader(OMXReader *omx_reader)
 {
   reader       = omx_reader;
+}
+
+void OMXControl::set_audio(OMXPlayerAudio *player_audio)
+{
+  audio        = player_audio;
 }
 
 bool OMXControl::connect(std::string& dbus_name)
@@ -309,7 +313,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     if (dbus_error_is_set(&error))
     { // i.e. Get current volume
       dbus_error_free(&error);
-      dbus_respond_double(m, audio->GetVolume());
+      dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
       deprecatedMessage();
       return KeyConfig::ACTION_BLANK;
     }
@@ -317,10 +321,13 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     {
       //Min value is 0
       if(volume<.0)
-      {
         volume=.0;
-      }
-      audio->SetVolume(volume);
+
+      if(audio)
+        audio->SetVolume(volume);
+      else
+        volume = 0.0;
+
       dbus_respond_double(m, volume);
       deprecatedMessage();
       return KeyConfig::ACTION_BLANK;
@@ -328,14 +335,16 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   }
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Mute"))
   {
-    audio->SetMute(true);
+    if(audio)
+      audio->SetMute(true);
     dbus_respond_ok(m);
     deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
   }
   else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Unmute"))
   {
-    audio->SetMute(false);
+    if(audio)
+      audio->SetMute(false);
     dbus_respond_ok(m);
     deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
@@ -555,13 +564,15 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   }
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Mute"))
   {
-    audio->SetMute(true);
+    if(audio)
+      audio->SetMute(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
   }
   else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Unmute"))
   {
-    audio->SetMute(false);
+    if(audio)
+      audio->SetMute(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
   }
@@ -601,7 +612,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
   {
     int count = reader->AudioStreamCount();
     char *values[count];
-    int active_stream = audio->GetActiveStream();
+    int active_stream = audio ? audio->GetActiveStream() : -1;
 
     for (int i=0; i < count; i++)
     {
@@ -682,7 +693,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m)
     }
     else
     {
-      if (audio->SetActiveStream(index))
+      if (audio && audio->SetActiveStream(index))
       {
         dbus_respond_boolean(m, 1);
       }
@@ -892,7 +903,7 @@ OMXControlResult OMXControl::GetProperty(DBusMessage *m)
     else if (strcmp(property, "Volume")==0)
     {
       //return current volume
-      dbus_respond_double(m, audio->GetVolume());
+      dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
       return KeyConfig::ACTION_BLANK;
     }
     else if (strcmp(property, "Metadata")==0)
@@ -1067,7 +1078,12 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
       {
         volume=.0;
       }
-      audio->SetVolume(volume);
+
+      if(audio)
+        audio->SetVolume(volume);
+      else
+        volume = 0.0;
+
       dbus_respond_double(m, volume);
       return KeyConfig::ACTION_BLANK;
     }

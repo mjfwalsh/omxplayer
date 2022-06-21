@@ -37,41 +37,6 @@ using namespace std;
 #define AUDIO_DECODE_OUTPUT_BUFFER (32*1024)
 static const char rounded_up_channels_shift[] = {0,0,1,2,2,3,3,3,3};
 
-//////////////////////////////////////////////////////////////////////
-// Construction/Destruction
-//////////////////////////////////////////////////////////////////////
-//***********************************************************************************************
-COMXAudio::COMXAudio() :
-  m_Initialized     (false  ),
-  m_CurrentVolume   (0      ),
-  m_Mute            (false  ),
-  m_BytesPerSec     (0      ),
-  m_InputBytesPerSec(0      ),
-  m_BufferLen       (0      ),
-  m_ChunkLen        (0      ),
-  m_InputChannels   (0      ),
-  m_OutputChannels  (0      ),
-  m_BitsPerSample   (0      ),
-  m_maxLevel        (0.0f   ),
-  m_amplification   (1.0f   ),
-  m_attenuation     (1.0f   ),
-  m_submitted       (0.0f   ),
-  m_omx_clock       (NULL   ),
-  m_av_clock        (NULL   ),
-  m_settings_changed(false  ),
-  m_setStartTime    (false  ),
-  m_eEncoding       (OMX_AUDIO_CodingPCM),
-  m_last_pts        (AV_NOPTS_VALUE),
-  m_submitted_eos   (false  ),
-  m_failed_eos      (false  )
-{
-}
-
-COMXAudio::~COMXAudio()
-{
-  Deinitialize();
-}
-
 
 bool COMXAudio::PortSettingsChanged()
 {
@@ -384,26 +349,31 @@ static unsigned count_bits(uint64_t value)
   return bits;
 }
 
-bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample)
+COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample)
+  :
+  m_CurrentVolume   (0      ),
+  m_Mute            (false  ),
+  m_amplification   (1.0f   ),
+  m_attenuation     (1.0f   ),
+  m_submitted       (0.0f   ),
+  m_eEncoding       (OMX_AUDIO_CodingPCM)
 {
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
-
-  Deinitialize();
 
   m_config = config;
   m_InputChannels = count_bits(channelMap);
 
   if(m_InputChannels == 0)
-    return false;
+    throw "COMXAudio Error: No input channels";
 
   if(m_config.hints.samplerate == 0)
-    return false;
+    throw "COMXAudio Error: invalid samplerate";
 
   m_av_clock = clock;
 
   if(!m_av_clock)
-    return false;
+    throw "COMXAudio Error: bad clock";
 
   /* passthrough overwrites hw decode */
   if(m_config.passthrough)
@@ -474,7 +444,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   m_wave_header.SubFormat                   = KSDATAFORMAT_SUBTYPE_PCM;
 
   if(!m_omx_decoder.Initialize("OMX.broadcom.audio_decode", OMX_IndexParamAudioInit))
-    return false;
+    throw "COMXAudio Error: decoder init error";
 
   OMX_CONFIG_BOOLEANTYPE boolType;
   OMX_INIT_STRUCTURE(boolType);
@@ -487,7 +457,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize - Error OMX_IndexParamBrcmDecoderPassThrough 0x%08x", omx_err);
     printf("OMX_IndexParamBrcmDecoderPassThrough omx_err(0x%08x)\n", omx_err);
-    return false;
+    throw "COMXAudio Error: OMX_IndexParamBrcmDecoderPassThrough error";
   }
 
   // set up the number/size of buffers for decoder input
@@ -499,7 +469,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize error get OMX_IndexParamPortDefinition (input) omx_err(0x%08x)", omx_err);
-    return false;
+    throw "COMXAudio Error: nPortIndex error";
   }
 
   port_param.format.audio.eEncoding = m_eEncoding;
@@ -510,7 +480,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize error set OMX_IndexParamPortDefinition (intput) omx_err(0x%08x)", omx_err);
-    return false;
+    throw "COMXAudio Error: nBufferCountActual error";
   }
 
   // set up the number/size of buffers for decoder output
@@ -521,7 +491,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize error get OMX_IndexParamPortDefinition (output) omx_err(0x%08x)", omx_err);
-    return false;
+    throw "COMXAudio Error: nPortIndex error";
   }
 
   port_param.nBufferCountActual = std::max((unsigned int)port_param.nBufferCountMin, m_BufferLen / port_param.nBufferSize);
@@ -530,7 +500,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize error set OMX_IndexParamPortDefinition (output) omx_err(0x%08x)", omx_err);
-    return false;
+    throw "COMXAudio Error: nBufferCountActual error";
   }
 
   {
@@ -544,7 +514,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXAudio::Initialize error OMX_IndexParamAudioPortFormat omx_err(0x%08x)", omx_err);
-      return false;
+      throw "COMXAudio Error: formatType error";
     }
   }
 
@@ -552,13 +522,13 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   if(omx_err != OMX_ErrorNone) 
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize - Error alloc buffers 0x%08x", omx_err);
-    return false;
+    throw "COMXAudio Error: AllocInputBuffers error";
   }
 
     omx_err = m_omx_decoder.SetStateForComponent(OMX_StateExecuting);
     if(omx_err != OMX_ErrorNone) {
       CLogLog(LOGERROR, "COMXAudio::Initialize - Error setting OMX_StateExecuting 0x%08x", omx_err);
-      return false;
+      throw "COMXAudio Error: OMX_StateExecuting error";
     }
 
 
@@ -568,7 +538,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
     if(omx_buffer == NULL)
     {
       CLogLog(LOGERROR, "COMXAudio::Initialize - buffer error 0x%08x", omx_err);
-      return false;
+      throw "COMXAudio Error: buffer error";
     }
 
     omx_buffer->nOffset = 0;
@@ -583,7 +553,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
     {
       CLogLog(LOGERROR, "%s::%s - OMX_EmptyThisBuffer() failed with result(0x%x)", CLASSNAME, __func__, omx_err);
       m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
-      return false;
+      throw "COMXAudio Error: OMX_EmptyThisBuffer error";
     }
   } 
   else if(m_config.hwdecode)
@@ -596,7 +566,7 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
       if(omx_buffer == NULL)
       {
         CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
-        return false;
+        throw "COMXAudio Error: GetInputBuffer error";
       }
   
       omx_buffer->nOffset = 0;
@@ -611,14 +581,14 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
       {
         CLogLog(LOGERROR, "%s::%s - OMX_EmptyThisBuffer() failed with result(0x%x)", CLASSNAME, __func__, omx_err);
         m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
-        return false;
+        throw "COMXAudio Error: EmptyThisBuffer error";
       }
     }
   }
 
   /* return on decoder error so m_Initialized stays false */
   if(m_omx_decoder.BadState())
-    return false;
+    throw "COMXAudio Error: BadState";
 
   OMX_INIT_STRUCTURE(m_pcm_input);
   m_pcm_input.nPortIndex            = m_omx_decoder.GetInputPort();
@@ -631,7 +601,6 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   m_pcm_input.nChannels             = m_InputChannels;
   m_pcm_input.nSamplingRate         = m_config.hints.samplerate;
 
-  m_Initialized   = true;
   m_settings_changed = false;
   m_setStartTime  = true;
   m_submitted_eos = false;
@@ -645,12 +614,10 @@ bool COMXAudio::Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64
   PrintPCM(&m_pcm_input, std::string("input"));
   CLogLog(LOGDEBUG, "COMXAudio::Initialize device %s passthrough %d hwdecode %d",
       m_config.device.c_str(), m_config.passthrough, m_config.hwdecode);
-
-  return true;
 }
 
 //***********************************************************************************************
-bool COMXAudio::Deinitialize()
+COMXAudio::~COMXAudio()
 {
   CSingleLock lock (m_critSection);
 
@@ -689,30 +656,11 @@ bool COMXAudio::Deinitialize()
     m_omx_render_hdmi.Deinitialize();
   if ( m_omx_render_analog.IsInitialized() )
     m_omx_render_analog.Deinitialize();
-
-  m_BytesPerSec = 0;
-  m_BufferLen   = 0;
-
-  m_omx_clock = NULL;
-  m_av_clock  = NULL;
-
-  m_Initialized = false;
-
-  while(!m_ampqueue.empty())
-    m_ampqueue.pop_front();
-
-  m_last_pts      = AV_NOPTS_VALUE;
-  m_submitted     = 0.0f;
-  m_maxLevel      = 0.0f;
-
-  return true;
 }
 
 void COMXAudio::Flush()
 {
   CSingleLock lock (m_critSection);
-  if(!m_Initialized)
-    return;
 
   m_omx_decoder.FlushAll();
   if ( m_omx_mixer.IsInitialized() )
@@ -777,7 +725,7 @@ bool COMXAudio::ApplyVolume(void)
   float m_ac3Gain = 12.0f;
   CSingleLock lock (m_critSection);
 
-  if(!m_Initialized || m_config.passthrough)
+  if(m_config.passthrough)
     return false;
 
   float fVolume = m_Mute ? VOLUME_MINIMUM : m_CurrentVolume;
@@ -828,12 +776,6 @@ bool COMXAudio::ApplyVolume(void)
 bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size)
 {
   CSingleLock lock (m_critSection);
-
-  if(!m_Initialized)
-  {
-    CLogLog(LOGERROR,"COMXAudio::AddPackets - sanity failed. no valid play handle!");
-    return false;
-  }
 
   unsigned pitch = (m_config.passthrough || m_config.hwdecode) ? 1:(m_BitsPerSample >> 3) * m_InputChannels;
   unsigned int demuxer_samples = len / pitch;
@@ -1074,9 +1016,6 @@ unsigned int COMXAudio::GetAudioRenderingLatency()
 {
   CSingleLock lock (m_critSection);
 
-  if(!m_Initialized)
-    return 0;
-
   OMX_PARAM_U32TYPE param;
   OMX_INIT_STRUCTURE(param);
 
@@ -1113,9 +1052,6 @@ float COMXAudio::GetMaxLevel(int64_t &pts)
 {
   CSingleLock lock (m_critSection);
 
-  if(!m_Initialized)
-    return 0;
-
   OMX_CONFIG_BRCMAUDIOMAXSAMPLE param;
   OMX_INIT_STRUCTURE(param);
 
@@ -1139,9 +1075,6 @@ float COMXAudio::GetMaxLevel(int64_t &pts)
 void COMXAudio::SubmitEOS()
 {
   CSingleLock lock (m_critSection);
-
-  if(!m_Initialized)
-    return;
 
   m_submitted_eos = true;
   m_failed_eos = false;
@@ -1174,8 +1107,6 @@ void COMXAudio::SubmitEOS()
 
 bool COMXAudio::IsEOS()
 {
-  if(!m_Initialized)
-    return true;
   unsigned int latency = GetAudioRenderingLatency();
   CSingleLock lock (m_critSection);
 

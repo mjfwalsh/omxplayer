@@ -34,9 +34,6 @@ extern "C" {
 using namespace std;
 using namespace boost;
 
-OMXPlayerSubtitles::OMXPlayerSubtitles()
-{}
-
 OMXPlayerSubtitles::~OMXPlayerSubtitles()
 {
   if(Running())
@@ -51,16 +48,17 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
   if(m_palette)
     delete[] m_palette;
 
-  Close();
+  if(m_renderer)
+    delete m_renderer;
 }
 
-bool OMXPlayerSubtitles::Init(int display,
-                              int layer,
-                              float font_size,
-                              bool centered,
-                              bool ghost_box,
-                              unsigned int lines,
-                              OMXClock* clock)
+OMXPlayerSubtitles::OMXPlayerSubtitles(int display,
+                                       int layer,
+                                       float font_size,
+                                       bool centered,
+                                       bool ghost_box,
+                                       unsigned int lines,
+                                       OMXClock* clock)
 {
   m_visible = false;
   m_external_subtitle_stream = -1;
@@ -68,18 +66,16 @@ bool OMXPlayerSubtitles::Init(int display,
   m_delay = 0;
   m_thread_stopped.store(false, memory_order_relaxed);
 
-  m_font_size = font_size;
-  m_centered = centered;
-  m_ghost_box = ghost_box;
-  m_lines = lines;
+  m_renderer = new SubtitleRenderer(display, layer,
+                                    font_size,
+                                    centered,
+                                    ghost_box,
+                                    lines);
+
   m_av_clock = clock;
-  m_display = display;
-  m_layer = layer;
 
   if(!Create())
-    return false;
-
-  return true;
+    throw "Failed to create subtitle thread";
 }
 
 
@@ -203,12 +199,6 @@ Iterator FindSubtitle(Iterator begin, Iterator end, int time)
 
 void OMXPlayerSubtitles::RenderLoop()
 {
-  SubtitleRenderer renderer(m_display, m_layer,
-                            m_font_size,
-                            m_centered,
-                            m_ghost_box,
-                            m_lines);
-
   vector<Subtitle> internal_subtitles;
   vector<Subtitle> *subtitles = &internal_subtitles;
 
@@ -233,7 +223,7 @@ void OMXPlayerSubtitles::RenderLoop()
     {
       if(subtitles->at(next_index).stop > time)
       {
-        renderer.prepare(subtitles->at(next_index));
+        m_renderer->prepare(subtitles->at(next_index));
         have_next = true;
         break;
       }
@@ -242,7 +232,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
   auto Reset = [&](int time)
   {
-    renderer.unprepare();
+    m_renderer->unprepare();
     current_stop = INT_MIN;
 
     auto it = FindSubtitle(subtitles->begin(),
@@ -252,7 +242,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
     if(next_index != subtitles->size())
     {
-      renderer.prepare(subtitles->at(next_index));
+      m_renderer->prepare(subtitles->at(next_index));
       have_next = true;
     }
     else
@@ -301,7 +291,7 @@ void OMXPlayerSubtitles::RenderLoop()
           {
             Mailbox::DVDSubs *a = (Mailbox::DVDSubs *)args;
 
-            renderer.initDVDSubs(
+            m_renderer->initDVDSubs(
               a->video,
               a->video_aspect,
               a->aspect_mode,
@@ -310,7 +300,7 @@ void OMXPlayerSubtitles::RenderLoop()
           }
           break;
         case Mailbox::REMOVE_DVD_SUBS:
-          renderer.deInitDVDSubs();
+          m_renderer->deInitDVDSubs();
           break;
         case Mailbox::PUSH:
           {
@@ -357,8 +347,8 @@ void OMXPlayerSubtitles::RenderLoop()
           {
             Mailbox::DisplayText *a = (Mailbox::DisplayText *)args;
 
-            renderer.prepare(a->text_lines);
-            renderer.show_next();
+            m_renderer->prepare(a->text_lines);
+            m_renderer->show_next();
             showing = true;
             osd = true;
             osd_stop = chrono::steady_clock::now() +
@@ -367,7 +357,7 @@ void OMXPlayerSubtitles::RenderLoop()
           }
           break;
         case Mailbox::CLEAR_RENDERER:
-          renderer.clear();
+          m_renderer->clear();
           internal_subtitles.clear();
           subtitles = &internal_subtitles;
           prev_now = INT_MAX;
@@ -400,7 +390,7 @@ void OMXPlayerSubtitles::RenderLoop()
     {
       if(have_next && subtitles->at(next_index).start <= now)
       {
-        renderer.show_next();
+        m_renderer->show_next();
         // printf("show error: %i ms\n", now - subtitles[next_index].start);
         showing = true;
         current_stop = subtitles->at(next_index).stop;
@@ -411,7 +401,7 @@ void OMXPlayerSubtitles::RenderLoop()
       }
       else if(showing)
       {
-        renderer.hide();
+        m_renderer->hide();
         // printf("hide error: %i ms\n", now - current_stop);
         showing = false;
       }

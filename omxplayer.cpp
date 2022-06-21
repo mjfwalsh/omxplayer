@@ -68,8 +68,8 @@ OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
 int               m_subtitle_index      = -1;
 OMXPlayerVideo    m_player_video;
-OMXPlayerAudio    m_player_audio;
-OMXPlayerSubtitles  m_player_subtitles;
+OMXPlayerAudio    *m_player_audio;
+OMXPlayerSubtitles  *m_player_subtitles;
 bool              m_has_video           = false;
 bool              m_has_audio           = false;
 bool              m_has_subtitle        = false;
@@ -166,7 +166,7 @@ void print_version()
 void osd_print(int options, const char *msg)
 {
   if(m_osd)
-    m_player_subtitles.DisplayText(msg, (options & UM_LONG) ? 3000 : 1500);
+    m_player_subtitles->DisplayText(msg, (options & UM_LONG) ? 3000 : 1500);
 
   if(options & UM_STDOUT)
   {
@@ -251,14 +251,14 @@ static void PrintSubtitleInfo()
     count = 1;
   } else if(m_has_subtitle) {
     count = m_omx_reader->SubtitleStreamCount();
-    index = m_player_subtitles.GetActiveStream();
+    index = m_player_subtitles->GetActiveStream();
   }
 
   printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
          count,
-         m_has_subtitle && m_player_subtitles.GetVisible() ? " on" : "off",
+         m_has_subtitle && m_player_subtitles->GetVisible() ? " on" : "off",
          index+1,
-         m_has_subtitle ? m_player_subtitles.GetDelay() : 0);
+         m_has_subtitle ? m_player_subtitles->GetDelay() : 0);
 }
 
 static void SetSpeed(int iSpeed)
@@ -278,13 +278,13 @@ static void FlushStreams(int64_t pts)
     m_player_video.Flush();
 
   if(m_has_audio)
-    m_player_audio.Flush();
+    m_player_audio->Flush();
 
   if(pts != AV_NOPTS_VALUE)
     m_av_clock->OMXMediaTime(pts);
 
   if(m_has_subtitle)
-    m_player_subtitles.Flush();
+    m_player_subtitles->Flush();
 
   if(m_omx_pkt)
   {
@@ -817,9 +817,12 @@ int main(int argc, char *argv[])
   }
 
   // start the clock
-  m_av_clock = new OMXClock();
-  if(!m_av_clock->OMXInitialize())
+  try {
+    m_av_clock = new OMXClock();
+  }
+  catch(const char *msg)
   {
+    puts(msg);
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
@@ -832,14 +835,18 @@ int main(int argc, char *argv[])
   }
 
   // init subtitle object
-  if(!m_player_subtitles.Init(m_config_video.display,
-                                m_config_video.layer,
-                                font_size,
-                                centered,
-                                ghost_box,
-                                subtitle_lines,
-                                m_av_clock))
+  try {
+    m_player_subtitles = new OMXPlayerSubtitles(m_config_video.display,
+                                                m_config_video.layer,
+                                                font_size,
+                                                centered,
+                                                ghost_box,
+                                                subtitle_lines,
+                                                m_av_clock);
+  }
+  catch(const char *msg)
   {
+    puts(msg);
     delete m_av_clock;
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
@@ -856,8 +863,7 @@ int main(int argc, char *argv[])
 
   m_omxcontrol.init(
     m_av_clock,
-    &m_player_audio,
-    &m_player_subtitles,
+    m_player_subtitles,
     get_filename
   );
 
@@ -1175,6 +1181,7 @@ int run_play_loop()
       if(m_audio_index == -1)
         m_audio_index = 0;
     }
+    printf("Selecting audio stream: %d\n", m_audio_index + 1);
 
     // no audio device name has been set on command line
     if(m_config_audio.device.empty())
@@ -1199,18 +1206,24 @@ int run_play_loop()
     }
 
     // start audio decoder encoder
-    if(!m_player_audio.Open(m_av_clock, m_config_audio, m_omx_reader))
-      return exit_with_message("Failed to open audio out");
-
-    // set active stream
-    printf("Selecting audio stream: %d\n", m_audio_index + 1);
-    m_player_audio.SetActiveStream(m_audio_index);
+    try {
+      m_player_audio = new OMXPlayerAudio(m_av_clock, m_config_audio, m_omx_reader, m_audio_index);
+    }
+    catch(const char *msg)
+    {
+      return exit_with_message(msg);
+    }
 
     // set volume
-    m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
+    m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
     if (m_Amplification)
-      m_player_audio.SetDynamicRangeCompression(m_Amplification);
+      m_player_audio->SetDynamicRangeCompression(m_Amplification);
   }
+  else
+  {
+    m_player_audio = NULL;
+  }
+  m_omxcontrol.set_audio(m_player_audio);
 
   /* -------------------------------------------------------
                          Subtitle Setup
@@ -1221,11 +1234,11 @@ int run_play_loop()
     if(!m_has_external_subtitles && m_subtitle_lang[0] != '\0')
       m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
-    if(!m_player_subtitles.Open(m_omx_reader->SubtitleStreamCount(),
+    if(!m_player_subtitles->Open(m_omx_reader->SubtitleStreamCount(),
                                 m_external_subtitles_path))
       return exit_with_message("Failed to open subtitles");
 
-    m_player_subtitles.SetActiveStream(m_subtitle_index);
+    m_player_subtitles->SetActiveStream(m_subtitle_index);
 
     // Check if we have any DVD subtitles (these can be on ordinary media files as well as DVDs)
     // If so, setup a dispmanx layer to display them
@@ -1235,7 +1248,7 @@ int run_play_loop()
 
     if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
-      if(!m_player_subtitles.initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
+      if(!m_player_subtitles->initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
         return exit_with_message("Failed to initialise DVD subtitles");
     }
 
@@ -1326,7 +1339,7 @@ int run_play_loop()
         {
           int delta = result.getKey() == KeyConfig::ACTION_NEXT_AUDIO ? 1 : -1;
 
-          int new_index = m_player_audio.SetActiveStreamDelta(delta);
+          int new_index = m_player_audio->SetActiveStreamDelta(delta);
           strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, new_index).c_str());
           osd_printf(UM_NORM, "Audio stream: %d %s", new_index + 1, m_audio_lang);
         }
@@ -1370,7 +1383,7 @@ int run_play_loop()
         {
           int delta = result.getKey() == KeyConfig::ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
 
-          int new_index = m_player_subtitles.SetActiveStreamDelta(delta);
+          int new_index = m_player_subtitles->SetActiveStreamDelta(delta);
 
           if(new_index == -1) {
             m_subtitle_lang[0] = '\0';
@@ -1389,30 +1402,30 @@ int run_play_loop()
         if(m_has_subtitle)
         {
           bool new_visible = result.getKey() == KeyConfig::ACTION_TOGGLE_SUBTITLE ?
-            !m_player_subtitles.GetVisible()
+            !m_player_subtitles->GetVisible()
               :
             result.getKey() == KeyConfig::ACTION_SHOW_SUBTITLES;
 
-          m_player_subtitles.SetVisible(new_visible);
+          m_player_subtitles->SetVisible(new_visible);
           osd_print(new_visible ? "Subtitles On" : "Subtitles Off");
           PrintSubtitleInfo();
         }
         break;
       case KeyConfig::ACTION_DECREASE_SUBTITLE_DELAY:
-        if(m_has_subtitle && m_player_subtitles.GetVisible())
+        if(m_has_subtitle && m_player_subtitles->GetVisible())
         {
-          int new_delay = m_player_subtitles.GetDelay() - 250;
+          int new_delay = m_player_subtitles->GetDelay() - 250;
           osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
-          m_player_subtitles.SetDelay(new_delay);
+          m_player_subtitles->SetDelay(new_delay);
           PrintSubtitleInfo();
         }
         break;
       case KeyConfig::ACTION_INCREASE_SUBTITLE_DELAY:
-        if(m_has_subtitle && m_player_subtitles.GetVisible())
+        if(m_has_subtitle && m_player_subtitles->GetVisible())
         {
-          int new_delay = m_player_subtitles.GetDelay() + 250;
+          int new_delay = m_player_subtitles->GetDelay() + 250;
           osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
-          m_player_subtitles.SetDelay(new_delay);
+          m_player_subtitles->SetDelay(new_delay);
           PrintSubtitleInfo();
         }
         break;
@@ -1463,8 +1476,8 @@ int run_play_loop()
 
           if(m_has_subtitle)
           {
-            if(m_Pause) m_player_subtitles.Pause();
-            else m_player_subtitles.Resume();
+            if(m_Pause) m_player_subtitles->Pause();
+            else m_player_subtitles->Resume();
           }
 
           int t = m_av_clock->OMXMediaTime() * 1e-6;
@@ -1494,12 +1507,12 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_DECREASE_VOLUME:
         m_Volume -= 50;
-        m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
+        m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
         osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         break;
       case KeyConfig::ACTION_INCREASE_VOLUME:
         m_Volume += 50;
-        m_player_audio.SetVolume(pow(10, m_Volume / 2000.0));
+        m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
         osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         break;
       default:
@@ -1512,7 +1525,7 @@ int run_play_loop()
       int64_t seek_pos     = 0;
 
       if(m_has_subtitle)
-        m_player_subtitles.Pause();
+        m_player_subtitles->Pause();
 
       if (!chapter_seek)
       {
@@ -1544,25 +1557,25 @@ int run_play_loop()
       m_av_clock->OMXPause();
 
       if(m_has_subtitle)
-        m_player_subtitles.Resume();
+        m_player_subtitles->Resume();
       m_seek_flush = false;
       m_incr = 0;
     }
 
     /* player got in an error state */
-    if(m_player_audio.Error())
+    if(m_player_audio->Error())
       return exit_with_message("Audio player error");
 
     if (update)
     {
       /* when the video/audio fifos are low, we pause clock, when high we resume */
       int64_t stamp = m_av_clock->OMXMediaTime();
-      int64_t audio_pts = m_player_audio.GetCurrentPTS();
+      int64_t audio_pts = m_player_audio->GetCurrentPTS();
       int64_t video_pts = m_player_video.GetCurrentPTS();
 
       float audio_fifo = audio_pts == AV_NOPTS_VALUE ? 0.0f : (audio_pts - stamp) * 1e-6;
       float video_fifo = video_pts == AV_NOPTS_VALUE ? 0.0f : (video_pts - stamp) * 1e-6;
-      float threshold = std::min(0.1f, (float)m_player_audio.GetCacheTotal() * 0.1f);
+      float threshold = std::min(0.1f, (float)m_player_audio->GetCacheTotal() * 0.1f);
       bool audio_fifo_low = false, video_fifo_low = false, audio_fifo_high = false, video_fifo_high = false;
 
       if(m_stats)
@@ -1571,8 +1584,8 @@ int run_play_loop()
         if ((count++ & 7) == 0)
           printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %6.02fs/%6.02fs Cv:%6uk Ca:%6uk                            \r", stamp,
                video_fifo, (m_player_video.GetDecoderBufferSize()-m_player_video.GetDecoderFreeSpace())>>10, m_player_video.GetDecoderBufferSize()>>10,
-               audio_fifo, m_player_audio.GetDelay(), m_player_audio.GetCacheTotal(),
-               m_player_video.GetCached()>>10, m_player_audio.GetCached()>>10);
+               audio_fifo, m_player_audio->GetDelay(), m_player_audio->GetCacheTotal(),
+               m_player_video.GetCached()>>10, m_player_audio->GetCached()>>10);
       }
 
       if (audio_pts != AV_NOPTS_VALUE)
@@ -1661,10 +1674,10 @@ int run_play_loop()
       if (!m_send_eos && m_has_video)
         m_player_video.SubmitEOS();
       if (!m_send_eos && m_has_audio)
-        m_player_audio.SubmitEOS();
+        m_player_audio->SubmitEOS();
       m_send_eos = true;
       if ( (m_has_video && !m_player_video.IsEOS()) ||
-           (m_has_audio && !m_player_audio.IsEOS()) )
+           (m_has_audio && !m_player_audio->IsEOS()) )
       {
         OMXClock::OMXSleep(10);
         continue;
@@ -1698,7 +1711,7 @@ int run_play_loop()
     {
       if(m_has_audio && playspeed_current == playspeed_normal)
       {
-        if(m_player_audio.AddPacket(m_omx_pkt))
+        if(m_player_audio->AddPacket(m_omx_pkt))
           m_omx_pkt = NULL;
         else
           OMXClock::OMXSleep(10);
@@ -1708,7 +1721,7 @@ int run_play_loop()
     {
       if(m_has_subtitle && playspeed_current == playspeed_normal)
       {
-        m_player_subtitles.AddPacket(m_omx_pkt);
+        m_player_subtitles->AddPacket(m_omx_pkt);
         m_omx_pkt = NULL;
       }
     }
@@ -1726,7 +1739,7 @@ void end_of_play_loop()
   if (m_stats)
     puts("");
 
-  m_player_subtitles.Clear();
+  m_player_subtitles->Clear();
 
   int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
   int dur = m_omx_reader->GetStreamLengthSeconds();
@@ -1747,14 +1760,19 @@ void end_of_play_loop()
   }
 
   // remember this for later
-  m_ext_subs_showing = m_has_external_subtitles && m_player_subtitles.GetVisible();
+  m_ext_subs_showing = m_has_external_subtitles && m_player_subtitles->GetVisible();
 
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
+
   delete m_omx_reader;
-  m_player_subtitles.Close();
+  m_omx_reader = NULL;
+
+  m_player_subtitles->Close();
   m_player_video.Close();
-  m_player_audio.Close();
+
+  delete m_player_audio;
+  m_player_audio = NULL;
 
   // stop seeking
   m_seek_flush = false;
@@ -1833,6 +1851,7 @@ int shutdown(bool exit_with_error)
     VideoCore::restoreTVState();
 
   delete m_av_clock;
+  delete m_player_subtitles;
 
   if(m_DvdPlayer)
     delete m_DvdPlayer;

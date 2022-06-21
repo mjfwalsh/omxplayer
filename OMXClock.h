@@ -61,8 +61,6 @@ public:
   OMXClock();
   ~OMXClock();
 
-  bool OMXInitialize();
-  void OMXDeinitialize();
   bool OMXIsPaused() { return m_pause; };
   bool OMXStop(bool lock = true);
   bool OMXStep(int steps = 1, bool lock = true);

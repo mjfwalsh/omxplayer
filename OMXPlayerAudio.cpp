@@ -29,19 +29,23 @@
 
 #include "utils/log.h"
 
-OMXPlayerAudio::OMXPlayerAudio()
-:
-m_flush_requested(false)
-{
-  pthread_cond_init(&m_packet_cond, NULL);
-  pthread_cond_init(&m_audio_cond, NULL);
-  pthread_mutex_init(&m_lock, NULL);
-  pthread_mutex_init(&m_lock_decoder, NULL);
-}
-
 OMXPlayerAudio::~OMXPlayerAudio()
 {
-  Close();
+  m_bAbort  = true;
+
+  Flush();
+
+  if(ThreadHandle())
+  {
+    Lock();
+    pthread_cond_broadcast(&m_packet_cond);
+    UnLock();
+
+    StopThread();
+  }
+
+  CloseDecoder();
+  CloseAudioCodec();
 
   pthread_cond_destroy(&m_audio_cond);
   pthread_cond_destroy(&m_packet_cond);
@@ -73,72 +77,33 @@ void OMXPlayerAudio::UnLockDecoder()
     pthread_mutex_unlock(&m_lock_decoder);
 }
 
-bool OMXPlayerAudio::Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader)
+OMXPlayerAudio::OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config,
+                               OMXReader *omx_reader, int active_stream)
+:
+m_av_clock(av_clock),
+m_omx_reader(omx_reader),
+m_stream_count(omx_reader->AudioStreamCount()),
+m_flush_requested(false),
+m_config(config)
 {
-  if(ThreadHandle())
-    Close();
+  pthread_cond_init(&m_packet_cond, NULL);
+  pthread_cond_init(&m_audio_cond, NULL);
+  pthread_mutex_init(&m_lock, NULL);
+  pthread_mutex_init(&m_lock_decoder, NULL);
 
-  if (!av_clock)
-    return false;
+  m_bAbort = false;
 
-  m_config      = config;
-  m_av_clock    = av_clock;
-  m_omx_reader  = omx_reader;
-  m_stream_count = omx_reader->AudioStreamCount();
-  m_passthrough = false;
-  m_hw_decode   = false;
-  m_iCurrentPts = AV_NOPTS_VALUE;
-  m_bAbort      = false;
-  m_flush       = false;
-  m_flush_requested = false;
-  m_cached_size = 0;
-  m_pAudioCodec = NULL;
+  if(!SetActiveStream(active_stream))
+    throw "OMXPlayerAudio Error: Invalid stream index";
 
-  m_player_ok = OpenAudioCodec();
-  if(!m_player_ok)
-  {
-    Close();
-    return false;
-  }
+  if(!OpenAudioCodec())
+    throw "OMXPlayerAudio Error: Failed to open audio codec";
 
-  m_player_ok = OpenDecoder();
-  if(!m_player_ok)
-  {
-    Close();
-    return false;
-  }
+  if(!OpenDecoder())
+    throw "OMXPlayerAudio Error: Failed to open audio decoder";
 
   if(m_config.use_thread)
     Create();
-
-  m_open        = true;
-
-  return true;
-}
-
-bool OMXPlayerAudio::Close()
-{
-  m_bAbort  = true;
-
-  Flush();
-
-  if(ThreadHandle())
-  {
-    Lock();
-    pthread_cond_broadcast(&m_packet_cond);
-    UnLock();
-
-    StopThread();
-  }
-
-  CloseDecoder();
-  CloseAudioCodec();
-
-  m_open          = false;
-  m_iCurrentPts   = AV_NOPTS_VALUE;
-  m_pStream       = NULL;
-
-  return true;
 }
 
 int OMXPlayerAudio::GetActiveStream()
@@ -148,13 +113,11 @@ int OMXPlayerAudio::GetActiveStream()
 
 bool OMXPlayerAudio::SetActiveStream(int new_index)
 {
-  bool ret = true;
-
-  if(new_index < 0) ret = false;
-  else if(new_index >= m_stream_count) ret = false;
+  if(new_index < 0) return false;
+  else if(new_index >= m_stream_count) return false;
   else m_stream_index = new_index;
 
-  return ret;
+  return true;
 }
 
 int OMXPlayerAudio::SetActiveStreamDelta(int delta)
@@ -395,10 +358,6 @@ bool OMXPlayerAudio::IsPassthrough(COMXStreamInfo hints)
 
 bool OMXPlayerAudio::OpenDecoder()
 {
-  bool bAudioRenderOpen = false;
-
-  m_decoder = new COMXAudio();
-
   if(m_config.passthrough)
     m_passthrough = IsPassthrough(m_config.hints);
 
@@ -408,29 +367,29 @@ bool OMXPlayerAudio::OpenDecoder()
   if(m_passthrough)
     m_hw_decode = false;
 
-  bAudioRenderOpen = m_decoder->Initialize(m_av_clock, m_config, m_pAudioCodec->GetChannelMap(), m_pAudioCodec->GetBitsPerSample());
-
   m_codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, m_stream_index);
 
-  if(!bAudioRenderOpen)
+  try {
+    m_decoder = new COMXAudio(m_av_clock, m_config, m_pAudioCodec->GetChannelMap(), m_pAudioCodec->GetBitsPerSample());
+  }
+  catch(const char *msg)
   {
-    delete m_decoder; 
+	puts(msg);
     m_decoder = NULL;
     return false;
   }
+
+  if(m_passthrough)
+  {
+    printf("Audio codec %s passthrough channels %d samplerate %d bitspersample %d\n",
+      m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
+  }
   else
   {
-    if(m_passthrough)
-    {
-      printf("Audio codec %s passthrough channels %d samplerate %d bitspersample %d\n",
-        m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
-    }
-    else
-    {
-      printf("Audio codec %s channels %d samplerate %d bitspersample %d\n",
-        m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
-    }
+    printf("Audio codec %s channels %d samplerate %d bitspersample %d\n",
+      m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
   }
+
   // setup current volume settings
   m_decoder->SetVolume(m_CurrentVolume);
   m_decoder->SetMute(m_mute);

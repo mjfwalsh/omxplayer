@@ -30,22 +30,23 @@
 
 class OMXClock;
 class OMXPacket;
+class SubtitleRenderer;
 
 class OMXPlayerSubtitles : public OMXThread
 {
 public:
   OMXPlayerSubtitles(const OMXPlayerSubtitles&) = delete;
   OMXPlayerSubtitles& operator=(const OMXPlayerSubtitles&) = delete;
-  OMXPlayerSubtitles();
+
   ~OMXPlayerSubtitles();
 
-  bool Init(int display,
-            int layer,
-            float font_size,
-            bool centered,
-            bool ghost_box,
-            unsigned int lines,
-            OMXClock* clock);
+  OMXPlayerSubtitles(int display,
+                     int layer,
+                     float font_size,
+                     bool centered,
+                     bool ghost_box,
+                     unsigned int lines,
+                     OMXClock* clock);
 
   bool Open(size_t stream_count, std::string &external_subtitle_path);
 
@@ -104,12 +105,7 @@ private:
   int                                           m_stream_count = 0;
   int                                           m_delay;
   std::atomic<bool>                             m_thread_stopped;
-  float                                         m_font_size;
-  bool                                          m_centered;
-  bool                                          m_ghost_box;
-  unsigned int                                  m_lines;
+  SubtitleRenderer                              *m_renderer;
   OMXClock*                                     m_av_clock;
-  int                                           m_display;
-  int                                           m_layer;
   uint32_t                                      *m_palette = NULL;
 };

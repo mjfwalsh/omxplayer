@@ -34,13 +34,19 @@ m_last_media_time(0),
 m_last_media_time_read(0)
 {
   pthread_mutex_init(&m_lock, NULL);
+
+  if(!m_omx_clock.Initialize("OMX.broadcom.clock", OMX_IndexParamOtherInit))
+    throw "Failed to initialise media clock";
 }
 
 OMXClock::~OMXClock()
 {
   OMXStop();
   OMXStateIdle();
-  OMXDeinitialize();
+
+  if(m_omx_clock.GetComponent() != NULL)
+    m_omx_clock.Deinitialize();
+
   pthread_mutex_destroy(&m_lock);
 }
 
@@ -107,27 +113,6 @@ bool OMXClock::OMXSetReferenceClock(bool has_audio, bool lock /* = true */)
     UnLock();
 
   return ret;
-}
-
-bool OMXClock::OMXInitialize()
-{
-  m_pause       = false;
-
-  if(!m_omx_clock.Initialize("OMX.broadcom.clock", OMX_IndexParamOtherInit))
-    return false;
-
-  return true;
-}
-
-void OMXClock::OMXDeinitialize()
-{
-  if(m_omx_clock.GetComponent() == NULL)
-    return;
-
-  m_omx_clock.Deinitialize();
-
-  m_omx_speed = DVD_PLAYSPEED_NORMAL;
-  m_last_media_time = 0;
 }
 
 bool OMXClock::OMXStateExecute(bool lock /* = true */)

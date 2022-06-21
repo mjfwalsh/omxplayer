@@ -39,9 +39,10 @@ protected:
   std::string (*get_filename)();
 public:
   ~OMXControl();
-  void init(OMXClock *av_clock, OMXPlayerAudio *player_audio, OMXPlayerSubtitles *player_subtitles, std::string (*filename)());
+  void init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string (*filename)());
   bool connect(std::string& dbus_name);
   void set_reader(OMXReader *omx_reader);
+  void set_audio(OMXPlayerAudio *player_audio);
   OMXControlResult getEvent();
 private:
   void dispatch();

@@ -45,27 +45,25 @@ class OMXPlayerAudio : public OMXThread
 protected:
   AVStream                  *m_pStream           = NULL;
   std::deque<OMXPacket *>   m_packets;
-  bool                      m_open               = false;
-  COMXStreamInfo            m_hints;
-  int64_t                   m_iCurrentPts;
+  int64_t                   m_iCurrentPts        = AV_NOPTS_VALUE;
   pthread_cond_t            m_packet_cond;
   pthread_cond_t            m_audio_cond;
   pthread_mutex_t           m_lock_decoder;
-  OMXClock                  *m_av_clock          = NULL;
-  OMXReader                 *m_omx_reader        = NULL;
+  OMXClock                  *m_av_clock;
+  OMXReader                 *m_omx_reader;
   COMXAudio                 *m_decoder           = NULL;
   std::atomic<int>          m_stream_index;
   int                       m_stream_count;
   std::string               m_codec_name;
   std::string               m_device;
-  bool                      m_passthrough;
-  bool                      m_hw_decode;
+  bool                      m_passthrough        = false;
+  bool                      m_hw_decode          = false;
   bool                      m_flush              = false;
   std::atomic<bool>         m_flush_requested;
   unsigned int              m_cached_size        = 0;
   OMXAudioConfig            m_config;
   COMXAudioCodecOMX         *m_pAudioCodec       = NULL;
-  float                     m_CurrentVolume      = 0.0f;
+  float                     m_CurrentVolume      = 1.0f;
   long                      m_amplification      = 0;
   bool                      m_mute               = false;
   bool                      m_player_ok          = true;
@@ -76,10 +74,8 @@ protected:
   void UnLockDecoder();
 private:
 public:
-  OMXPlayerAudio();
+  OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int active_stream);
   ~OMXPlayerAudio();
-  bool Open(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader);
-  bool Close();
   bool Decode(OMXPacket *pkt);
   void Process() override;
   void Flush();

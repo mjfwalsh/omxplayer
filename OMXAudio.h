@@ -72,14 +72,12 @@ public:
   float GetCacheTotal();
   unsigned int GetAudioRenderingLatency();
   float GetMaxLevel(int64_t &pts);
-  COMXAudio();
-  bool Initialize(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample);
+  COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample);
   ~COMXAudio();
   bool PortSettingsChanged();
 
   bool AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size);
   unsigned int GetSpace();
-  bool Deinitialize();
 
   void SetVolume(float nVolume);
   float GetVolume();
@@ -105,7 +103,6 @@ public:
   uint64_t GetChannelLayout(enum PCMLayout layout);
 
 private:
-  bool          m_Initialized;
   float         m_CurrentVolume;
   bool          m_Mute;
   unsigned int  m_BytesPerSec;
