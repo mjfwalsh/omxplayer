@@ -275,7 +275,7 @@ static void FlushStreams(int64_t pts)
   m_av_clock->OMXPause();
 
   if(m_has_video)
-    m_player_video.Flush();
+    m_player_video.Reset();
 
   if(m_has_audio)
     m_player_audio->Flush();
@@ -1524,9 +1524,6 @@ int run_play_loop()
     {
       int64_t seek_pos     = 0;
 
-      if(m_has_subtitle)
-        m_player_subtitles->Pause();
-
       if (!chapter_seek)
       {
         int64_t pts = m_av_clock->OMXMediaTime();
@@ -1548,16 +1545,10 @@ int run_play_loop()
       if (m_omx_reader->IsEof())
         return END_PLAY;
 
-      // Quick reset to reduce delay during loop & seek.
-      if (m_has_video && !m_player_video.Reset())
-        return exit_with_message("Failed to open video out");
-
       CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
 
       m_av_clock->OMXPause();
 
-      if(m_has_subtitle)
-        m_player_subtitles->Resume();
       m_seek_flush = false;
       m_incr = 0;
     }
@@ -1582,7 +1573,7 @@ int run_play_loop()
       {
         static int count;
         if ((count++ & 7) == 0)
-          printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %6.02fs/%6.02fs Cv:%6uk Ca:%6uk                            \r", stamp,
+          printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %llds/%llds Cv:%6uk Ca:%6uk                            \r", stamp,
                video_fifo, (m_player_video.GetDecoderBufferSize()-m_player_video.GetDecoderFreeSpace())>>10, m_player_video.GetDecoderBufferSize()>>10,
                audio_fifo, m_player_audio->GetDelay(), m_player_audio->GetCacheTotal(),
                m_player_video.GetCached()>>10, m_player_audio->GetCached()>>10);

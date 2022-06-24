@@ -406,7 +406,7 @@ bool OMXPlayerAudio::CloseDecoder()
   return true;
 }
 
-double OMXPlayerAudio::GetDelay()
+int64_t OMXPlayerAudio::GetDelay()
 {
   if(m_decoder)
     return m_decoder->GetDelay();
@@ -414,7 +414,7 @@ double OMXPlayerAudio::GetDelay()
     return 0;
 }
 
-double OMXPlayerAudio::GetCacheTime()
+int64_t OMXPlayerAudio::GetCacheTime()
 {
   if(m_decoder)
     return m_decoder->GetCacheTime();
@@ -422,7 +422,7 @@ double OMXPlayerAudio::GetCacheTime()
     return 0;
 }
 
-double OMXPlayerAudio::GetCacheTotal()
+int64_t OMXPlayerAudio::GetCacheTotal()
 {
   if(m_decoder)
     return m_decoder->GetCacheTotal();

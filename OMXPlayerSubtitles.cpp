@@ -315,7 +315,7 @@ void OMXPlayerSubtitles::RenderLoop()
           }
           prev_now = INT_MAX;
           break;
-        case Mailbox::CLEAR_INTERNAL_SUBS:
+        case Mailbox::FLUSH:
           internal_subtitles.clear();
           prev_now = INT_MAX;
           break;
@@ -326,9 +326,6 @@ void OMXPlayerSubtitles::RenderLoop()
             internal_subtitles.clear();
             prev_now = INT_MAX;
           }
-          break;
-        case Mailbox::UNSET_TIME:
-          prev_now = INT_MAX;
           break;
         case Mailbox::SET_PAUSED:
           {
@@ -411,7 +408,10 @@ void OMXPlayerSubtitles::RenderLoop()
 
 void OMXPlayerSubtitles::Flush()
 {
-  SendToRenderer(new Mailbox::UnsetTime());
+  for(auto &q : m_subtitle_buffers)
+    q.clear();
+
+  SendToRenderer(new Mailbox::Flush());
 }
 
 void OMXPlayerSubtitles::Resume()
@@ -465,7 +465,7 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index)
     if(m_active_index == m_external_subtitle_stream)
       SendToRenderer(new Mailbox::ToggleExternalSubs(false));
     else
-      SendToRenderer(new Mailbox::ClearInternalSubs());
+      SendToRenderer(new Mailbox::Flush());
 
     m_visible = false;
     return -1;

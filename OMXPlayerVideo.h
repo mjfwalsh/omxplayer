@@ -36,12 +36,10 @@ struct AVStream;
 class OMXPlayerVideo : public OMXThread
 {
 protected:
-  AVStream                  *m_pStream = NULL;
   std::deque<OMXPacket *>   m_packets;
   bool                      m_open = false;
   int64_t                   m_iCurrentPts = 0;
   pthread_cond_t            m_packet_cond;
-  pthread_cond_t            m_picture_cond;
   pthread_mutex_t           m_lock_decoder;
   OMXClock                  *m_av_clock = NULL;
   COMXVideo                 *m_decoder = NULL;
@@ -49,7 +47,7 @@ protected:
   bool                      m_flush = false;
   std::atomic<bool>         m_flush_requested;
   unsigned int              m_cached_size = 0;
-  double                    m_iVideoDelay = 0;
+  int64_t                   m_iVideoDelay = 0;
   OMXVideoConfig            m_config;
 
   void Lock();
@@ -79,8 +77,8 @@ public:
   void SubmitEOS();
   void SubmitEOSInternal();
   bool IsEOS();
-  void SetDelay(double delay) { m_iVideoDelay = delay; }
-  double GetDelay() { return m_iVideoDelay; }
+  void SetDelay(int64_t delay) { m_iVideoDelay = delay; }
+  int64_t GetDelay() { return m_iVideoDelay; }
   void SetAlpha(int alpha);
   void SetLayer(int layer);
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);

@@ -88,9 +88,9 @@ public:
   bool IsPassthrough(COMXStreamInfo hints);
   bool OpenDecoder();
   bool CloseDecoder();
-  double GetDelay();
-  double GetCacheTime();
-  double GetCacheTotal();
+  int64_t GetDelay();
+  int64_t GetCacheTime();
+  int64_t GetCacheTotal();
   int64_t GetCurrentPTS() { return m_iCurrentPts; };
   void SubmitEOS();
   void SubmitEOSInternal();

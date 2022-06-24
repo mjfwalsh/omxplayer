@@ -50,7 +50,7 @@ class OMXDvdPlayer;
 class OMXPacket : public AVPacket
 {
   public: 
-  OMXPacket(AVFormatContext *format_context);
+  explicit OMXPacket(AVFormatContext *format_context);
   ~OMXPacket();
   
   COMXStreamInfo hints;

@@ -29,6 +29,7 @@
 #include "utils/SingleLock.h"
 
 class OMXClock;
+class OMXPacket;
 
 #define VIDEO_BUFFERS 60
 
@@ -74,7 +75,7 @@ public:
   bool PortSettingsChanged();
   void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
   unsigned int GetFreeSpace();
-  int  Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts);
+  bool  Decode(OMXPacket *pkt);
   void Reset(void);
   std::string GetDecoderName() { return m_video_codec_name; };
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);

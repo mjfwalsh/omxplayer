@@ -38,9 +38,8 @@ public:
     REMOVE_DVD_SUBS,
     PUSH,
     SEND_INTERNAL_SUBS,
-    CLEAR_INTERNAL_SUBS,
+    FLUSH,
     TOGGLE_EXTERNAL_SUBS,
-    UNSET_TIME,
     SET_PAUSED,
     SET_DELAY,
     DISPLAY_TEXT,
@@ -50,7 +49,7 @@ public:
 
   class Item {
     public:
-    Item(const enum Type &t) : type(t), next(NULL) {};
+    explicit Item(const enum Type &t) : type(t), next(NULL) {};
 
     enum Type type;
     Item *next;
@@ -69,7 +68,7 @@ public:
   class Push : public Item
   {
     public:
-    Push(Subtitle &s) : Item(PUSH), subtitle(s) {};
+    explicit Push(Subtitle &s) : Item(PUSH), subtitle(s) {};
 
     Subtitle subtitle;
   };
@@ -80,33 +79,29 @@ public:
 
     std::vector<Subtitle> subtitles;
   };
-  class ClearInternalSubs : public Item
+  class Flush : public Item
   {
     public:
-    ClearInternalSubs() : Item(CLEAR_INTERNAL_SUBS) {};
+    Flush() : Item(FLUSH) {};
   };
   class ToggleExternalSubs : public Item
   {
     public:
-    ToggleExternalSubs(bool v) : Item(TOGGLE_EXTERNAL_SUBS), visible(v) {};
+    explicit ToggleExternalSubs(bool v) : Item(TOGGLE_EXTERNAL_SUBS), visible(v) {};
 
     bool visible;
-  };
-  class UnsetTime  : public Item {
-    public:
-    UnsetTime() : Item(UNSET_TIME) {};
   };
   class SetPaused : public Item
   {
     public:
-    SetPaused(bool v) : Item(SET_PAUSED), value(v) {};
+    explicit SetPaused(bool v) : Item(SET_PAUSED), value(v) {};
 
     bool value;
   };
   class SetDelay : public Item
   {
     public:
-    SetDelay(bool v) : Item(SET_DELAY), value(v) {};
+    explicit SetDelay(bool v) : Item(SET_DELAY), value(v) {};
 
     int value;
   };

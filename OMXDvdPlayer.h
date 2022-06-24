@@ -9,7 +9,7 @@ class DVD;
 class OMXDvdPlayer
 {
   public:
-	OMXDvdPlayer(const std::string &filename);
+	explicit OMXDvdPlayer(const std::string &filename);
 	~OMXDvdPlayer();
 
 	OMXDvdPlayer(const OMXDvdPlayer&) = delete;

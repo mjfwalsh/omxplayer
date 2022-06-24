@@ -67,9 +67,9 @@ public:
     ENCODED_IEC61937_UNKNOWN,
   };
 
-  float GetDelay();
-  float GetCacheTime();
-  float GetCacheTotal();
+  int64_t GetDelay();
+  int64_t GetCacheTime();
+  int64_t GetCacheTotal();
   unsigned int GetAudioRenderingLatency();
   float GetMaxLevel(int64_t &pts);
   COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample);
@@ -106,7 +106,7 @@ private:
   float         m_CurrentVolume;
   bool          m_Mute;
   unsigned int  m_BytesPerSec;
-  unsigned int  m_InputBytesPerSec;
+  float         m_InputBytesPerMicrosec;
   unsigned int  m_BufferLen;
   unsigned int  m_ChunkLen;
   unsigned int  m_InputChannels;

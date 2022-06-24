@@ -21,6 +21,7 @@
 
 #include "OMXVideo.h"
 #include "OMXClock.h"
+#include "OMXReader.h"
 
 #include "OMXStreamInfo.h"
 #include "utils/log.h"
@@ -670,7 +671,7 @@ unsigned int COMXVideo::GetFreeSpace()
   return m_omx_decoder.GetInputBufferSpace();
 }
 
-int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
+bool COMXVideo::Decode(OMXPacket *pkt)
 {
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
@@ -678,25 +679,22 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
   if( m_drop_state)
     return true;
 
-  unsigned int demuxer_bytes = (unsigned int)iSize;
-  uint8_t *demuxer_content = pData;
-
-  if (demuxer_content && demuxer_bytes > 0)
+  if (pkt->data && pkt->size > 0)
   {
     OMX_U32 nFlags = 0;
 
     if(m_setStartTime)
     {
       nFlags |= OMX_BUFFERFLAG_STARTTIME;
-      CLogLog(LOGDEBUG, "OMXVideo::Decode VDec : setStartTime %f", (pts == AV_NOPTS_VALUE ? 0.0 : (double)pts) / AV_TIME_BASE);
+      CLogLog(LOGDEBUG, "OMXVideo::Decode VDec : setStartTime %f", (pkt->pts == AV_NOPTS_VALUE ? 0.0 : (double)pkt->pts) / AV_TIME_BASE);
       m_setStartTime = false;
     }
-    if (pts == AV_NOPTS_VALUE && dts == AV_NOPTS_VALUE)
+    if (pkt->pts == AV_NOPTS_VALUE && pkt->dts == AV_NOPTS_VALUE)
       nFlags |= OMX_BUFFERFLAG_TIME_UNKNOWN;
-    else if (pts == AV_NOPTS_VALUE)
+    else if (pkt->pts == AV_NOPTS_VALUE)
       nFlags |= OMX_BUFFERFLAG_TIME_IS_DTS;
 
-    while(demuxer_bytes)
+    while(pkt->size)
     {
       // 500ms timeout
       OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(500);
@@ -709,14 +707,14 @@ int COMXVideo::Decode(uint8_t *pData, int iSize, int64_t dts, int64_t pts)
 
       omx_buffer->nFlags = nFlags;
       omx_buffer->nOffset = 0;
-      omx_buffer->nTimeStamp = ToOMXTime((uint64_t)(pts != AV_NOPTS_VALUE ? pts : dts != AV_NOPTS_VALUE ? dts : 0));
-      omx_buffer->nFilledLen = std::min((OMX_U32)demuxer_bytes, omx_buffer->nAllocLen);
-      memcpy(omx_buffer->pBuffer, demuxer_content, omx_buffer->nFilledLen);
+      omx_buffer->nTimeStamp = ToOMXTime((uint64_t)(pkt->pts != AV_NOPTS_VALUE ? pkt->pts : pkt->dts != AV_NOPTS_VALUE ? pkt->dts : 0));
+      omx_buffer->nFilledLen = std::min((OMX_U32)pkt->size, omx_buffer->nAllocLen);
+      memcpy(omx_buffer->pBuffer, pkt->data, omx_buffer->nFilledLen);
 
-      demuxer_bytes -= omx_buffer->nFilledLen;
-      demuxer_content += omx_buffer->nFilledLen;
+      pkt->size -= omx_buffer->nFilledLen;
+      pkt->data += omx_buffer->nFilledLen;
 
-      if(demuxer_bytes == 0)
+      if(pkt->size == 0)
         omx_buffer->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
 
       omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);

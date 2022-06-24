@@ -415,7 +415,7 @@ OMXPacket *OMXReader::Read()
 
   m_omx_pkt->dts = ConvertTimestamp(m_omx_pkt->dts, pStream->time_base.den, pStream->time_base.num);
   m_omx_pkt->pts = ConvertTimestamp(m_omx_pkt->pts, pStream->time_base.den, pStream->time_base.num);
-  m_omx_pkt->duration = DVD_SEC_TO_MICROSEC((double)m_omx_pkt->duration * pStream->time_base.num / pStream->time_base.den);
+  m_omx_pkt->duration = AV_TIME_BASE * m_omx_pkt->duration * pStream->time_base.num / pStream->time_base.den;
 
   return m_omx_pkt;
 }
@@ -803,7 +803,7 @@ double OMXReader::NormalizeFrameduration(double frameduration)
   for (size_t i = 0; i < sizeof(durations) / sizeof(durations[0]); i++)
   {
     double diff = fabs(frameduration - durations[i]);
-    if (diff < DVD_MILLISEC_TO_SEC(0.02) && diff < lowestdiff)
+    if (diff < 20.0 && diff < lowestdiff)
     {
       selected = i;
       lowestdiff = diff;

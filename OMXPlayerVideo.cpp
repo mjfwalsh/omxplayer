@@ -38,7 +38,6 @@ OMXPlayerVideo::OMXPlayerVideo()
 m_flush_requested(false)
 {
   pthread_cond_init(&m_packet_cond, NULL);
-  pthread_cond_init(&m_picture_cond, NULL);
   pthread_mutex_init(&m_lock, NULL);
   pthread_mutex_init(&m_lock_decoder, NULL);
 }
@@ -48,7 +47,6 @@ OMXPlayerVideo::~OMXPlayerVideo()
   Close();
 
   pthread_cond_destroy(&m_packet_cond);
-  pthread_cond_destroy(&m_picture_cond);
   pthread_mutex_destroy(&m_lock);
   pthread_mutex_destroy(&m_lock_decoder);
 }
@@ -115,7 +113,6 @@ bool OMXPlayerVideo::Reset()
   // Open calls but does away with the DLL unloading/loading, decoder reset, and
   // thread reset.
   Flush();   
-  m_pStream           = NULL;
   m_iCurrentPts       = AV_NOPTS_VALUE;
   m_bAbort            = false;
   m_flush             = false;
@@ -149,7 +146,6 @@ bool OMXPlayerVideo::Close()
 
   m_open          = false;
   m_iCurrentPts   = AV_NOPTS_VALUE;
-  m_pStream       = NULL;
 
   return true;
 }
@@ -176,20 +172,14 @@ void OMXPlayerVideo::SetVideoRect(int aspectMode)
 
 bool OMXPlayerVideo::Decode(OMXPacket *pkt)
 {
-  if(!pkt)
-    return false;
+  if (pkt->dts != AV_NOPTS_VALUE)
+    pkt->dts += m_iVideoDelay;
 
-  int64_t dts = pkt->dts;
-  int64_t pts = pkt->pts;
-
-  if (dts != AV_NOPTS_VALUE)
-    dts += m_iVideoDelay;
-
-  if (pts != AV_NOPTS_VALUE)
-    pts += m_iVideoDelay;
-
-  if(pts != AV_NOPTS_VALUE)
-    m_iCurrentPts = pts;
+  if (pkt->pts != AV_NOPTS_VALUE)
+  {
+    pkt->pts += m_iVideoDelay;
+    m_iCurrentPts = pkt->pts;
+  }
 
   while((int) m_decoder->GetFreeSpace() < pkt->size)
   {
@@ -198,7 +188,7 @@ bool OMXPlayerVideo::Decode(OMXPacket *pkt)
   }
 
   CLogLog(LOGINFO, "CDVDPlayerVideo::Decode dts:%lld pts:%lld cur:%lld, size:%d", pkt->dts, pkt->pts, m_iCurrentPts, pkt->size);
-  m_decoder->Decode(pkt->data, pkt->size, dts, pts);
+  m_decoder->Decode(pkt);
   return true;
 }
 

@@ -38,7 +38,7 @@
 
 template <typename T>
 struct Lock_block {
-  Lock_block(T& mutex): lock(mutex) {}
+  explicit Lock_block(T& mutex): lock(mutex) {}
   operator bool() {return true;}
   std::lock_guard<T> lock;
 };

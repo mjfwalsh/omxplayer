@@ -52,7 +52,7 @@ protected:
 class CSingleLock
 {
 public:
-  inline CSingleLock(CCriticalSection& cs) : m_section(cs) { m_section.Lock(); }
+  explicit inline CSingleLock(CCriticalSection& cs) : m_section(cs) { m_section.Lock(); }
   inline ~CSingleLock()                    { m_section.Unlock(); }
 
 protected:

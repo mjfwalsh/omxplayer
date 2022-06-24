@@ -423,7 +423,8 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
 
   m_BytesPerSec   = m_config.hints.samplerate * 2 << rounded_up_channels_shift[m_InputChannels];
   m_BufferLen     = m_BytesPerSec * AUDIO_BUFFER_SECONDS;
-  m_InputBytesPerSec = m_config.hints.samplerate * m_BitsPerSample * m_InputChannels >> 3;
+  unsigned int InputBytesPerSec = m_config.hints.samplerate * m_BitsPerSample * m_InputChannels >> 3;
+  m_InputBytesPerMicrosec = (float)InputBytesPerSec / AV_TIME_BASE;
 
   // should be big enough that common formats (e.g. 6 channel DTS) fit in a single packet.
   // we don't mind less common formats being split (e.g. ape/wma output large frames)
@@ -609,8 +610,8 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   m_submitted     = 0.0f;
   m_maxLevel      = 0.0f;
 
-  CLogLog(LOGDEBUG, "COMXAudio::Initialize Input bps %d samplerate %d channels %d buffer size %d bytes per second %d",
-      (int)m_pcm_input.nBitPerSample, (int)m_pcm_input.nSamplingRate, (int)m_pcm_input.nChannels, m_BufferLen, m_InputBytesPerSec);
+  CLogLog(LOGDEBUG, "COMXAudio::Initialize Input bps %d samplerate %d channels %d buffer size %d bytes per microsecond %d",
+      (int)m_pcm_input.nBitPerSample, (int)m_pcm_input.nSamplingRate, (int)m_pcm_input.nChannels, m_BufferLen, (int)((float)m_InputBytesPerMicrosec * (float)AV_TIME_BASE));
   PrintPCM(&m_pcm_input, std::string("input"));
   CLogLog(LOGDEBUG, "COMXAudio::Initialize device %s passthrough %d hwdecode %d",
       m_config.device.c_str(), m_config.passthrough, m_config.hwdecode);
@@ -922,7 +923,7 @@ void COMXAudio::UpdateAttenuation()
   {
     amplitudes_t &v = m_ampqueue.front();
     /* we'll also consume if queue gets unexpectedly long to avoid filling memory */
-    if (v.pts == AV_NOPTS_VALUE || v.pts < stamp || v.pts - stamp > DVD_SEC_TO_MICROSEC(15.0))
+    if (v.pts == AV_NOPTS_VALUE || v.pts < stamp || v.pts - stamp > 15000000)
       m_ampqueue.pop_front();
     else break;
   }
@@ -932,7 +933,7 @@ void COMXAudio::UpdateAttenuation()
     amplitudes_t &v = m_ampqueue[i];
     maxlevel = std::max(maxlevel, v.level);
     // check for maximum volume in next 200ms
-    if (v.pts != AV_NOPTS_VALUE && v.pts < stamp + DVD_SEC_TO_MICROSEC(0.2))
+    if (v.pts != AV_NOPTS_VALUE && v.pts < stamp + 200000)
       imminent_maxlevel = std::max(imminent_maxlevel, v.level);
   }
 
@@ -976,37 +977,33 @@ unsigned int COMXAudio::GetSpace()
   return free;
 }
 
-float COMXAudio::GetDelay()
+int64_t COMXAudio::GetDelay()
 {
   CSingleLock lock (m_critSection);
   int64_t stamp = AV_NOPTS_VALUE;
-  double ret = 0.0;
   if (m_last_pts != AV_NOPTS_VALUE && m_av_clock)
     stamp = m_av_clock->OMXMediaTime();
   // if possible the delay is current media time - time of last submitted packet
   if (stamp != AV_NOPTS_VALUE)
   {
-    ret = (m_last_pts - stamp) * (1.0 / AV_TIME_BASE);
-    //CLogLog(LOGINFO, "%s::%s - %.2f %.0f %.0f", CLASSNAME, __func__, ret, stamp, m_last_pts);
+    return stamp - m_last_pts;
   }
   else // just measure the input fifo
   {
     unsigned int used = m_omx_decoder.GetInputBufferSize() - m_omx_decoder.GetInputBufferSpace();
-    ret = m_InputBytesPerSec ? (float)used / (float)m_InputBytesPerSec : 0.0f;
-    //CLogLog(LOGINFO, "%s::%s - %.2f %d, %d, %d", CLASSNAME, __func__, ret, used, m_omx_decoder.GetInputBufferSize(), m_omx_decoder.GetInputBufferSpace());
+    return m_InputBytesPerMicrosec ? (float)used / (float)m_InputBytesPerMicrosec : 0.0f;
   }
-  return ret;
 }
 
-float COMXAudio::GetCacheTime()
+int64_t COMXAudio::GetCacheTime()
 {
   return GetDelay();
 }
 
-float COMXAudio::GetCacheTotal()
+int64_t COMXAudio::GetCacheTotal()
 {
   float audioplus_buffer = m_config.hints.samplerate ? 32.0f * 512.0f / m_config.hints.samplerate : 0.0f;
-  float input_buffer = m_InputBytesPerSec ? (float)m_omx_decoder.GetInputBufferSize() / (float)m_InputBytesPerSec : 0;
+  float input_buffer = m_InputBytesPerMicrosec ? (float)m_omx_decoder.GetInputBufferSize() / (float)m_InputBytesPerMicrosec : 0;
   return AUDIO_BUFFER_SECONDS + input_buffer + audioplus_buffer;
 }
 

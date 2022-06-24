@@ -24,9 +24,6 @@
 
 #include "OMXCore.h"
 
-#define DVD_SEC_TO_MICROSEC(x) ((x)       * 1000000)
-#define DVD_MILLISEC_TO_SEC(x) ((double)(x)       * 1000)
-
 #define DVD_PLAYSPEED_PAUSE       0       // frame stepping
 #define DVD_PLAYSPEED_NORMAL      1000
 
