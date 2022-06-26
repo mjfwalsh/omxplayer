@@ -37,11 +37,9 @@ class OMXPlayerVideo : public OMXThread
 {
 protected:
   std::deque<OMXPacket *>   m_packets;
-  bool                      m_open = false;
   int64_t                   m_iCurrentPts = 0;
   pthread_cond_t            m_packet_cond;
   pthread_mutex_t           m_lock_decoder;
-  OMXClock                  *m_av_clock = NULL;
   COMXVideo                 *m_decoder = NULL;
   float                     m_fps = 25.0f;
   bool                      m_flush = false;
@@ -54,19 +52,14 @@ protected:
   void UnLock();
   void LockDecoder();
   void UnLockDecoder();
-private:
 public:
-  OMXPlayerVideo();
+  OMXPlayerVideo(OMXClock *av_clock, const OMXVideoConfig &config);
   ~OMXPlayerVideo();
-  bool Open(OMXClock *av_clock, const OMXVideoConfig &config);
-  bool Close();
-  bool Reset();
+  void Reset();
   bool Decode(OMXPacket *pkt);
   void Process() override;
   void Flush();
   bool AddPacket(OMXPacket *pkt);
-  bool OpenDecoder();
-  bool CloseDecoder();
   int  GetDecoderBufferSize();
   int  GetDecoderFreeSpace();
   int64_t GetCurrentPTS() { return m_iCurrentPts; };
@@ -83,6 +76,8 @@ public:
   void SetLayer(int layer);
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
-
+private:
+  OMXPlayerVideo(const OMXPlayerVideo&) = delete;
+  OMXPlayerVideo& operator=(const OMXPlayerVideo&) = delete;
 };
 #endif

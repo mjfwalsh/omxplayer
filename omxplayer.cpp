@@ -67,7 +67,7 @@ OMXAudioConfig    m_config_audio;
 OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
 int               m_subtitle_index      = -1;
-OMXPlayerVideo    m_player_video;
+OMXPlayerVideo    *m_player_video;
 OMXPlayerAudio    *m_player_audio;
 OMXPlayerSubtitles  *m_player_subtitles;
 bool              m_has_video           = false;
@@ -275,7 +275,7 @@ static void FlushStreams(int64_t pts)
   m_av_clock->OMXPause();
 
   if(m_has_video)
-    m_player_video.Reset();
+    m_player_video->Reset();
 
   if(m_has_audio)
     m_player_audio->Flush();
@@ -1145,8 +1145,13 @@ int run_play_loop()
     if(m_orientation >= 0)
       m_config_video.hints.orientation = m_orientation;
 
-    if(!m_player_video.Open(m_av_clock, m_config_video))
-      return exit_with_message("Failed to open video");
+    try {
+      m_player_video = new OMXPlayerVideo(m_av_clock, m_config_video);
+    }
+    catch(const char *msg)
+    {
+      return exit_with_message(msg);
+    }
   }
 
   /* -------------------------------------------------------
@@ -1452,10 +1457,10 @@ int run_play_loop()
         m_incr = (result.getArg() - m_av_clock->OMXMediaTime()) * 1e-6;
         break;
       case KeyConfig::ACTION_SET_ALPHA:
-        m_player_video.SetAlpha(result.getArg());
+        m_player_video->SetAlpha(result.getArg());
         break;
       case KeyConfig::ACTION_SET_LAYER:
-        m_player_video.SetLayer(result.getArg());
+        m_player_video->SetLayer(result.getArg());
         break;
       case KeyConfig::ACTION_PLAY:
       case KeyConfig::ACTION_PAUSE:
@@ -1486,11 +1491,11 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_HIDE_VIDEO:
         // set alpha to minimum
-        m_player_video.SetAlpha(0);
+        m_player_video->SetAlpha(0);
         break;
       case KeyConfig::ACTION_UNHIDE_VIDEO:
         // set alpha to maximum
-        m_player_video.SetAlpha(255);
+        m_player_video->SetAlpha(255);
         break;
       case KeyConfig::ACTION_SET_ASPECT_MODE:
         if (result.getWinArg()) {
@@ -1502,7 +1507,7 @@ int run_play_loop()
             m_config_video.aspectMode = 3;
           else
             m_config_video.aspectMode = 0;
-          m_player_video.SetVideoRect(m_config_video.aspectMode);
+          m_player_video->SetVideoRect(m_config_video.aspectMode);
         }
         break;
       case KeyConfig::ACTION_DECREASE_VOLUME:
@@ -1562,7 +1567,7 @@ int run_play_loop()
       /* when the video/audio fifos are low, we pause clock, when high we resume */
       int64_t stamp = m_av_clock->OMXMediaTime();
       int64_t audio_pts = m_player_audio->GetCurrentPTS();
-      int64_t video_pts = m_player_video.GetCurrentPTS();
+      int64_t video_pts = m_player_video->GetCurrentPTS();
 
       float audio_fifo = audio_pts == AV_NOPTS_VALUE ? 0.0f : (audio_pts - stamp) * 1e-6;
       float video_fifo = video_pts == AV_NOPTS_VALUE ? 0.0f : (video_pts - stamp) * 1e-6;
@@ -1574,9 +1579,9 @@ int run_play_loop()
         static int count;
         if ((count++ & 7) == 0)
           printf("M:%lld V:%6.2fs %6dk/%6dk A:%6.2f %llds/%llds Cv:%6uk Ca:%6uk                            \r", stamp,
-               video_fifo, (m_player_video.GetDecoderBufferSize()-m_player_video.GetDecoderFreeSpace())>>10, m_player_video.GetDecoderBufferSize()>>10,
+               video_fifo, (m_player_video->GetDecoderBufferSize()-m_player_video->GetDecoderFreeSpace())>>10, m_player_video->GetDecoderBufferSize()>>10,
                audio_fifo, m_player_audio->GetDelay(), m_player_audio->GetCacheTotal(),
-               m_player_video.GetCached()>>10, m_player_audio->GetCached()>>10);
+               m_player_video->GetCached()>>10, m_player_audio->GetCached()>>10);
       }
 
       if (audio_pts != AV_NOPTS_VALUE)
@@ -1663,11 +1668,11 @@ int run_play_loop()
     if(m_omx_reader->IsEof() && !m_omx_pkt)
     {
       if (!m_send_eos && m_has_video)
-        m_player_video.SubmitEOS();
+        m_player_video->SubmitEOS();
       if (!m_send_eos && m_has_audio)
         m_player_audio->SubmitEOS();
       m_send_eos = true;
-      if ( (m_has_video && !m_player_video.IsEOS()) ||
+      if ( (m_has_video && !m_player_video->IsEOS()) ||
            (m_has_audio && !m_player_audio->IsEOS()) )
       {
         OMXClock::OMXSleep(10);
@@ -1692,7 +1697,7 @@ int run_play_loop()
     {
       if(m_has_video && m_omx_pkt->index == 0)
       {
-        if(m_player_video.AddPacket(m_omx_pkt))
+        if(m_player_video->AddPacket(m_omx_pkt))
           m_omx_pkt = NULL;
         else
           OMXClock::OMXSleep(10);
@@ -1756,14 +1761,16 @@ void end_of_play_loop()
   // flush streams
   FlushStreams(AV_NOPTS_VALUE);
 
+  delete m_player_video;
+  m_player_video = NULL;
+
+  delete m_player_audio;
+  m_player_audio = NULL;
+
   delete m_omx_reader;
   m_omx_reader = NULL;
 
   m_player_subtitles->Close();
-  m_player_video.Close();
-
-  delete m_player_audio;
-  m_player_audio = NULL;
 
   // stop seeking
   m_seek_flush = false;

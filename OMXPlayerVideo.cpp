@@ -33,18 +33,57 @@
 
 class Rect;
 
-OMXPlayerVideo::OMXPlayerVideo()
+OMXPlayerVideo::OMXPlayerVideo(OMXClock *av_clock, const OMXVideoConfig &config)
 :
-m_flush_requested(false)
+m_iCurrentPts(AV_NOPTS_VALUE),
+m_flush(false),
+m_flush_requested(false),
+m_cached_size(0),
+m_iVideoDelay(0),
+m_config(config)
 {
   pthread_cond_init(&m_packet_cond, NULL);
   pthread_mutex_init(&m_lock, NULL);
   pthread_mutex_init(&m_lock_decoder, NULL);
+
+  if (m_config.hints.fpsrate && m_config.hints.fpsscale)
+    m_fps = AV_TIME_BASE / OMXReader::NormalizeFrameduration((double)AV_TIME_BASE * m_config.hints.fpsscale / m_config.hints.fpsrate);
+  else
+    m_fps = 25.0;
+
+  m_bAbort = false;
+
+  if( m_fps > 100.0 || m_fps < 5.0 )
+  {
+    printf("Invalid framerate %f, using forced 25fps and just trust timestamps\n", m_fps);
+    m_fps = 25.0;
+  }
+
+  m_decoder = new COMXVideo(av_clock, m_config);
+
+  printf("Video codec %s width %d height %d profile %d fps %f\n",
+      m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
+
+  if(m_config.use_thread)
+    Create();
 }
 
 OMXPlayerVideo::~OMXPlayerVideo()
 {
-  Close();
+  m_bAbort  = true;
+
+  Flush();
+
+  if(ThreadHandle())
+  {
+    Lock();
+    pthread_cond_broadcast(&m_packet_cond);
+    UnLock();
+
+    StopThread();
+  }
+
+  delete m_decoder;
 
   pthread_cond_destroy(&m_packet_cond);
   pthread_mutex_destroy(&m_lock);
@@ -75,38 +114,7 @@ void OMXPlayerVideo::UnLockDecoder()
     pthread_mutex_unlock(&m_lock_decoder);
 }
 
-bool OMXPlayerVideo::Open(OMXClock *av_clock, const OMXVideoConfig &config)
-{
-  if (!av_clock)
-    return false;
-  
-  if(ThreadHandle())
-    Close();
-
-  m_config      = config;
-  m_av_clock    = av_clock;
-  m_fps         = 25.0f;
-  m_iCurrentPts = AV_NOPTS_VALUE;
-  m_bAbort      = false;
-  m_flush       = false;
-  m_cached_size = 0;
-  m_iVideoDelay = 0;
-
-  if(!OpenDecoder())
-  {
-    Close();
-    return false;
-  }
-
-  if(m_config.use_thread)
-    Create();
-
-  m_open        = true;
-
-  return true;
-}
-
-bool OMXPlayerVideo::Reset()
+void OMXPlayerVideo::Reset()
 {
   // Quick reset of internal state back to a default that is ready to play from
   // the start or a new position.  This replaces a combination of Close and then
@@ -114,40 +122,10 @@ bool OMXPlayerVideo::Reset()
   // thread reset.
   Flush();   
   m_iCurrentPts       = AV_NOPTS_VALUE;
-  m_bAbort            = false;
   m_flush             = false;
   m_flush_requested   = false;
   m_cached_size       = 0;
   m_iVideoDelay       = 0;
-
-  // Keep consistency with old Close/Open logic by continuing to return a bool
-  // with the success/failure of this call.  Although little can go wrong
-  // setting some variables, in the future this could indicate success/failure
-  // of the reset.  For now just return success (true).
-  return true;
-}
-
-bool OMXPlayerVideo::Close()
-{
-  m_bAbort  = true;
-
-  Flush();
-
-  if(ThreadHandle())
-  {
-    Lock();
-    pthread_cond_broadcast(&m_packet_cond);
-    UnLock();
-
-    StopThread();
-  }
-
-  CloseDecoder();
-
-  m_open          = false;
-  m_iCurrentPts   = AV_NOPTS_VALUE;
-
-  return true;
 }
 
 void OMXPlayerVideo::SetAlpha(int alpha)
@@ -264,8 +242,7 @@ void OMXPlayerVideo::Flush()
   }
   m_iCurrentPts = AV_NOPTS_VALUE;
   m_cached_size = 0;
-  if(m_decoder)
-    m_decoder->Reset();
+  m_decoder->Reset();
   UnLockDecoder();
   UnLock();
 }
@@ -291,56 +268,14 @@ bool OMXPlayerVideo::AddPacket(OMXPacket *pkt)
   return false;
 }
 
-
-bool OMXPlayerVideo::OpenDecoder()
-{
-  if (m_config.hints.fpsrate && m_config.hints.fpsscale)
-    m_fps = AV_TIME_BASE / OMXReader::NormalizeFrameduration((double)AV_TIME_BASE * m_config.hints.fpsscale / m_config.hints.fpsrate);
-  else
-    m_fps = 25;
-
-  if( m_fps > 100 || m_fps < 5 )
-  {
-    printf("Invalid framerate %d, using forced 25fps and just trust timestamps\n", (int)m_fps);
-    m_fps = 25;
-  }
-
-  try {
-    m_decoder = new COMXVideo(m_av_clock, m_config);
-  }
-  catch(const char* msg) {
-    m_decoder = NULL;
-    return false;
-  }
-
-  printf("Video codec %s width %d height %d profile %d fps %f\n",
-      m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
-
-  return true;
-}
-
-bool OMXPlayerVideo::CloseDecoder()
-{
-  if(m_decoder)
-    delete m_decoder;
-  m_decoder   = NULL;
-  return true;
-}
-
 int  OMXPlayerVideo::GetDecoderBufferSize()
 {
-  if(m_decoder)
-    return m_decoder->GetInputBufferSize();
-  else
-    return 0;
+  return m_decoder->GetInputBufferSize();
 }
 
 int  OMXPlayerVideo::GetDecoderFreeSpace()
 {
-  if(m_decoder)
-    return m_decoder->GetFreeSpace();
-  else
-    return 0;
+  return m_decoder->GetFreeSpace();
 }
 
 void OMXPlayerVideo::SubmitEOS()
@@ -353,14 +288,11 @@ void OMXPlayerVideo::SubmitEOS()
 
 void OMXPlayerVideo::SubmitEOSInternal()
 {
-  if(m_decoder)
-    m_decoder->SubmitEOS();
+  m_decoder->SubmitEOS();
 }
 
 bool OMXPlayerVideo::IsEOS()
 {
-  if(!m_decoder)
-    return false;
   return m_packets.empty() && m_decoder->IsEOS();
 }
 
