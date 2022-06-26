@@ -4,6 +4,7 @@
 #include <dbus/dbus.h>
 
 #include <string>
+#include <unordered_map>
 
 #include "utils/log.h"
 #include "OMXClock.h"
@@ -13,6 +14,26 @@
 #include "OMXReader.h"
 #include "OMXPlayerSubtitles.h"
 #include "utils/misc.h"
+
+
+template <class T>
+static bool dbus_message_get_arg(DBusMessage *m, int type, T *value)
+{
+  DBusError error;
+  dbus_error_init(&error);
+
+  dbus_message_get_args(m, &error, type, value, DBUS_TYPE_INVALID);
+
+  if(dbus_error_is_set(&error))
+  {
+    dbus_error_free(&error);
+    return false;
+  }
+  else
+  {
+    return true;
+  }
+}
 
 static void ToURI(const std::string& str, char *uri)
 {
@@ -30,12 +51,6 @@ static void ToURI(const std::string& str, char *uri)
     free(real_path);
   }
 }
-
-static void deprecatedMessage()
-{
-  CLogLog(LOGWARNING, "DBus property access through direct method is deprecated. Use Get/Set methods instead.");
-}
-
 
 #define CLASSNAME "OMXControl"
 
@@ -65,9 +80,102 @@ const char *OMXControlResult::getWinArg() {
   return winarg;
 }
 
+OMXControl::OMXControl()
+{
+  interfaces[DBUS_INTERFACE_PROPERTIES] = "Prop";
+  interfaces[OMXPLAYER_DBUS_INTERFACE_ROOT] = "Root";
+  interfaces[OMXPLAYER_DBUS_INTERFACE_PLAYER] = "Play";
+
+  table["Root|Quit"] = ROOT_QUIT;
+  table["Root|Raise"] = ROOT_RAISE;
+  table["Prop|Get"] = PROP_GET;
+  table["Prop|Set"] = PROP_SET;
+  table["Prop|CanQuit"] = PROP_CAN_QUIT;
+  table["Prop|Fullscreen"] = PROP_FULLSCREEN;
+  table["Prop|CanSetFullscreen"] = PROP_CAN_SET_FULLSCREEN;
+  table["Prop|CanRaise"] = PROP_CAN_RAISE;
+  table["Prop|HasTrackList"] = PROP_HAS_TRACK_LIST;
+  table["Prop|Identity"] = PROP_IDENTITY;
+  table["Prop|SupportedUriSchemes"] = PROP_SUPPORTED_URI_SCHEMES;
+  table["Prop|SupportedMimeTypes"] = PROP_SUPPORTED_MIME_TYPES;
+  table["Prop|CanGoNext"] = PROP_CAN_GO_NEXT;
+  table["Prop|CanGoPrevious"] = PROP_CAN_GO_PREVIOUS;
+  table["Prop|CanSeek"] = PROP_CAN_SEEK;
+  table["Prop|CanControl"] = PROP_CAN_CONTROL;
+  table["Prop|CanPlay"] = PROP_CAN_PLAY;
+  table["Prop|CanPause"] = PROP_CAN_PAUSE;
+  table["Prop|PlaybackStatus"] = PROP_PLAYBACK_STATUS;
+  table["Prop|GetSource"] = PROP_GET_SOURCE;
+  table["Prop|Volume"] = PROP_VOLUME;
+  table["Prop|Mute"] = PROP_MUTE;
+  table["Prop|Unmute"] = PROP_UNMUTE;
+  table["Prop|Position"] = PROP_POSITION;
+  table["Prop|Aspect"] = PROP_ASPECT;
+  table["Prop|VideoStreamCount"] = PROP_VIDEO_STREAM_COUNT;
+  table["Prop|ResWidth"] = PROP_RES_WIDTH;
+  table["Prop|ResHeight"] = PROP_RES_HEIGHT;
+  table["Prop|Duration"] = PROP_DURATION;
+  table["Prop|MinimumRate"] = PROP_MINIMUM_RATE;
+  table["Prop|MaximumRate"] = PROP_MAXIMUM_RATE;
+  table["Play|GetSource"] = PLAYER_GET_SOURCE;
+  table["Play|Next"] = PLAYER_NEXT;
+  table["Play|Previous"] = PLAYER_PREVIOUS;
+  table["Play|Pause"] = PLAYER_PAUSE;
+  table["Play|Play"] = PLAYER_PLAY;
+  table["Play|PlayPause"] = PLAYER_PLAY_PAUSE;
+  table["Play|Stop"] = PLAYER_STOP;
+  table["Play|Seek"] = PLAYER_SEEK;
+  table["Play|SetPosition"] = PLAYER_SET_POSITION;
+  table["Play|SetAlpha"] = PLAYER_SET_ALPHA;
+  table["Play|SetLayer"] = PLAYER_SET_LAYER;
+  table["Play|SetAspectMode"] = PLAYER_SET_ASPECT_MODE;
+  table["Play|Mute"] = PLAYER_MUTE;
+  table["Play|Unmute"] = PLAYER_UNMUTE;
+  table["Play|ListSubtitles"] = PLAYER_LIST_SUBTITLES;
+  table["Play|HideVideo"] = PLAYER_HIDE_VIDEO;
+  table["Play|UnHideVideo"] = PLAYER_UN_HIDE_VIDEO;
+  table["Play|ListAudio"] = PLAYER_LIST_AUDIO;
+  table["Play|ListVideo"] = PLAYER_LIST_VIDEO;
+  table["Play|SelectSubtitle"] = PLAYER_SELECT_SUBTITLE;
+  table["Play|SelectAudio"] = PLAYER_SELECT_AUDIO;
+  table["Play|ShowSubtitles"] = PLAYER_SHOW_SUBTITLES;
+  table["Play|HideSubtitles"] = PLAYER_HIDE_SUBTITLES;
+  table["Play|OpenUri"] = PLAYER_OPEN_URI;
+  table["Play|Action"] = PLAYER_ACTION;
+
+  // get properties
+  table["Get|Root|CanRaise"] = GET_ROOT_CAN_RAISE;
+  table["Get|Root|CanQuit"] = GET_ROOT_CAN_QUIT;
+  table["Get|Root|CanSetFullscreen"] = GET_ROOT_CAN_SET_FULLSCREEN;
+  table["Get|Root|Fullscreen"] = GET_ROOT_FULLSCREEN;
+  table["Get|Root|HasTrackList"] = GET_ROOT_HAS_TRACK_LIST;
+  table["Get|Root|Identity"] = GET_ROOT_IDENTITY;
+  table["Get|Root|SupportedUriSchemes"] = GET_ROOT_SUPPORTED_URI_SCHEMES;
+  table["Get|Root|SupportedMimeTypes"] = GET_ROOT_SUPPORTED_MIME_TYPES;
+  table["Get|Play|CanGoNext"] = GET_PLAYER_CAN_GO_NEXT;
+  table["Get|Play|CanGoPrevious"] = GET_PLAYER_CAN_GO_PREVIOUS;
+  table["Get|Play|CanSeek"] = GET_PLAYER_CAN_SEEK;
+  table["Get|Play|CanControl"] = GET_PLAYER_CAN_CONTROL;
+  table["Get|Play|CanPlay"] = GET_PLAYER_CAN_PLAY;
+  table["Get|Play|CanPause"] = GET_PLAYER_CAN_PAUSE;
+  table["Get|Play|Position"] = GET_PLAYER_POSITION;
+  table["Get|Play|PlaybackStatus"] = GET_PLAYER_PLAYBACK_STATUS;
+  table["Get|Play|MinimumRate"] = GET_PLAYER_MINIMUM_RATE;
+  table["Get|Play|MaximumRate"] = GET_PLAYER_MAXIMUM_RATE;
+  table["Get|Play|Rate"] = GET_PLAYER_RATE;
+  table["Get|Play|Volume"] = GET_PLAYER_VOLUME;
+  table["Get|Play|Metadata"] = GET_PLAYER_METADATA;
+  table["Get|Play|Aspect"] = GET_PLAYER_ASPECT;
+  table["Get|Play|VideoStreamCount"] = GET_PLAYER_VIDEO_STREAM_COUNT;
+  table["Get|Play|ResWidth"] = GET_PLAYER_RES_WIDTH;
+  table["Get|Play|ResHeight"] = GET_PLAYER_RES_HEIGHT;
+  table["Get|Play|Duration"] = GET_PLAYER_DURATION;
+
+}
+
 OMXControl::~OMXControl() 
 {
-    dbus_disconnect();
+  dbus_disconnect();
 }
 
 void OMXControl::init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string (*filename)())
@@ -187,690 +295,140 @@ OMXControlResult OMXControl::getEvent()
     return KeyConfig::ACTION_BLANK;
 
   CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-  OMXControlResult result = handle_event(m);
-  dbus_message_unref(m);
 
-  return result;
+  std::string key;
+  try {
+    const char *interface = dbus_message_get_interface(m);
+    const char *method = dbus_message_get_member(m);
+
+    key = interfaces.at(interface) + "|";
+    key += method;
+  }
+  catch(std::out_of_range const&)
+  {
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
+    return KeyConfig::ACTION_BLANK;
+  }
+
+  try {
+    OMXControlResult result = handle_event(m, table.at(key));
+    dbus_message_unref(m);
+
+    return result;
+  }
+  catch(std::out_of_range const&)
+  {
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
+    return KeyConfig::ACTION_BLANK;
+  }
 }
 
-OMXControlResult OMXControl::handle_event(DBusMessage *m)
+OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction search_key)
 {
+  switch(search_key)
+  {
   //----------------------------DBus root interface-----------------------------
   //Methods:
-  if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_ROOT, "Quit"))
-  {
+  case ROOT_QUIT: // OMXPLAYER_DBUS_INTERFACE_ROOT - Quit
     dbus_respond_ok(m);//Note: No reply according to MPRIS2 specs
     return KeyConfig::ACTION_EXIT;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_ROOT, "Raise"))
-  {
+
+  case ROOT_RAISE: // OMXPLAYER_DBUS_INTERFACE_ROOT - Raise
     //Does nothing
     return KeyConfig::ACTION_BLANK;
-  }
-  //Properties Get method:
-  //TODO: implement GetAll
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Get"))
-  {
-    return GetProperty(m);
-  }
+  case PROP_GET: // DBUS_INTERFACE_PROPERTIES - Get
+    {
+      DBusError error;
+      dbus_error_init(&error);
+      std::string key;
 
-  //Properties Set method:
-  //TODO: implement signal generation on some property changes
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Set"))
-  {
+      //Retrieve interface and property name
+      const char *prop_interface, *property;
+      dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &prop_interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
+
+      try {
+        key = "Get|" + interfaces.at(prop_interface) + "|";
+      }
+      catch(std::out_of_range const&)
+      {
+        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
+        return KeyConfig::ACTION_BLANK;
+      }
+
+      try {
+        key += property;
+        return handle_event(m, table.at(key));
+      }
+      catch(std::out_of_range const&)
+      {
+        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
+        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
+        return KeyConfig::ACTION_BLANK;
+      }
+    }
+
+  //Properties Set method
+  case PROP_SET: // DBUS_INTERFACE_PROPERTIES - Set
     return SetProperty(m);
-  }
-  //----------------------------------------------------------------------------
 
-
-  //-------------------------DEPRECATED PROPERTIES METHODS----------------------
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanQuit")
-      || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Fullscreen"))
-  {
+  // Property access
+  case PROP_CAN_QUIT: // DBUS_INTERFACE_PROPERTIES - CanQuit
+  case GET_ROOT_CAN_QUIT: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanQuit
+  case PROP_FULLSCREEN: // DBUS_INTERFACE_PROPERTIES - Fullscreen
     dbus_respond_boolean(m, 1);
-    deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanSetFullscreen")
-      || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanRaise")
-      || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "HasTrackList"))
-  {
+
+  case PROP_CAN_SET_FULLSCREEN: // DBUS_INTERFACE_PROPERTIES - CanSetFullscreen
+  case PROP_CAN_RAISE: // DBUS_INTERFACE_PROPERTIES - CanRaise
+  case PROP_HAS_TRACK_LIST: // DBUS_INTERFACE_PROPERTIES - HasTrackList
     dbus_respond_boolean(m, 0);
-    deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Identity"))
-  {
+
+  case PROP_IDENTITY: // DBUS_INTERFACE_PROPERTIES - Identity
+  case GET_ROOT_IDENTITY: // OMXPLAYER_DBUS_INTERFACE_ROOT - Identity
     dbus_respond_string(m, "OMXPlayer");
-    deprecatedMessage();
     return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "SupportedUriSchemes"))
-  {
-    const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
-    dbus_respond_array(m, UriSchemes, 2); // Array is of length 2
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "SupportedMimeTypes"))
-  {
-    const char *MimeTypes[] = {}; // Needs supplying
-    dbus_respond_array(m, MimeTypes, 0);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanGoNext")
-        || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanGoPrevious"))
-  {
-    dbus_respond_boolean(m, 0);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanSeek"))
-  {
-    dbus_respond_boolean(m, reader->CanSeek());
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanControl")
-        || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanPlay")
-        || dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "CanPause"))
-  {
-    dbus_respond_boolean(m, 1);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "PlaybackStatus"))
-  {
-    const char *status;
-    if (clock->OMXIsPaused())
-    {
-      status = "Paused";
-    }
-    else
-    {
-      status = "Playing";
-    }
 
-    dbus_respond_string(m, status);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "GetSource"))
-  {
-    dbus_respond_string(m, get_filename().c_str());
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Volume"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    double volume;
-    dbus_message_get_args(m, &error, DBUS_TYPE_DOUBLE, &volume, DBUS_TYPE_INVALID);
-
-    if (dbus_error_is_set(&error))
-    { // i.e. Get current volume
-      dbus_error_free(&error);
-      dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
-      deprecatedMessage();
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      //Min value is 0
-      if(volume<.0)
-        volume=.0;
-
-      if(audio)
-        audio->SetVolume(volume);
-      else
-        volume = 0.0;
-
-      dbus_respond_double(m, volume);
-      deprecatedMessage();
-      return KeyConfig::ACTION_BLANK;
-    }
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Mute"))
-  {
-    if(audio)
-      audio->SetMute(true);
-    dbus_respond_ok(m);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Unmute"))
-  {
-    if(audio)
-      audio->SetMute(false);
-    dbus_respond_ok(m);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Position"))
-  {
-    // Returns the current position in microseconds
-    int64_t pos = clock->OMXMediaTime();
-    dbus_respond_int64(m, pos);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Aspect"))
-  {
-    // Returns aspect ratio
-    double ratio = reader->GetAspectRatio();
-    dbus_respond_double(m, ratio);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "VideoStreamCount"))
-  {
-    // Returns number of video streams
-    int64_t vcount = reader->VideoStreamCount();
-    dbus_respond_int64(m, vcount);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "ResWidth"))
-  {
-    // Returns width of video
-    int64_t width = reader->GetWidth();
-    dbus_respond_int64(m, width);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "ResHeight"))
-  {
-    // Returns height of video
-    int64_t height = reader->GetHeight();
-    dbus_respond_int64(m, height);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "Duration"))
-  {
-    // Returns the duration in microseconds
-    int64_t dur = reader->GetStreamLengthMicro();
-    dbus_respond_int64(m, dur);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "MinimumRate"))
-  {
-    dbus_respond_double(m, 0.0);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, DBUS_INTERFACE_PROPERTIES, "MaximumRate"))
-  {
-    //TODO: to be made consistent
-    dbus_respond_double(m, 10.125);
-    deprecatedMessage();
-    return KeyConfig::ACTION_BLANK;
-  }
-  //----------------------------------------------------------------------------
-
-
-  //--------------------------Player interface methods--------------------------
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "GetSource"))
-  {
-    dbus_respond_string(m, get_filename().c_str());
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Next"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_NEXT_CHAPTER;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Previous"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_PREVIOUS_CHAPTER;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Pause"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_PAUSE;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Play"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_PLAY;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "PlayPause"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_PLAYPAUSE;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Stop"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_EXIT;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Seek"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int64_t offset;
-    dbus_message_get_args(m, &error, DBUS_TYPE_INT64, &offset, DBUS_TYPE_INVALID);
-
-    // Make sure a value is sent for seeking
-    if (dbus_error_is_set(&error))
-    {
-       CLogLog(LOGWARNING, "Seek D-Bus Error: %s", error.message );
-       dbus_error_free(&error);
-       dbus_respond_ok(m);
-       return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-       dbus_respond_int64(m, offset);
-       return OMXControlResult(KeyConfig::ACTION_SEEK_RELATIVE, offset);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SetPosition"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int64_t position;
-    const char *oPath; // ignoring path right now because we don't have a playlist
-    dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_INT64, &position, DBUS_TYPE_INVALID);
-
-    // Make sure a value is sent for setting position
-    if (dbus_error_is_set(&error))
-    {
-      CLogLog(LOGWARNING, "SetPosition D-Bus Error: %s", error.message );
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_int64(m, position);
-      return OMXControlResult(KeyConfig::ACTION_SEEK_ABSOLUTE, position);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SetAlpha"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int64_t alpha;
-    const char *oPath; // ignoring path right now because we don't have a playlist
-    dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_INT64, &alpha, DBUS_TYPE_INVALID);
-
-    // Make sure a value is sent for setting alpha
-    if (dbus_error_is_set(&error))
-    {
-      CLogLog(LOGWARNING, "SetAlpha D-Bus Error: %s", error.message );
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_int64(m, alpha);
-      return OMXControlResult(KeyConfig::ACTION_SET_ALPHA, alpha);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SetLayer"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int64_t layer;
-    dbus_message_get_args(m, &error, DBUS_TYPE_INT64, &layer, DBUS_TYPE_INVALID);
-
-    // Make sure a value is sent for setting layer
-    if (dbus_error_is_set(&error))
-    {
-      CLogLog(LOGWARNING, "SetLayer D-Bus Error: %s", error.message );
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_int64(m, layer);
-      return OMXControlResult(KeyConfig::ACTION_SET_LAYER, layer);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SetAspectMode"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    const char *aspectMode;
-    const char *oPath; // ignoring path right now because we don't have a playlist
-    dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_STRING, &aspectMode, DBUS_TYPE_INVALID);
-
-    // Make sure a value is sent for setting aspect mode
-    if (dbus_error_is_set(&error))
-    {
-      CLogLog(LOGWARNING, "SetAspectMode D-Bus Error: %s", error.message );
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_string(m, aspectMode);
-      return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspectMode);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Mute"))
-  {
-    if(audio)
-      audio->SetMute(true);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Unmute"))
-  {
-    if(audio)
-      audio->SetMute(false);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListSubtitles"))
-  {
-    int count = reader->SubtitleStreamCount();
-    char *values[count];
-
-    for (int i=0; i < count; i++)
-    {
-       asprintf(&values[i], "%d:%s:%s", i,
-                reader->GetStreamMetaData(OMXSTREAM_SUBTITLE, i).c_str(),
-                subtitles->GetActiveStream() == i ? "active" : "");
-    }
-
-    dbus_respond_array(m, (const char**)values, count);
-
-    // Cleanup
-    for (int i=0; i < count; i++)
-    {
-      free(values[i]);
-    }
-
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "HideVideo"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_HIDE_VIDEO;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "UnHideVideo"))
-  {
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_UNHIDE_VIDEO;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListAudio"))
-  {
-    int count = reader->AudioStreamCount();
-    char *values[count];
-    int active_stream = audio ? audio->GetActiveStream() : -1;
-
-    for (int i=0; i < count; i++)
-    {
-       asprintf(&values[i], "%d:%s:%s", i,
-                reader->GetStreamMetaData(OMXSTREAM_AUDIO, i).c_str(),
-                i == active_stream ? "active" : "");
-    }
-
-    dbus_respond_array(m, (const char**)values, count);
-
-    // Cleanup
-    for (int i=0; i < count; i++)
-    {
-      free(values[i]);
-    }
-
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ListVideo"))
-  {
-    int count = reader->VideoStreamCount();
-    char *values[count];
-
-    for (int i=0; i < count; i++)
-    {
-       asprintf(&values[i], "%d:%s:%s", i,
-                reader->GetStreamMetaData(OMXSTREAM_VIDEO, i).c_str(),
-                i == 0 ? "active" : "");
-    }
-
-    dbus_respond_array(m, (const char**)values, count);
-
-    // Cleanup
-    for (int i=0; i < count; i++)
-    {
-      free(values[i]);
-    }
-
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SelectSubtitle"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int index;
-    dbus_message_get_args(m, &error, DBUS_TYPE_INT32, &index, DBUS_TYPE_INVALID);
-
-    if (dbus_error_is_set(&error))
-    {
-      dbus_error_free(&error);
-      dbus_respond_boolean(m, 0);
-    }
-    else
-    {
-      if (subtitles->SetActiveStream(index) == index)
-      {
-        dbus_respond_boolean(m, 1);
-      }
-      else {
-        dbus_respond_boolean(m, 0);
-      }
-    }
-    return KeyConfig::ACTION_BLANK;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "SelectAudio"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int index;
-    dbus_message_get_args(m, &error, DBUS_TYPE_INT32, &index, DBUS_TYPE_INVALID);
-
-    if (dbus_error_is_set(&error))
-    {
-      dbus_error_free(&error);
-      dbus_respond_boolean(m, 0);
-    }
-    else
-    {
-      if (audio && audio->SetActiveStream(index))
-      {
-        dbus_respond_boolean(m, 1);
-      }
-      else {
-        dbus_respond_boolean(m, 0);
-      }
-    }
-    return KeyConfig::ACTION_BLANK;
-  }
-  // TODO: SelectVideo ???
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "ShowSubtitles"))
-  {
-    subtitles->SetVisible(true);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_SHOW_SUBTITLES;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "HideSubtitles"))
-  {
-    subtitles->SetVisible(false);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_HIDE_SUBTITLES;
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "OpenUri"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    const char *file;
-    dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &file, DBUS_TYPE_INVALID);
-
-    if (dbus_error_is_set(&error))
-    {
-      CLogLog(LOGWARNING, "Change file D-Bus Error: %s", error.message );
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_string(m, file);
-      return OMXControlResult(KeyConfig::ACTION_CHANGE_FILE, file);
-    }
-  }
-  else if (dbus_message_is_method_call(m, OMXPLAYER_DBUS_INTERFACE_PLAYER, "Action"))
-  {
-    DBusError error;
-    dbus_error_init(&error);
-
-    int action;
-    dbus_message_get_args(m, &error, DBUS_TYPE_INT32, &action, DBUS_TYPE_INVALID);
-
-    if (dbus_error_is_set(&error))
-    {
-      dbus_error_free(&error);
-      dbus_respond_ok(m);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else
-    {
-      dbus_respond_ok(m);
-      return action; // Directly return enum
-    }
-  }
-  //----------------------------------------------------------------------------
-  else {
-    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-    if (dbus_message_get_type(m) == DBUS_MESSAGE_TYPE_METHOD_CALL)
-      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
-  }
-
-  return KeyConfig::ACTION_BLANK;
-}
-
-OMXControlResult OMXControl::GetProperty(DBusMessage *m)
-{
-  DBusError error;
-  dbus_error_init(&error);
-
-  //Retrieve interface and property name
-  const char *interface, *property;
-  dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
-  //Root interface:
-  if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_ROOT)==0)
-  {
-    if (strcmp(property, "CanRaise")==0)
-    {
-      dbus_respond_boolean(m, 0);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanQuit")==0)
-    {
-      dbus_respond_boolean(m, 1);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanSetFullscreen")==0)
-    {
-      dbus_respond_boolean(m, 0);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "Fullscreen")==0) //Fullscreen is read/write in theory not read only, but read only at the moment so...
-    {
-      dbus_respond_boolean(m, 1);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "HasTrackList")==0)
-    {
-      dbus_respond_boolean(m, 0);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "Identity")==0)
-    {
-      dbus_respond_string(m, "OMXPlayer");
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "SupportedUriSchemes")==0) //TODO: Update ?
+  case PROP_SUPPORTED_URI_SCHEMES: // DBUS_INTERFACE_PROPERTIES - SupportedUriSchemes
+  case GET_ROOT_SUPPORTED_URI_SCHEMES: // OMXPLAYER_DBUS_INTERFACE_ROOT - SupportedUriSchemes //TODO: Update ?
     {
       const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
       dbus_respond_array(m, UriSchemes, 4); // Array is of length 4
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "SupportedMimeTypes")==0) //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
+  case PROP_SUPPORTED_MIME_TYPES: // DBUS_INTERFACE_PROPERTIES - SupportedMimeTypes
+  case GET_ROOT_SUPPORTED_MIME_TYPES: // OMXPLAYER_DBUS_INTERFACE_ROOT - SupportedMimeTypes //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
     {
       const char *MimeTypes[] = {}; // Needs supplying
       dbus_respond_array(m, MimeTypes, 0);
       return KeyConfig::ACTION_BLANK;
     }
-    //Wrong property
-    else
-    {
-      //Error
-      CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-      return KeyConfig::ACTION_BLANK;
-    }
-  }
-  //Player interface:
-  else if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
-  {
-    //MPRIS2 properties:
-    if (strcmp(property, "CanGoNext")==0)
-    {
-      dbus_respond_boolean(m, 0);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanGoPrevious")==0)
-    {
-      dbus_respond_boolean(m, 0);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanSeek")==0)
-    {
-      dbus_respond_boolean(m, reader->CanSeek());
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanControl")==0)
-    {
-      dbus_respond_boolean(m, 1);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanPlay")==0)
-    {
-      dbus_respond_boolean(m, 1);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "CanPause")==0)
-    {
-      dbus_respond_boolean(m, 1);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "Position")==0)
-    {
-      // Returns the current position in microseconds
-      int64_t pos = clock->OMXMediaTime();
-      dbus_respond_int64(m, pos);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "PlaybackStatus")==0)
+  case PROP_CAN_GO_NEXT: // DBUS_INTERFACE_PROPERTIES - CanGoNext
+  case PROP_CAN_GO_PREVIOUS: // DBUS_INTERFACE_PROPERTIES - CanGoPrevious
+  case GET_PLAYER_CAN_GO_NEXT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanGoNext
+  case GET_PLAYER_CAN_GO_PREVIOUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanGoPrevious
+    dbus_respond_boolean(m, 0);
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_CAN_SEEK: // DBUS_INTERFACE_PROPERTIES - CanSeek
+  case GET_PLAYER_CAN_SEEK: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanSeek
+    dbus_respond_boolean(m, reader->CanSeek());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_CAN_CONTROL: // DBUS_INTERFACE_PROPERTIES - CanControl
+  case PROP_CAN_PLAY: // DBUS_INTERFACE_PROPERTIES - CanPlay
+  case PROP_CAN_PAUSE: // DBUS_INTERFACE_PROPERTIES - CanPause
+  case GET_PLAYER_CAN_CONTROL: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanControl
+  case GET_PLAYER_CAN_PLAY: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanPlay
+  case GET_PLAYER_CAN_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanPause
+    dbus_respond_boolean(m, 1);
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_PLAYBACK_STATUS: // DBUS_INTERFACE_PROPERTIES - PlaybackStatus
+  case GET_PLAYER_PLAYBACK_STATUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - PlaybackStatus
     {
       const char *status;
       if (clock->OMXIsPaused())
@@ -881,32 +439,442 @@ OMXControlResult OMXControl::GetProperty(DBusMessage *m)
       {
         status = "Playing";
       }
+
       dbus_respond_string(m, status);
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "MinimumRate")==0)
+  case PROP_GET_SOURCE: // DBUS_INTERFACE_PROPERTIES - GetSource
+    dbus_respond_string(m, get_filename().c_str());
+      return KeyConfig::ACTION_BLANK;
+
+  case PROP_VOLUME: // DBUS_INTERFACE_PROPERTIES - Volume
     {
-      dbus_respond_double(m, (MIN_RATE)/1000.);
+      if(!audio)
+      {
+        dbus_respond_double(m, 0.0);
+        return KeyConfig::ACTION_BLANK;
+      }
+
+      double volume;
+      if (!dbus_message_get_arg(m, DBUS_TYPE_DOUBLE, &volume))
+      { // i.e. Get current volume
+        dbus_respond_double(m, audio->GetVolume());
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        //Min value is 0
+        if(volume < 0.0)
+          volume = 0.0;
+
+        audio->SetVolume(volume);
+
+        dbus_respond_double(m, volume);
+        return KeyConfig::ACTION_BLANK;
+      }
+    }
+  case PROP_MUTE: // DBUS_INTERFACE_PROPERTIES - Mute
+    if(audio)
+      audio->SetMute(true);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_UNMUTE: // DBUS_INTERFACE_PROPERTIES - Unmute
+    if(audio)
+      audio->SetMute(false);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_POSITION: // DBUS_INTERFACE_PROPERTIES - Position
+  case GET_PLAYER_POSITION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Position
+    // Returns the current position in microseconds
+    dbus_respond_int64(m, clock->OMXMediaTime());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_ASPECT: // DBUS_INTERFACE_PROPERTIES - Aspect
+  case GET_PLAYER_ASPECT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Aspect
+    // Returns aspect ratio
+    dbus_respond_double(m, reader->GetAspectRatio());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_VIDEO_STREAM_COUNT: // DBUS_INTERFACE_PROPERTIES - VideoStreamCount
+  case GET_PLAYER_VIDEO_STREAM_COUNT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - VideoStreamCount
+    // Returns number of video streams
+    dbus_respond_int64(m, reader->VideoStreamCount());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_RES_WIDTH: // DBUS_INTERFACE_PROPERTIES - ResWidth
+  case GET_PLAYER_RES_WIDTH: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ResWidth
+    // Returns width of video
+    dbus_respond_int64(m, reader->GetWidth());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_RES_HEIGHT: // DBUS_INTERFACE_PROPERTIES - ResHeight
+  case GET_PLAYER_RES_HEIGHT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ResHeight
+    // Returns height of video
+    dbus_respond_int64(m, reader->GetHeight());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_DURATION: // DBUS_INTERFACE_PROPERTIES - Duration
+  case GET_PLAYER_DURATION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Duration
+    // Returns the duration in microseconds
+    dbus_respond_int64(m, reader->GetStreamLengthMicro());
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_MINIMUM_RATE: // DBUS_INTERFACE_PROPERTIES - MinimumRate
+    dbus_respond_double(m, 0.0);
+    return KeyConfig::ACTION_BLANK;
+
+  case PROP_MAXIMUM_RATE: // DBUS_INTERFACE_PROPERTIES - MaximumRate
+    //TODO: to be made consistent
+    dbus_respond_double(m, 10.125);
+    return KeyConfig::ACTION_BLANK;
+
+
+  //--------------------------Player interface methods--------------------------
+  case PLAYER_GET_SOURCE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - GetSource
+    dbus_respond_string(m, get_filename().c_str());
+    return KeyConfig::ACTION_BLANK;
+
+  case PLAYER_NEXT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Next
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_NEXT_CHAPTER;
+
+  case PLAYER_PREVIOUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Previous
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_PREVIOUS_CHAPTER;
+
+  case PLAYER_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Pause
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_PAUSE;
+
+  case PLAYER_PLAY: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Play
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_PLAY;
+
+  case PLAYER_PLAY_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - PlayPause
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_PLAYPAUSE;
+
+  case PLAYER_STOP: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Stop
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_EXIT;
+
+  case PLAYER_SEEK: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Seek
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      int64_t offset;
+      dbus_message_get_args(m, &error, DBUS_TYPE_INT64, &offset, DBUS_TYPE_INVALID);
+
+      // Make sure a value is sent for seeking
+      if (dbus_error_is_set(&error))
+      {
+         CLogLog(LOGWARNING, "Seek D-Bus Error: %s", error.message );
+         dbus_error_free(&error);
+         dbus_respond_ok(m);
+         return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+         dbus_respond_int64(m, offset);
+         return OMXControlResult(KeyConfig::ACTION_SEEK_RELATIVE, offset);
+      }
+    }
+  case PLAYER_SET_POSITION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetPosition
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      int64_t position;
+      const char *oPath; // ignoring path right now because we don't have a playlist
+      dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_INT64, &position, DBUS_TYPE_INVALID);
+
+      // Make sure a value is sent for setting position
+      if (dbus_error_is_set(&error))
+      {
+        CLogLog(LOGWARNING, "SetPosition D-Bus Error: %s", error.message );
+        dbus_error_free(&error);
+        dbus_respond_ok(m);
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        dbus_respond_int64(m, position);
+        return OMXControlResult(KeyConfig::ACTION_SEEK_ABSOLUTE, position);
+      }
+    }
+  case PLAYER_SET_ALPHA: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetAlpha
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      int64_t alpha;
+      const char *oPath; // ignoring path right now because we don't have a playlist
+      dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_INT64, &alpha, DBUS_TYPE_INVALID);
+
+      // Make sure a value is sent for setting alpha
+      if (dbus_error_is_set(&error))
+      {
+        CLogLog(LOGWARNING, "SetAlpha D-Bus Error: %s", error.message );
+        dbus_error_free(&error);
+        dbus_respond_ok(m);
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        dbus_respond_int64(m, alpha);
+        return OMXControlResult(KeyConfig::ACTION_SET_ALPHA, alpha);
+      }
+    }
+  case PLAYER_SET_LAYER: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetLayer
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      int64_t layer;
+      dbus_message_get_args(m, &error, DBUS_TYPE_INT64, &layer, DBUS_TYPE_INVALID);
+
+      // Make sure a value is sent for setting layer
+      if (dbus_error_is_set(&error))
+      {
+        CLogLog(LOGWARNING, "SetLayer D-Bus Error: %s", error.message );
+        dbus_error_free(&error);
+        dbus_respond_ok(m);
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        dbus_respond_int64(m, layer);
+        return OMXControlResult(KeyConfig::ACTION_SET_LAYER, layer);
+      }
+    }
+  case PLAYER_SET_ASPECT_MODE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetAspectMode
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      const char *aspectMode;
+      const char *oPath; // ignoring path right now because we don't have a playlist
+      dbus_message_get_args(m, &error, DBUS_TYPE_OBJECT_PATH, &oPath, DBUS_TYPE_STRING, &aspectMode, DBUS_TYPE_INVALID);
+
+      // Make sure a value is sent for setting aspect mode
+      if (dbus_error_is_set(&error))
+      {
+        CLogLog(LOGWARNING, "SetAspectMode D-Bus Error: %s", error.message );
+        dbus_error_free(&error);
+        dbus_respond_ok(m);
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        dbus_respond_string(m, aspectMode);
+        return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspectMode);
+      }
+    }
+  case PLAYER_MUTE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Mute
+    if(audio)
+      audio->SetMute(true);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_BLANK;
+
+  case PLAYER_UNMUTE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Unmute
+    if(audio)
+      audio->SetMute(false);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_BLANK;
+
+  case PLAYER_LIST_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListSubtitles
+    {
+      int count = reader->SubtitleStreamCount();
+      const char **values = new const char*[count];
+      char *data = new char[30 * count];
+      char *p = &data[0];
+      char *end = &data[(30 * count) - 1];
+
+      for (int i = 0; i < count && p < end; i++)
+      {
+         values[i] = p;
+         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
+                           reader->GetStreamMetaData(OMXSTREAM_SUBTITLE, i).c_str(),
+                           subtitles->GetActiveStream() == i ? "active" : "");
+      }
+
+      dbus_respond_array(m, values, count);
+
+      delete[] values;
+      delete[] data;
+
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "MaximumRate")==0)
+  case PLAYER_HIDE_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - HideVideo
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_HIDE_VIDEO;
+
+  case PLAYER_UN_HIDE_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - UnHideVideo
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_UNHIDE_VIDEO;
+
+  case PLAYER_LIST_AUDIO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListAudio
     {
-      dbus_respond_double(m, (MAX_RATE)/1000.);
+      int count = reader->AudioStreamCount();
+      const char **values = new const char*[count];
+      char *data = new char[30 * count];
+      char *p = &data[0];
+      char *end = &data[(30 * count) - 1];
+
+      int active_stream = audio ? audio->GetActiveStream() : -1;
+
+      for (int i = 0; i < count && p < end; i++)
+      {
+         values[i] = p;
+         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
+                           reader->GetStreamMetaData(OMXSTREAM_AUDIO, i).c_str(),
+                           i == active_stream ? "active" : "");
+      }
+
+      dbus_respond_array(m, values, count);
+
+      delete[] values;
+      delete[] data;
+
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "Rate")==0)
+  case PLAYER_LIST_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListVideo
     {
-      //return current playing rate
-      dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
+      int count = reader->VideoStreamCount();
+      const char **values = new const char*[count];
+      char *data = new char[30 * count];
+      char *p = &data[0];
+      char *end = &data[(30 * count) - 1];
+
+      for (int i = 0; i < count && p < end; i++)
+      {
+         values[i] = p;
+         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
+                           reader->GetStreamMetaData(OMXSTREAM_VIDEO, i).c_str(),
+                           i == 0 ? "active" : "");
+      }
+
+      dbus_respond_array(m, values, count);
+
+      delete[] values;
+      delete[] data;
+
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "Volume")==0)
+  case PLAYER_SELECT_SUBTITLE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SelectSubtitle
     {
-      //return current volume
-      dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
+      int index;
+      if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &index))
+      {
+        dbus_respond_boolean(m, 0);
+      }
+      else
+      {
+        dbus_respond_boolean(m, subtitles->SetActiveStream(index) == index ? 1 : 0);
+      }
       return KeyConfig::ACTION_BLANK;
     }
-    else if (strcmp(property, "Metadata")==0)
+  case PLAYER_SELECT_AUDIO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SelectAudio
+    {
+      if(!audio)
+        dbus_respond_boolean(m, 0);
+
+      int index;
+      if (!dbus_message_get_arg(m, DBUS_TYPE_INT32, &index))
+      {
+        dbus_respond_boolean(m, 0);
+      }
+      else
+      {
+        dbus_respond_boolean(m, audio->SetActiveStream(index) ? 1 : 0);
+      }
+      return KeyConfig::ACTION_BLANK;
+    }
+  // TODO: SelectVideo ???
+  case PLAYER_SHOW_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ShowSubtitles
+    subtitles->SetVisible(true);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_SHOW_SUBTITLES;
+
+  case PLAYER_HIDE_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - HideSubtitles
+    subtitles->SetVisible(false);
+    dbus_respond_ok(m);
+    return KeyConfig::ACTION_HIDE_SUBTITLES;
+
+  case PLAYER_OPEN_URI: // OMXPLAYER_DBUS_INTERFACE_PLAYER - OpenUri
+    {
+      DBusError error;
+      dbus_error_init(&error);
+
+      const char *file;
+      dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &file, DBUS_TYPE_INVALID);
+
+      if (dbus_error_is_set(&error))
+      {
+        CLogLog(LOGWARNING, "Change file D-Bus Error: %s", error.message );
+        dbus_error_free(&error);
+        dbus_respond_ok(m);
+        return KeyConfig::ACTION_BLANK;
+      }
+      else
+      {
+        dbus_respond_string(m, file);
+        return OMXControlResult(KeyConfig::ACTION_CHANGE_FILE, file);
+      }
+    }
+  case PLAYER_ACTION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Action
+    {
+      int action;
+      if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &action))
+        action = KeyConfig::ACTION_BLANK;
+
+      dbus_respond_ok(m);
+      return action; // Directly return enum
+    }
+  // begin get properties
+  //Root interface:
+
+  case GET_ROOT_CAN_RAISE: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanRaise
+    dbus_respond_boolean(m, 0);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_ROOT_CAN_SET_FULLSCREEN: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanSetFullscreen
+    dbus_respond_boolean(m, 0);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_ROOT_FULLSCREEN: // OMXPLAYER_DBUS_INTERFACE_ROOT - Fullscreen //Fullscreen is read/write in theory not read only, but read only at the moment so...
+    dbus_respond_boolean(m, 1);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_ROOT_HAS_TRACK_LIST: // OMXPLAYER_DBUS_INTERFACE_ROOT - HasTrackList
+    dbus_respond_boolean(m, 0);
+    return KeyConfig::ACTION_BLANK;
+
+  //Player interface:
+  //MPRIS2 properties:
+
+  case GET_PLAYER_MINIMUM_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - MinimumRate
+    dbus_respond_double(m, (MIN_RATE)/1000.);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_PLAYER_MAXIMUM_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - MaximumRate
+    dbus_respond_double(m, (MAX_RATE)/1000.);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_PLAYER_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Rate
+    //return current playing rate
+    dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_PLAYER_VOLUME: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Volume
+    //return current volume
+    dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
+    return KeyConfig::ACTION_BLANK;
+
+  case GET_PLAYER_METADATA: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Metadata
     {
       DBusMessage *reply;
       reply = dbus_message_new_method_return(m);
@@ -944,59 +912,13 @@ OMXControlResult OMXControl::GetProperty(DBusMessage *m)
       return KeyConfig::ACTION_BLANK;
     }
 
-    //Non-MPRIS2 properties:
-    else if (strcmp(property, "Aspect")==0)
-    {
-      // Returns aspect ratio
-      double ratio = reader->GetAspectRatio();
-      dbus_respond_double(m, ratio);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "VideoStreamCount")==0)
-    {
-      // Returns number of video streams
-      int64_t vcount = reader->VideoStreamCount();
-      dbus_respond_int64(m, vcount);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "ResWidth")==0)
-    {
-      // Returns width of video
-      int64_t width = reader->GetWidth();
-      dbus_respond_int64(m, width);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property, "ResHeight")==0)
-    {
-      // Returns height of video
-      int64_t height = reader->GetHeight();
-      dbus_respond_int64(m, height);
-      return KeyConfig::ACTION_BLANK;
-    }
-    else if (strcmp(property,  "Duration")==0)
-    {
-      // Returns the duration in microseconds
-      int64_t dur = reader->GetStreamLengthMicro();
-      dbus_respond_int64(m, dur);
-      return KeyConfig::ACTION_BLANK;
-    }
-    //Wrong property
-    else
-    {
-      //Error
-      CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-      return KeyConfig::ACTION_BLANK;
-    }
+  //Non-MPRIS2 properties:
+
+  // end get properties
   }
-  //Wrong interface:
-  else
-  {
-      //Error
-      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-      dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-      return KeyConfig::ACTION_BLANK;
-  }
+
+  // this should never happen!
+  return KeyConfig::ACTION_BLANK;
 }
 
 OMXControlResult OMXControl::SetProperty(DBusMessage *m)
@@ -1012,54 +934,53 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
   dbus_message_iter_init(m, &args);
   if(dbus_message_iter_has_next(&args))
   {
-		//The interface name
-		if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) ) 
-			dbus_message_iter_get_basic (&args, &interface);
-		else
-		{
-			puts("setE1");
-			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-			dbus_error_free(&error);
-			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-			return KeyConfig::ACTION_BLANK;
-		}
-		//The property name
-		if( dbus_message_iter_next(&args) && DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
-			dbus_message_iter_get_basic (&args, &property);
-		else
-		{
-			CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-			dbus_error_free(&error);
-			dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-			return KeyConfig::ACTION_BLANK;
-		}
-		//The value (either double or double in variant)
-		if (dbus_message_iter_next(&args))
-		{
-			//Simply a double
-			if (DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&args))
-			{
-				dbus_message_iter_get_basic(&args, &new_property_value);
-			}
-			//A double within a variant
-			else if(DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))
-			{
-				DBusMessageIter variant;
-				dbus_message_iter_recurse(&args, &variant);
-				if(DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&variant))
-				{
-					dbus_message_iter_get_basic(&variant, &new_property_value);
-				}
-			}
-			else
-			{
-				CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-				dbus_error_free(&error);
-				dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-				return KeyConfig::ACTION_BLANK;
-			}
-		}
-	}
+    //The interface name
+    if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
+      dbus_message_iter_get_basic (&args, &interface);
+    else
+    {
+      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+      dbus_error_free(&error);
+      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+      return KeyConfig::ACTION_BLANK;
+    }
+    //The property name
+    if( dbus_message_iter_next(&args) && DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
+      dbus_message_iter_get_basic (&args, &property);
+    else
+    {
+      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+      dbus_error_free(&error);
+      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+      return KeyConfig::ACTION_BLANK;
+    }
+    //The value (either double or double in variant)
+    if (dbus_message_iter_next(&args))
+    {
+      //Simply a double
+      if (DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&args))
+      {
+        dbus_message_iter_get_basic(&args, &new_property_value);
+      }
+      //A double within a variant
+      else if(DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))
+      {
+        DBusMessageIter variant;
+        dbus_message_iter_recurse(&args, &variant);
+        if(DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&variant))
+        {
+          dbus_message_iter_get_basic(&variant, &new_property_value);
+        }
+      }
+      else
+      {
+        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+        dbus_error_free(&error);
+        dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+        return KeyConfig::ACTION_BLANK;
+      }
+    }
+  }
   if ( dbus_error_is_set(&error) )
   {
       CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
