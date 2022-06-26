@@ -79,7 +79,6 @@ RecentDVDStore    m_dvd_store;
 AutoPlaylist      m_playlist;
 bool              m_firstfile           = true;
 bool              m_send_eos            = false;
-bool              m_seek_flush          = false;
 std::string       m_filename;
 int               m_track               = -1;
 bool              m_is_dvd_device       = false;
@@ -217,7 +216,7 @@ int exit_with_message(const char *msg)
 void show_progress_message(const char *msg, int pos)
 {
   int dur = m_omx_reader->GetStreamLengthSeconds();
-  osd_printf(UM_NORM, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
+  osd_printf(UM_STDOUT, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
                 msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
 
@@ -281,7 +280,11 @@ static void FlushStreams(int64_t pts)
     m_player_audio->Flush();
 
   if(pts != AV_NOPTS_VALUE)
+  {
     m_av_clock->OMXMediaTime(pts);
+    m_av_clock->OMXPause();
+    m_av_clock->OMXReset(m_has_video, m_has_audio);
+  }
 
   if(m_has_subtitle)
     m_player_subtitles->Flush();
@@ -1103,11 +1106,29 @@ int run_play_loop()
   m_av_clock->OMXStop();
   m_av_clock->OMXPause();
 
-  // print some useful info
+  // seek at start
+  if(m_incr > 0 && !m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, true, NULL))
+  {
+    puts("Seeking failed");
+    m_incr = 0;
+  }
+
+  // display some startup osd
   if(m_DvdPlayer)
   {
     printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
-    osd_printf(UM_NORM, "%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
+
+    if(m_incr > 0)
+    {
+      int dur = m_omx_reader->GetStreamLengthSeconds();
+      osd_printf(UM_LONG, "%s\nTrack %d\n%02d:%02d:%02d / %02d:%02d:%02d", m_DvdPlayer->GetTitle().c_str(),
+        m_track + 1, (m_incr/3600), (m_incr/60)%60, m_incr%60, (dur/3600), (dur/60)%60, dur%60);
+      m_incr = 0;
+    }
+    else
+    {
+      osd_printf(UM_LONG, "%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
+    }
 
     UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + std::to_string(m_track + 1));
   }
@@ -1115,7 +1136,18 @@ int run_play_loop()
   {
     printf("Playing: %s\n", m_filename.c_str());
     std::string short_filename = getShortFileName();
-    osd_print(short_filename.c_str());
+
+    if(m_incr > 0)
+    {
+      int dur = m_omx_reader->GetStreamLengthSeconds();
+      osd_printf(UM_LONG, "%s\n%02d:%02d:%02d / %02d:%02d:%02d", short_filename.c_str(),
+        (m_incr/3600), (m_incr/60)%60, m_incr%60, (dur/3600), (dur/60)%60, dur%60);
+      m_incr = 0;
+    }
+    else
+    {
+      osd_print(UM_LONG, short_filename.c_str());
+    }
     UpdateRaspicastMetaData(short_filename);
   }
 
@@ -1279,14 +1311,12 @@ int run_play_loop()
 
   int64_t last_check_time = 0;
   int64_t startpts = 0;
-  bool sentStarted = true;
-  int64_t last_seek_pos   = 0;
 
   while(!m_stopped)
   {
     int64_t now = OMXClock::GetAbsoluteClock();
     bool update = false;
-    bool chapter_seek = false;
+
     if (last_check_time == 0 || last_check_time + 20000 <= now)
     {
       update = true;
@@ -1360,8 +1390,6 @@ int run_play_loop()
           case OMXReader::SEEK_SUCCESS:
             osd_printf(UM_NORM, "Chapter %d", ch);
             FlushStreams(new_pts);
-            m_seek_flush = true;
-            chapter_seek = true;
             break;
           case OMXReader::SEEK_OUT_OF_BOUNDS:
             m_send_eos = true;
@@ -1476,7 +1504,6 @@ int run_play_loop()
           {
             playspeed_current = playspeed_normal;
             SetSpeed(playspeeds[playspeed_current]);
-            m_seek_flush = true;
           }
 
           if(m_has_subtitle)
@@ -1525,36 +1552,17 @@ int run_play_loop()
       }
     }
 
-    if(m_seek_flush || m_incr != 0)
+    if(m_incr != 0)
     {
-      int64_t seek_pos     = 0;
+      int64_t seek_pos = m_av_clock->OMXMediaTime() + (int64_t)m_incr * AV_TIME_BASE;
 
-      if (!chapter_seek)
+      if(m_omx_reader->SeekTime(seek_pos, m_incr < 0, &startpts))
       {
-        int64_t pts = m_av_clock->OMXMediaTime();
-
-        seek_pos = (pts ? pts : last_seek_pos) + (int64_t)m_incr * AV_TIME_BASE;
-        last_seek_pos = seek_pos;
-
-        if(m_omx_reader->SeekTime(seek_pos, m_incr < 0, &startpts))
-        {
-          int t = (int)(startpts*1e-6);
-          show_progress_message("Seek", t);
-
-          FlushStreams(startpts);
-        }
+        show_progress_message("Seek", (int)(startpts*1e-6));
+        FlushStreams(startpts);
+        CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
       }
 
-      sentStarted = false;
-
-      if (m_omx_reader->IsEof())
-        return END_PLAY;
-
-      CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
-
-      m_av_clock->OMXPause();
-
-      m_seek_flush = false;
       m_incr = 0;
     }
 
@@ -1652,12 +1660,6 @@ int run_play_loop()
         }
       }
     }
-    if (!sentStarted)
-    {
-      CLogLog(LOGDEBUG, "COMXPlayer::HandleMessages - player started RESET");
-      m_av_clock->OMXReset(m_has_video, m_has_audio);
-      sentStarted = true;
-    }
 
     if(!m_omx_pkt)
       m_omx_pkt = m_omx_reader->Read();
@@ -1681,9 +1683,11 @@ int run_play_loop()
 
       if (m_loop)
       {
-        int64_t cur_pos = m_av_clock->OMXMediaTime();
-        m_incr = m_loop_from - (cur_pos ? cur_pos : last_seek_pos) / AV_TIME_BASE;
-        continue;
+        if(m_omx_reader->SeekTime((int64_t)m_loop_from * AV_TIME_BASE, true, NULL))
+        {
+          FlushStreams(startpts);
+          continue;
+        }
       }
 
       break;
@@ -1773,7 +1777,6 @@ void end_of_play_loop()
   m_player_subtitles->Close();
 
   // stop seeking
-  m_seek_flush = false;
   m_incr = 0;
 }
 
