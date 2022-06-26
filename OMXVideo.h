@@ -46,7 +46,6 @@ class OMXVideoConfig
 {
 public:
   COMXStreamInfo hints;
-  bool use_thread = true;
   Rect dst_rect;
   Rect src_rect;
   float display_aspect = 0.0f;

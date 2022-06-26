@@ -74,8 +74,7 @@ OMXPlayerSubtitles::OMXPlayerSubtitles(int display,
 
   m_av_clock = clock;
 
-  if(!Create())
-    throw "Failed to create subtitle thread";
+  Create();
 }
 
 

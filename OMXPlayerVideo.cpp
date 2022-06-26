@@ -64,8 +64,7 @@ m_config(config)
   printf("Video codec %s width %d height %d profile %d fps %f\n",
       m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
 
-  if(m_config.use_thread)
-    Create();
+  Create();
 }
 
 OMXPlayerVideo::~OMXPlayerVideo()
@@ -92,26 +91,22 @@ OMXPlayerVideo::~OMXPlayerVideo()
 
 void OMXPlayerVideo::Lock()
 {
-  if(m_config.use_thread)
-    pthread_mutex_lock(&m_lock);
+  pthread_mutex_lock(&m_lock);
 }
 
 void OMXPlayerVideo::UnLock()
 {
-  if(m_config.use_thread)
-    pthread_mutex_unlock(&m_lock);
+  pthread_mutex_unlock(&m_lock);
 }
 
 void OMXPlayerVideo::LockDecoder()
 {
-  if(m_config.use_thread)
-    pthread_mutex_lock(&m_lock_decoder);
+  pthread_mutex_lock(&m_lock_decoder);
 }
 
 void OMXPlayerVideo::UnLockDecoder()
 {
-  if(m_config.use_thread)
-    pthread_mutex_unlock(&m_lock_decoder);
+  pthread_mutex_unlock(&m_lock_decoder);
 }
 
 void OMXPlayerVideo::Reset()

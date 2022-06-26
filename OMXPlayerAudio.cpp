@@ -55,26 +55,22 @@ OMXPlayerAudio::~OMXPlayerAudio()
 
 void OMXPlayerAudio::Lock()
 {
-  if(m_config.use_thread)
-    pthread_mutex_lock(&m_lock);
+  pthread_mutex_lock(&m_lock);
 }
 
 void OMXPlayerAudio::UnLock()
 {
-  if(m_config.use_thread)
-    pthread_mutex_unlock(&m_lock);
+  pthread_mutex_unlock(&m_lock);
 }
 
 void OMXPlayerAudio::LockDecoder()
 {
-  if(m_config.use_thread)
-    pthread_mutex_lock(&m_lock_decoder);
+  pthread_mutex_lock(&m_lock_decoder);
 }
 
 void OMXPlayerAudio::UnLockDecoder()
 {
-  if(m_config.use_thread)
-    pthread_mutex_unlock(&m_lock_decoder);
+  pthread_mutex_unlock(&m_lock_decoder);
 }
 
 OMXPlayerAudio::OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config,
@@ -102,8 +98,7 @@ m_config(config)
   if(!OpenDecoder())
     throw "OMXPlayerAudio Error: Failed to open audio decoder";
 
-  if(m_config.use_thread)
-    Create();
+  Create();
 }
 
 int OMXPlayerAudio::GetActiveStream()

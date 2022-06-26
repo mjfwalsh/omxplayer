@@ -66,13 +66,10 @@ bool OMXThread::StopThread()
   return true;
 }
 
-bool OMXThread::Create()
+void OMXThread::Create()
 {
   if(m_running)
-  {
-    CLogLog(LOGERROR, "%s::%s - Thread already running", CLASSNAME, __func__);
-    return false;
-  }
+    throw CLASSNAME " - Thread already running";
 
   m_bAbort    = false;
   m_running = true;
@@ -80,7 +77,6 @@ bool OMXThread::Create()
   pthread_create(&m_thread, &m_tattr, &OMXThread::Run, this);
 
   CLogLog(LOGDEBUG, "%s::%s - Thread with id %d started", CLASSNAME, __func__, (int)m_thread);
-  return true;
 }
 
 bool OMXThread::Running()

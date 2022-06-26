@@ -39,7 +39,7 @@ private:
 public:
   OMXThread();
   virtual ~OMXThread();
-  bool Create();
+  void Create();
   virtual void Process() = 0;
   bool Running();
   pthread_t ThreadHandle();

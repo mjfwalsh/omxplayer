@@ -43,7 +43,6 @@ class OMXAudioConfig
 {
 public:
   COMXStreamInfo hints;
-  bool use_thread = true;
   std::string device;
   std::string subdevice;
   enum PCMLayout layout = PCM_LAYOUT_2_0;
