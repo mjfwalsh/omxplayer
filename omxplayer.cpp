@@ -62,7 +62,7 @@ OMXReader         *m_omx_reader;
 int               m_audio_index     = -1;
 OMXClock          *m_av_clock           = NULL;
 OMXControl        m_omxcontrol;
-Keyboard          m_keyboard;
+Keyboard          *m_keyboard;
 OMXAudioConfig    m_config_audio;
 OMXVideoConfig    m_config_video;
 OMXPacket         *m_omx_pkt            = NULL;
@@ -890,7 +890,7 @@ int main(int argc, char *argv[])
     m_keys = false;
 
   if(m_keys)
-    m_keyboard.Init(keymap_file, m_dbus_enabled, m_dbus_name);
+    m_keyboard = new Keyboard(keymap_file);
 
   // Disable seeking and playlists when reading from a pipe
   if(IsPipe(m_filename))
@@ -1324,9 +1324,10 @@ int run_play_loop()
     }
 
     if (update) {
-      OMXControlResult result = !m_dbus_enabled
-                               ? (OMXControlResult)(m_keyboard.getEvent())
-                               : m_omxcontrol.getEvent();
+      int action = m_keyboard ? m_keyboard->getEvent() : -1;
+
+      OMXControlResult result = action != -1 ? action :
+          (m_dbus_enabled ? m_omxcontrol.getEvent() : KeyConfig::ACTION_BLANK);
 
       switch(result.getKey())
       {

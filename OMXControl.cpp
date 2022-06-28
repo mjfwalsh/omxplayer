@@ -860,7 +860,6 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
 
 invalid_argument:
   CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-  dbus_error_free(&error);
   dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
   return KeyConfig::ACTION_BLANK;
 }
