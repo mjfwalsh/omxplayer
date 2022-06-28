@@ -4,7 +4,6 @@
 #include <dbus/dbus.h>
 
 #include <string>
-#include <unordered_map>
 
 #include "utils/log.h"
 #include "OMXClock.h"
@@ -15,6 +14,7 @@
 #include "OMXPlayerSubtitles.h"
 #include "utils/misc.h"
 
+#include "DbusCommandSearch.h"
 
 template <class T>
 static bool dbus_message_get_arg(DBusMessage *m, int type, T *value)
@@ -78,99 +78,6 @@ int64_t OMXControlResult::getArg() {
 
 const char *OMXControlResult::getWinArg() {
   return winarg;
-}
-
-OMXControl::OMXControl()
-{
-  interfaces[DBUS_INTERFACE_PROPERTIES] = "Prop";
-  interfaces[OMXPLAYER_DBUS_INTERFACE_ROOT] = "Root";
-  interfaces[OMXPLAYER_DBUS_INTERFACE_PLAYER] = "Play";
-
-  table["Root|Quit"] = ROOT_QUIT;
-  table["Root|Raise"] = ROOT_RAISE;
-  table["Prop|Get"] = PROP_GET;
-  table["Prop|Set"] = PROP_SET;
-  table["Prop|CanQuit"] = PROP_CAN_QUIT;
-  table["Prop|Fullscreen"] = PROP_FULLSCREEN;
-  table["Prop|CanSetFullscreen"] = PROP_CAN_SET_FULLSCREEN;
-  table["Prop|CanRaise"] = PROP_CAN_RAISE;
-  table["Prop|HasTrackList"] = PROP_HAS_TRACK_LIST;
-  table["Prop|Identity"] = PROP_IDENTITY;
-  table["Prop|SupportedUriSchemes"] = PROP_SUPPORTED_URI_SCHEMES;
-  table["Prop|SupportedMimeTypes"] = PROP_SUPPORTED_MIME_TYPES;
-  table["Prop|CanGoNext"] = PROP_CAN_GO_NEXT;
-  table["Prop|CanGoPrevious"] = PROP_CAN_GO_PREVIOUS;
-  table["Prop|CanSeek"] = PROP_CAN_SEEK;
-  table["Prop|CanControl"] = PROP_CAN_CONTROL;
-  table["Prop|CanPlay"] = PROP_CAN_PLAY;
-  table["Prop|CanPause"] = PROP_CAN_PAUSE;
-  table["Prop|PlaybackStatus"] = PROP_PLAYBACK_STATUS;
-  table["Prop|GetSource"] = PROP_GET_SOURCE;
-  table["Prop|Volume"] = PROP_VOLUME;
-  table["Prop|Mute"] = PROP_MUTE;
-  table["Prop|Unmute"] = PROP_UNMUTE;
-  table["Prop|Position"] = PROP_POSITION;
-  table["Prop|Aspect"] = PROP_ASPECT;
-  table["Prop|VideoStreamCount"] = PROP_VIDEO_STREAM_COUNT;
-  table["Prop|ResWidth"] = PROP_RES_WIDTH;
-  table["Prop|ResHeight"] = PROP_RES_HEIGHT;
-  table["Prop|Duration"] = PROP_DURATION;
-  table["Prop|MinimumRate"] = PROP_MINIMUM_RATE;
-  table["Prop|MaximumRate"] = PROP_MAXIMUM_RATE;
-  table["Play|GetSource"] = PLAYER_GET_SOURCE;
-  table["Play|Next"] = PLAYER_NEXT;
-  table["Play|Previous"] = PLAYER_PREVIOUS;
-  table["Play|Pause"] = PLAYER_PAUSE;
-  table["Play|Play"] = PLAYER_PLAY;
-  table["Play|PlayPause"] = PLAYER_PLAY_PAUSE;
-  table["Play|Stop"] = PLAYER_STOP;
-  table["Play|Seek"] = PLAYER_SEEK;
-  table["Play|SetPosition"] = PLAYER_SET_POSITION;
-  table["Play|SetAlpha"] = PLAYER_SET_ALPHA;
-  table["Play|SetLayer"] = PLAYER_SET_LAYER;
-  table["Play|SetAspectMode"] = PLAYER_SET_ASPECT_MODE;
-  table["Play|Mute"] = PLAYER_MUTE;
-  table["Play|Unmute"] = PLAYER_UNMUTE;
-  table["Play|ListSubtitles"] = PLAYER_LIST_SUBTITLES;
-  table["Play|HideVideo"] = PLAYER_HIDE_VIDEO;
-  table["Play|UnHideVideo"] = PLAYER_UN_HIDE_VIDEO;
-  table["Play|ListAudio"] = PLAYER_LIST_AUDIO;
-  table["Play|ListVideo"] = PLAYER_LIST_VIDEO;
-  table["Play|SelectSubtitle"] = PLAYER_SELECT_SUBTITLE;
-  table["Play|SelectAudio"] = PLAYER_SELECT_AUDIO;
-  table["Play|ShowSubtitles"] = PLAYER_SHOW_SUBTITLES;
-  table["Play|HideSubtitles"] = PLAYER_HIDE_SUBTITLES;
-  table["Play|OpenUri"] = PLAYER_OPEN_URI;
-  table["Play|Action"] = PLAYER_ACTION;
-
-  // get properties
-  table["Get|Root|CanRaise"] = GET_ROOT_CAN_RAISE;
-  table["Get|Root|CanQuit"] = GET_ROOT_CAN_QUIT;
-  table["Get|Root|CanSetFullscreen"] = GET_ROOT_CAN_SET_FULLSCREEN;
-  table["Get|Root|Fullscreen"] = GET_ROOT_FULLSCREEN;
-  table["Get|Root|HasTrackList"] = GET_ROOT_HAS_TRACK_LIST;
-  table["Get|Root|Identity"] = GET_ROOT_IDENTITY;
-  table["Get|Root|SupportedUriSchemes"] = GET_ROOT_SUPPORTED_URI_SCHEMES;
-  table["Get|Root|SupportedMimeTypes"] = GET_ROOT_SUPPORTED_MIME_TYPES;
-  table["Get|Play|CanGoNext"] = GET_PLAYER_CAN_GO_NEXT;
-  table["Get|Play|CanGoPrevious"] = GET_PLAYER_CAN_GO_PREVIOUS;
-  table["Get|Play|CanSeek"] = GET_PLAYER_CAN_SEEK;
-  table["Get|Play|CanControl"] = GET_PLAYER_CAN_CONTROL;
-  table["Get|Play|CanPlay"] = GET_PLAYER_CAN_PLAY;
-  table["Get|Play|CanPause"] = GET_PLAYER_CAN_PAUSE;
-  table["Get|Play|Position"] = GET_PLAYER_POSITION;
-  table["Get|Play|PlaybackStatus"] = GET_PLAYER_PLAYBACK_STATUS;
-  table["Get|Play|MinimumRate"] = GET_PLAYER_MINIMUM_RATE;
-  table["Get|Play|MaximumRate"] = GET_PLAYER_MAXIMUM_RATE;
-  table["Get|Play|Rate"] = GET_PLAYER_RATE;
-  table["Get|Play|Volume"] = GET_PLAYER_VOLUME;
-  table["Get|Play|Metadata"] = GET_PLAYER_METADATA;
-  table["Get|Play|Aspect"] = GET_PLAYER_ASPECT;
-  table["Get|Play|VideoStreamCount"] = GET_PLAYER_VIDEO_STREAM_COUNT;
-  table["Get|Play|ResWidth"] = GET_PLAYER_RES_WIDTH;
-  table["Get|Play|ResHeight"] = GET_PLAYER_RES_HEIGHT;
-  table["Get|Play|Duration"] = GET_PLAYER_DURATION;
-
 }
 
 OMXControl::~OMXControl() 
@@ -296,49 +203,42 @@ OMXControlResult OMXControl::getEvent()
 
   CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 
-  std::string key;
-  try {
-    const char *interface = dbus_message_get_interface(m);
-    const char *method = dbus_message_get_member(m);
+  const char *interface = dbus_message_get_interface(m);
+  const char *method = dbus_message_get_member(m);
 
-    key = interfaces.at(interface) + "|";
-    key += method;
-  }
-  catch(std::out_of_range const&)
-  {
-    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-    return KeyConfig::ACTION_BLANK;
-  }
-
-  try {
-    OMXControlResult result = handle_event(m, table.at(key));
-    dbus_message_unref(m);
-
-    return result;
-  }
-  catch(std::out_of_range const&)
-  {
-    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
-    return KeyConfig::ACTION_BLANK;
-  }
+  enum DBusMethod cmd = dbus_find_method(interface, method);
+  return handle_event(m, cmd);
 }
 
-OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction search_key)
+OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search_key)
 {
   switch(search_key)
   {
+  case INVALID_INTERFACE:
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
+    return KeyConfig::ACTION_BLANK;
+
+  case INVALID_METHOD:
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
+    return KeyConfig::ACTION_BLANK;
+
+  case INVALID_PROPERTY:
+    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
+    return KeyConfig::ACTION_BLANK;
+
   //----------------------------DBus root interface-----------------------------
   //Methods:
-  case ROOT_QUIT: // OMXPLAYER_DBUS_INTERFACE_ROOT - Quit
+  case ROOT_QUIT: // org.mpris.MediaPlayer2 - Quit
     dbus_respond_ok(m);//Note: No reply according to MPRIS2 specs
     return KeyConfig::ACTION_EXIT;
 
-  case ROOT_RAISE: // OMXPLAYER_DBUS_INTERFACE_ROOT - Raise
+  case ROOT_RAISE: // org.mpris.MediaPlayer2 - Raise
     //Does nothing
     return KeyConfig::ACTION_BLANK;
-  case PROP_GET: // DBUS_INTERFACE_PROPERTIES - Get
+  case PROP_GET: // org.freedesktop.DBus.Properties - Get
     {
       DBusError error;
       dbus_error_init(&error);
@@ -348,87 +248,79 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
       const char *prop_interface, *property;
       dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &prop_interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
 
-      try {
-        key = "Get|" + interfaces.at(prop_interface) + "|";
-      }
-      catch(std::out_of_range const&)
+      if (dbus_error_is_set(&error))
       {
-        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-        return KeyConfig::ACTION_BLANK;
+         CLogLog(LOGWARNING, "Seek D-Bus Error: %s", error.message);
+         dbus_error_free(&error);
+         dbus_respond_ok(m);
+         return KeyConfig::ACTION_BLANK;
       }
-
-      try {
-        key += property;
-        return handle_event(m, table.at(key));
-      }
-      catch(std::out_of_range const&)
+      else
       {
-        CLogLog(LOGWARNING, "Unhandled dbus property message, member: %s interface: %s type: %d path: %s  property: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m), property );
-        dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
-        return KeyConfig::ACTION_BLANK;
+        enum DBusMethod cmd = dbus_find_property(prop_interface, property);
+        return handle_event(m, cmd);
       }
     }
 
   //Properties Set method
-  case PROP_SET: // DBUS_INTERFACE_PROPERTIES - Set
+  case PROP_SET: // org.freedesktop.DBus.Properties - Set
     return SetProperty(m);
 
   // Property access
-  case PROP_CAN_QUIT: // DBUS_INTERFACE_PROPERTIES - CanQuit
-  case GET_ROOT_CAN_QUIT: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanQuit
-  case PROP_FULLSCREEN: // DBUS_INTERFACE_PROPERTIES - Fullscreen
+  case PROP_CAN_QUIT: // org.freedesktop.DBus.Properties - CanQuit
+  case GET_ROOT_CAN_QUIT: // org.mpris.MediaPlayer2 - CanQuit
+  case PROP_FULLSCREEN: // org.freedesktop.DBus.Properties - Fullscreen
     dbus_respond_boolean(m, 1);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_SET_FULLSCREEN: // DBUS_INTERFACE_PROPERTIES - CanSetFullscreen
-  case PROP_CAN_RAISE: // DBUS_INTERFACE_PROPERTIES - CanRaise
-  case PROP_HAS_TRACK_LIST: // DBUS_INTERFACE_PROPERTIES - HasTrackList
+  case PROP_CAN_SET_FULLSCREEN: // org.freedesktop.DBus.Properties - CanSetFullscreen
+  case PROP_CAN_RAISE: // org.freedesktop.DBus.Properties - CanRaise
+  case PROP_HAS_TRACK_LIST: // org.freedesktop.DBus.Properties - HasTrackList
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_IDENTITY: // DBUS_INTERFACE_PROPERTIES - Identity
-  case GET_ROOT_IDENTITY: // OMXPLAYER_DBUS_INTERFACE_ROOT - Identity
+  case PROP_IDENTITY: // org.freedesktop.DBus.Properties - Identity
+  case GET_ROOT_IDENTITY: // org.mpris.MediaPlayer2 - Identity
     dbus_respond_string(m, "OMXPlayer");
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_SUPPORTED_URI_SCHEMES: // DBUS_INTERFACE_PROPERTIES - SupportedUriSchemes
-  case GET_ROOT_SUPPORTED_URI_SCHEMES: // OMXPLAYER_DBUS_INTERFACE_ROOT - SupportedUriSchemes //TODO: Update ?
+  case PROP_SUPPORTED_URI_SCHEMES: // org.freedesktop.DBus.Properties - SupportedUriSchemes
+  case GET_ROOT_SUPPORTED_URI_SCHEMES: // org.mpris.MediaPlayer2 - SupportedUriSchemes //TODO: Update ?
     {
       const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
       dbus_respond_array(m, UriSchemes, 4); // Array is of length 4
       return KeyConfig::ACTION_BLANK;
     }
-  case PROP_SUPPORTED_MIME_TYPES: // DBUS_INTERFACE_PROPERTIES - SupportedMimeTypes
-  case GET_ROOT_SUPPORTED_MIME_TYPES: // OMXPLAYER_DBUS_INTERFACE_ROOT - SupportedMimeTypes //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
+  case PROP_SUPPORTED_MIME_TYPES: // org.freedesktop.DBus.Properties - SupportedMimeTypes
+  case GET_ROOT_SUPPORTED_MIME_TYPES: // org.mpris.MediaPlayer2 - SupportedMimeTypes //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
     {
       const char *MimeTypes[] = {}; // Needs supplying
       dbus_respond_array(m, MimeTypes, 0);
       return KeyConfig::ACTION_BLANK;
     }
-  case PROP_CAN_GO_NEXT: // DBUS_INTERFACE_PROPERTIES - CanGoNext
-  case PROP_CAN_GO_PREVIOUS: // DBUS_INTERFACE_PROPERTIES - CanGoPrevious
-  case GET_PLAYER_CAN_GO_NEXT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanGoNext
-  case GET_PLAYER_CAN_GO_PREVIOUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanGoPrevious
+  case PROP_CAN_GO_NEXT: // org.freedesktop.DBus.Properties - CanGoNext
+  case PROP_CAN_GO_PREVIOUS: // org.freedesktop.DBus.Properties - CanGoPrevious
+  case GET_PLAYER_CAN_GO_NEXT: // org.mpris.MediaPlayer2.Player - CanGoNext
+  case GET_PLAYER_CAN_GO_PREVIOUS: // org.mpris.MediaPlayer2.Player - CanGoPrevious
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_SEEK: // DBUS_INTERFACE_PROPERTIES - CanSeek
-  case GET_PLAYER_CAN_SEEK: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanSeek
+  case PROP_CAN_SEEK: // org.freedesktop.DBus.Properties - CanSeek
+  case GET_PLAYER_CAN_SEEK: // org.mpris.MediaPlayer2.Player - CanSeek
     dbus_respond_boolean(m, reader->CanSeek());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_CONTROL: // DBUS_INTERFACE_PROPERTIES - CanControl
-  case PROP_CAN_PLAY: // DBUS_INTERFACE_PROPERTIES - CanPlay
-  case PROP_CAN_PAUSE: // DBUS_INTERFACE_PROPERTIES - CanPause
-  case GET_PLAYER_CAN_CONTROL: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanControl
-  case GET_PLAYER_CAN_PLAY: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanPlay
-  case GET_PLAYER_CAN_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - CanPause
+  case PROP_CAN_CONTROL: // org.freedesktop.DBus.Properties - CanControl
+  case PROP_CAN_PLAY: // org.freedesktop.DBus.Properties - CanPlay
+  case PROP_CAN_PAUSE: // org.freedesktop.DBus.Properties - CanPause
+  case GET_PLAYER_CAN_CONTROL: // org.mpris.MediaPlayer2.Player - CanControl
+  case GET_PLAYER_CAN_PLAY: // org.mpris.MediaPlayer2.Player - CanPlay
+  case GET_PLAYER_CAN_PAUSE: // org.mpris.MediaPlayer2.Player - CanPause
     dbus_respond_boolean(m, 1);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_PLAYBACK_STATUS: // DBUS_INTERFACE_PROPERTIES - PlaybackStatus
-  case GET_PLAYER_PLAYBACK_STATUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - PlaybackStatus
+  case PROP_PLAYBACK_STATUS: // org.freedesktop.DBus.Properties - PlaybackStatus
+  case GET_PLAYER_PLAYBACK_STATUS: // org.mpris.MediaPlayer2.Player - PlaybackStatus
     {
       const char *status;
       if (clock->OMXIsPaused())
@@ -443,11 +335,11 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
       dbus_respond_string(m, status);
       return KeyConfig::ACTION_BLANK;
     }
-  case PROP_GET_SOURCE: // DBUS_INTERFACE_PROPERTIES - GetSource
+  case PROP_GET_SOURCE: // org.freedesktop.DBus.Properties - GetSource
     dbus_respond_string(m, get_filename().c_str());
       return KeyConfig::ACTION_BLANK;
 
-  case PROP_VOLUME: // DBUS_INTERFACE_PROPERTIES - Volume
+  case PROP_VOLUME: // org.freedesktop.DBus.Properties - Volume
     {
       if(!audio)
       {
@@ -473,94 +365,94 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return KeyConfig::ACTION_BLANK;
       }
     }
-  case PROP_MUTE: // DBUS_INTERFACE_PROPERTIES - Mute
+  case PROP_MUTE: // org.freedesktop.DBus.Properties - Mute
     if(audio)
       audio->SetMute(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_UNMUTE: // DBUS_INTERFACE_PROPERTIES - Unmute
+  case PROP_UNMUTE: // org.freedesktop.DBus.Properties - Unmute
     if(audio)
       audio->SetMute(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_POSITION: // DBUS_INTERFACE_PROPERTIES - Position
-  case GET_PLAYER_POSITION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Position
+  case PROP_POSITION: // org.freedesktop.DBus.Properties - Position
+  case GET_PLAYER_POSITION: // org.mpris.MediaPlayer2.Player - Position
     // Returns the current position in microseconds
     dbus_respond_int64(m, clock->OMXMediaTime());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_ASPECT: // DBUS_INTERFACE_PROPERTIES - Aspect
-  case GET_PLAYER_ASPECT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Aspect
+  case PROP_ASPECT: // org.freedesktop.DBus.Properties - Aspect
+  case GET_PLAYER_ASPECT: // org.mpris.MediaPlayer2.Player - Aspect
     // Returns aspect ratio
     dbus_respond_double(m, reader->GetAspectRatio());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_VIDEO_STREAM_COUNT: // DBUS_INTERFACE_PROPERTIES - VideoStreamCount
-  case GET_PLAYER_VIDEO_STREAM_COUNT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - VideoStreamCount
+  case PROP_VIDEO_STREAM_COUNT: // org.freedesktop.DBus.Properties - VideoStreamCount
+  case GET_PLAYER_VIDEO_STREAM_COUNT: // org.mpris.MediaPlayer2.Player - VideoStreamCount
     // Returns number of video streams
     dbus_respond_int64(m, reader->VideoStreamCount());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_RES_WIDTH: // DBUS_INTERFACE_PROPERTIES - ResWidth
-  case GET_PLAYER_RES_WIDTH: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ResWidth
+  case PROP_RES_WIDTH: // org.freedesktop.DBus.Properties - ResWidth
+  case GET_PLAYER_RES_WIDTH: // org.mpris.MediaPlayer2.Player - ResWidth
     // Returns width of video
     dbus_respond_int64(m, reader->GetWidth());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_RES_HEIGHT: // DBUS_INTERFACE_PROPERTIES - ResHeight
-  case GET_PLAYER_RES_HEIGHT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ResHeight
+  case PROP_RES_HEIGHT: // org.freedesktop.DBus.Properties - ResHeight
+  case GET_PLAYER_RES_HEIGHT: // org.mpris.MediaPlayer2.Player - ResHeight
     // Returns height of video
     dbus_respond_int64(m, reader->GetHeight());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_DURATION: // DBUS_INTERFACE_PROPERTIES - Duration
-  case GET_PLAYER_DURATION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Duration
+  case PROP_DURATION: // org.freedesktop.DBus.Properties - Duration
+  case GET_PLAYER_DURATION: // org.mpris.MediaPlayer2.Player - Duration
     // Returns the duration in microseconds
     dbus_respond_int64(m, reader->GetStreamLengthMicro());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_MINIMUM_RATE: // DBUS_INTERFACE_PROPERTIES - MinimumRate
+  case PROP_MINIMUM_RATE: // org.freedesktop.DBus.Properties - MinimumRate
     dbus_respond_double(m, 0.0);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_MAXIMUM_RATE: // DBUS_INTERFACE_PROPERTIES - MaximumRate
+  case PROP_MAXIMUM_RATE: // org.freedesktop.DBus.Properties - MaximumRate
     //TODO: to be made consistent
     dbus_respond_double(m, 10.125);
     return KeyConfig::ACTION_BLANK;
 
 
   //--------------------------Player interface methods--------------------------
-  case PLAYER_GET_SOURCE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - GetSource
+  case PLAYER_GET_SOURCE: // org.mpris.MediaPlayer2.Player - GetSource
     dbus_respond_string(m, get_filename().c_str());
     return KeyConfig::ACTION_BLANK;
 
-  case PLAYER_NEXT: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Next
+  case PLAYER_NEXT: // org.mpris.MediaPlayer2.Player - Next
     dbus_respond_ok(m);
     return KeyConfig::ACTION_NEXT_CHAPTER;
 
-  case PLAYER_PREVIOUS: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Previous
+  case PLAYER_PREVIOUS: // org.mpris.MediaPlayer2.Player - Previous
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PREVIOUS_CHAPTER;
 
-  case PLAYER_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Pause
+  case PLAYER_PAUSE: // org.mpris.MediaPlayer2.Player - Pause
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PAUSE;
 
-  case PLAYER_PLAY: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Play
+  case PLAYER_PLAY: // org.mpris.MediaPlayer2.Player - Play
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PLAY;
 
-  case PLAYER_PLAY_PAUSE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - PlayPause
+  case PLAYER_PLAY_PAUSE: // org.mpris.MediaPlayer2.Player - PlayPause
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PLAYPAUSE;
 
-  case PLAYER_STOP: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Stop
+  case PLAYER_STOP: // org.mpris.MediaPlayer2.Player - Stop
     dbus_respond_ok(m);
     return KeyConfig::ACTION_EXIT;
 
-  case PLAYER_SEEK: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Seek
+  case PLAYER_SEEK: // org.mpris.MediaPlayer2.Player - Seek
     {
       DBusError error;
       dbus_error_init(&error);
@@ -582,7 +474,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
          return OMXControlResult(KeyConfig::ACTION_SEEK_RELATIVE, offset);
       }
     }
-  case PLAYER_SET_POSITION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetPosition
+  case PLAYER_SET_POSITION: // org.mpris.MediaPlayer2.Player - SetPosition
     {
       DBusError error;
       dbus_error_init(&error);
@@ -605,7 +497,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return OMXControlResult(KeyConfig::ACTION_SEEK_ABSOLUTE, position);
       }
     }
-  case PLAYER_SET_ALPHA: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetAlpha
+  case PLAYER_SET_ALPHA: // org.mpris.MediaPlayer2.Player - SetAlpha
     {
       DBusError error;
       dbus_error_init(&error);
@@ -628,7 +520,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return OMXControlResult(KeyConfig::ACTION_SET_ALPHA, alpha);
       }
     }
-  case PLAYER_SET_LAYER: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetLayer
+  case PLAYER_SET_LAYER: // org.mpris.MediaPlayer2.Player - SetLayer
     {
       DBusError error;
       dbus_error_init(&error);
@@ -650,7 +542,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return OMXControlResult(KeyConfig::ACTION_SET_LAYER, layer);
       }
     }
-  case PLAYER_SET_ASPECT_MODE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SetAspectMode
+  case PLAYER_SET_ASPECT_MODE: // org.mpris.MediaPlayer2.Player - SetAspectMode
     {
       DBusError error;
       dbus_error_init(&error);
@@ -673,19 +565,19 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspectMode);
       }
     }
-  case PLAYER_MUTE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Mute
+  case PLAYER_MUTE: // org.mpris.MediaPlayer2.Player - Mute
     if(audio)
       audio->SetMute(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PLAYER_UNMUTE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Unmute
+  case PLAYER_UNMUTE: // org.mpris.MediaPlayer2.Player - Unmute
     if(audio)
       audio->SetMute(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PLAYER_LIST_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListSubtitles
+  case PLAYER_LIST_SUBTITLES: // org.mpris.MediaPlayer2.Player - ListSubtitles
     {
       int count = reader->SubtitleStreamCount();
       const char **values = new const char*[count];
@@ -708,15 +600,15 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_HIDE_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - HideVideo
+  case PLAYER_HIDE_VIDEO: // org.mpris.MediaPlayer2.Player - HideVideo
     dbus_respond_ok(m);
     return KeyConfig::ACTION_HIDE_VIDEO;
 
-  case PLAYER_UN_HIDE_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - UnHideVideo
+  case PLAYER_UN_HIDE_VIDEO: // org.mpris.MediaPlayer2.Player - UnHideVideo
     dbus_respond_ok(m);
     return KeyConfig::ACTION_UNHIDE_VIDEO;
 
-  case PLAYER_LIST_AUDIO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListAudio
+  case PLAYER_LIST_AUDIO: // org.mpris.MediaPlayer2.Player - ListAudio
     {
       int count = reader->AudioStreamCount();
       const char **values = new const char*[count];
@@ -741,7 +633,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_LIST_VIDEO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ListVideo
+  case PLAYER_LIST_VIDEO: // org.mpris.MediaPlayer2.Player - ListVideo
     {
       int count = reader->VideoStreamCount();
       const char **values = new const char*[count];
@@ -764,7 +656,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_SELECT_SUBTITLE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SelectSubtitle
+  case PLAYER_SELECT_SUBTITLE: // org.mpris.MediaPlayer2.Player - SelectSubtitle
     {
       int index;
       if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &index))
@@ -777,7 +669,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
       }
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_SELECT_AUDIO: // OMXPLAYER_DBUS_INTERFACE_PLAYER - SelectAudio
+  case PLAYER_SELECT_AUDIO: // org.mpris.MediaPlayer2.Player - SelectAudio
     {
       if(!audio)
         dbus_respond_boolean(m, 0);
@@ -794,17 +686,17 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
       return KeyConfig::ACTION_BLANK;
     }
   // TODO: SelectVideo ???
-  case PLAYER_SHOW_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - ShowSubtitles
+  case PLAYER_SHOW_SUBTITLES: // org.mpris.MediaPlayer2.Player - ShowSubtitles
     subtitles->SetVisible(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_SHOW_SUBTITLES;
 
-  case PLAYER_HIDE_SUBTITLES: // OMXPLAYER_DBUS_INTERFACE_PLAYER - HideSubtitles
+  case PLAYER_HIDE_SUBTITLES: // org.mpris.MediaPlayer2.Player - HideSubtitles
     subtitles->SetVisible(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_HIDE_SUBTITLES;
 
-  case PLAYER_OPEN_URI: // OMXPLAYER_DBUS_INTERFACE_PLAYER - OpenUri
+  case PLAYER_OPEN_URI: // org.mpris.MediaPlayer2.Player - OpenUri
     {
       DBusError error;
       dbus_error_init(&error);
@@ -825,7 +717,7 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
         return OMXControlResult(KeyConfig::ACTION_CHANGE_FILE, file);
       }
     }
-  case PLAYER_ACTION: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Action
+  case PLAYER_ACTION: // org.mpris.MediaPlayer2.Player - Action
     {
       int action;
       if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &action))
@@ -837,44 +729,44 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusFunction sear
   // begin get properties
   //Root interface:
 
-  case GET_ROOT_CAN_RAISE: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanRaise
+  case GET_ROOT_CAN_RAISE: // org.mpris.MediaPlayer2 - CanRaise
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_ROOT_CAN_SET_FULLSCREEN: // OMXPLAYER_DBUS_INTERFACE_ROOT - CanSetFullscreen
+  case GET_ROOT_CAN_SET_FULLSCREEN: // org.mpris.MediaPlayer2 - CanSetFullscreen
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_ROOT_FULLSCREEN: // OMXPLAYER_DBUS_INTERFACE_ROOT - Fullscreen //Fullscreen is read/write in theory not read only, but read only at the moment so...
+  case GET_ROOT_FULLSCREEN: // org.mpris.MediaPlayer2 - Fullscreen //Fullscreen is read/write in theory not read only, but read only at the moment so...
     dbus_respond_boolean(m, 1);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_ROOT_HAS_TRACK_LIST: // OMXPLAYER_DBUS_INTERFACE_ROOT - HasTrackList
+  case GET_ROOT_HAS_TRACK_LIST: // org.mpris.MediaPlayer2 - HasTrackList
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
   //Player interface:
   //MPRIS2 properties:
 
-  case GET_PLAYER_MINIMUM_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - MinimumRate
+  case GET_PLAYER_MINIMUM_RATE: // org.mpris.MediaPlayer2.Player - MinimumRate
     dbus_respond_double(m, (MIN_RATE)/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_MAXIMUM_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - MaximumRate
+  case GET_PLAYER_MAXIMUM_RATE: // org.mpris.MediaPlayer2.Player - MaximumRate
     dbus_respond_double(m, (MAX_RATE)/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_RATE: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Rate
+  case GET_PLAYER_RATE: // org.mpris.MediaPlayer2.Player - Rate
     //return current playing rate
     dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_VOLUME: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Volume
+  case GET_PLAYER_VOLUME: // org.mpris.MediaPlayer2.Player - Volume
     //return current volume
     dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_METADATA: // OMXPLAYER_DBUS_INTERFACE_PLAYER - Metadata
+  case GET_PLAYER_METADATA: // org.mpris.MediaPlayer2.Player - Metadata
     {
       DBusMessage *reply;
       reply = dbus_message_new_method_return(m);
