@@ -203,22 +203,19 @@ OMXControlResult OMXControl::getEvent()
 
   CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 
-  const char *interface = dbus_message_get_interface(m);
   const char *method = dbus_message_get_member(m);
 
-  enum DBusMethod cmd = dbus_find_method(interface, method);
-  return handle_event(m, cmd);
+  OMXControlResult action = handle_event(m, dbus_find_method(method));
+
+  dbus_message_unref(m);
+
+  return action;
 }
 
 OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search_key)
 {
   switch(search_key)
   {
-  case INVALID_INTERFACE:
-    CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-    dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
-    return KeyConfig::ACTION_BLANK;
-
   case INVALID_METHOD:
     CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
     dbus_respond_error(m, DBUS_ERROR_UNKNOWN_METHOD, "Unknown method");
@@ -229,24 +226,23 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
     dbus_respond_error(m, DBUS_ERROR_UNKNOWN_PROPERTY, "Unknown property");
     return KeyConfig::ACTION_BLANK;
 
-  //----------------------------DBus root interface-----------------------------
-  //Methods:
-  case ROOT_QUIT: // org.mpris.MediaPlayer2 - Quit
+  case QUIT:
     dbus_respond_ok(m);//Note: No reply according to MPRIS2 specs
     return KeyConfig::ACTION_EXIT;
 
-  case ROOT_RAISE: // org.mpris.MediaPlayer2 - Raise
+  case RAISE:
     //Does nothing
     return KeyConfig::ACTION_BLANK;
-  case PROP_GET: // org.freedesktop.DBus.Properties - Get
+
+  case GET:
     {
       DBusError error;
       dbus_error_init(&error);
       std::string key;
 
       //Retrieve interface and property name
-      const char *prop_interface, *property;
-      dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &prop_interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
+      const char *interface, *property;
+      dbus_message_get_args(m, &error, DBUS_TYPE_STRING, &interface, DBUS_TYPE_STRING, &property, DBUS_TYPE_INVALID);
 
       if (dbus_error_is_set(&error))
       {
@@ -257,89 +253,63 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
       }
       else
       {
-        enum DBusMethod cmd = dbus_find_property(prop_interface, property);
-        return handle_event(m, cmd);
+        return handle_event(m, dbus_find_property(property));
       }
     }
 
-  //Properties Set method
-  case PROP_SET: // org.freedesktop.DBus.Properties - Set
+  case SET:
     return SetProperty(m);
 
-  // Property access
-  case PROP_CAN_QUIT: // org.freedesktop.DBus.Properties - CanQuit
-  case GET_ROOT_CAN_QUIT: // org.mpris.MediaPlayer2 - CanQuit
-  case PROP_FULLSCREEN: // org.freedesktop.DBus.Properties - Fullscreen
+  case CAN_QUIT:
+  case FULLSCREEN:
+  case CAN_CONTROL:
+  case CAN_PLAY:
+  case CAN_PAUSE:
+  case GET_ROOT_FULLSCREEN:
     dbus_respond_boolean(m, 1);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_SET_FULLSCREEN: // org.freedesktop.DBus.Properties - CanSetFullscreen
-  case PROP_CAN_RAISE: // org.freedesktop.DBus.Properties - CanRaise
-  case PROP_HAS_TRACK_LIST: // org.freedesktop.DBus.Properties - HasTrackList
+  case CAN_SET_FULLSCREEN:
+  case CAN_RAISE:
+  case HAS_TRACK_LIST:
+  case CAN_GO_NEXT:
+  case CAN_GO_PREVIOUS:
+  case GET_ROOT_CAN_RAISE:
+  case GET_ROOT_HAS_TRACK_LIST:
     dbus_respond_boolean(m, 0);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_IDENTITY: // org.freedesktop.DBus.Properties - Identity
-  case GET_ROOT_IDENTITY: // org.mpris.MediaPlayer2 - Identity
+  case IDENTITY:
     dbus_respond_string(m, "OMXPlayer");
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_SUPPORTED_URI_SCHEMES: // org.freedesktop.DBus.Properties - SupportedUriSchemes
-  case GET_ROOT_SUPPORTED_URI_SCHEMES: // org.mpris.MediaPlayer2 - SupportedUriSchemes //TODO: Update ?
+  case SUPPORTED_URI_SCHEMES:
     {
       const char *UriSchemes[] = {"file", "http", "rtsp", "rtmp"};
-      dbus_respond_array(m, UriSchemes, 4); // Array is of length 4
+      dbus_respond_array(m, UriSchemes, 4);
       return KeyConfig::ACTION_BLANK;
     }
-  case PROP_SUPPORTED_MIME_TYPES: // org.freedesktop.DBus.Properties - SupportedMimeTypes
-  case GET_ROOT_SUPPORTED_MIME_TYPES: // org.mpris.MediaPlayer2 - SupportedMimeTypes //Vinc: TODO: Minimal list of supported types based on ffmpeg minimal support ?
+
+  case SUPPORTED_MIME_TYPES:
     {
       const char *MimeTypes[] = {}; // Needs supplying
       dbus_respond_array(m, MimeTypes, 0);
       return KeyConfig::ACTION_BLANK;
     }
-  case PROP_CAN_GO_NEXT: // org.freedesktop.DBus.Properties - CanGoNext
-  case PROP_CAN_GO_PREVIOUS: // org.freedesktop.DBus.Properties - CanGoPrevious
-  case GET_PLAYER_CAN_GO_NEXT: // org.mpris.MediaPlayer2.Player - CanGoNext
-  case GET_PLAYER_CAN_GO_PREVIOUS: // org.mpris.MediaPlayer2.Player - CanGoPrevious
-    dbus_respond_boolean(m, 0);
-    return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_SEEK: // org.freedesktop.DBus.Properties - CanSeek
-  case GET_PLAYER_CAN_SEEK: // org.mpris.MediaPlayer2.Player - CanSeek
+  case CAN_SEEK:
     dbus_respond_boolean(m, reader->CanSeek());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_CAN_CONTROL: // org.freedesktop.DBus.Properties - CanControl
-  case PROP_CAN_PLAY: // org.freedesktop.DBus.Properties - CanPlay
-  case PROP_CAN_PAUSE: // org.freedesktop.DBus.Properties - CanPause
-  case GET_PLAYER_CAN_CONTROL: // org.mpris.MediaPlayer2.Player - CanControl
-  case GET_PLAYER_CAN_PLAY: // org.mpris.MediaPlayer2.Player - CanPlay
-  case GET_PLAYER_CAN_PAUSE: // org.mpris.MediaPlayer2.Player - CanPause
-    dbus_respond_boolean(m, 1);
+  case PLAYBACK_STATUS:
+    dbus_respond_string(m, clock->OMXIsPaused() ? "Paused" : "Playing");
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_PLAYBACK_STATUS: // org.freedesktop.DBus.Properties - PlaybackStatus
-  case GET_PLAYER_PLAYBACK_STATUS: // org.mpris.MediaPlayer2.Player - PlaybackStatus
-    {
-      const char *status;
-      if (clock->OMXIsPaused())
-      {
-        status = "Paused";
-      }
-      else
-      {
-        status = "Playing";
-      }
-
-      dbus_respond_string(m, status);
-      return KeyConfig::ACTION_BLANK;
-    }
-  case PROP_GET_SOURCE: // org.freedesktop.DBus.Properties - GetSource
+  case GET_SOURCE:
     dbus_respond_string(m, get_filename().c_str());
-      return KeyConfig::ACTION_BLANK;
+    return KeyConfig::ACTION_BLANK;
 
-  case PROP_VOLUME: // org.freedesktop.DBus.Properties - Volume
+  case VOLUME:
     {
       if(!audio)
       {
@@ -365,94 +335,83 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return KeyConfig::ACTION_BLANK;
       }
     }
-  case PROP_MUTE: // org.freedesktop.DBus.Properties - Mute
+
+  case MUTE:
     if(audio)
       audio->SetMute(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_UNMUTE: // org.freedesktop.DBus.Properties - Unmute
+  case UNMUTE:
     if(audio)
       audio->SetMute(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_POSITION: // org.freedesktop.DBus.Properties - Position
-  case GET_PLAYER_POSITION: // org.mpris.MediaPlayer2.Player - Position
+  case POSITION:
     // Returns the current position in microseconds
     dbus_respond_int64(m, clock->OMXMediaTime());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_ASPECT: // org.freedesktop.DBus.Properties - Aspect
-  case GET_PLAYER_ASPECT: // org.mpris.MediaPlayer2.Player - Aspect
+  case ASPECT:
     // Returns aspect ratio
     dbus_respond_double(m, reader->GetAspectRatio());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_VIDEO_STREAM_COUNT: // org.freedesktop.DBus.Properties - VideoStreamCount
-  case GET_PLAYER_VIDEO_STREAM_COUNT: // org.mpris.MediaPlayer2.Player - VideoStreamCount
+  case VIDEO_STREAM_COUNT:
     // Returns number of video streams
     dbus_respond_int64(m, reader->VideoStreamCount());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_RES_WIDTH: // org.freedesktop.DBus.Properties - ResWidth
-  case GET_PLAYER_RES_WIDTH: // org.mpris.MediaPlayer2.Player - ResWidth
+  case RES_WIDTH:
     // Returns width of video
     dbus_respond_int64(m, reader->GetWidth());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_RES_HEIGHT: // org.freedesktop.DBus.Properties - ResHeight
-  case GET_PLAYER_RES_HEIGHT: // org.mpris.MediaPlayer2.Player - ResHeight
+  case RES_HEIGHT:
     // Returns height of video
     dbus_respond_int64(m, reader->GetHeight());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_DURATION: // org.freedesktop.DBus.Properties - Duration
-  case GET_PLAYER_DURATION: // org.mpris.MediaPlayer2.Player - Duration
+  case DURATION:
     // Returns the duration in microseconds
     dbus_respond_int64(m, reader->GetStreamLengthMicro());
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_MINIMUM_RATE: // org.freedesktop.DBus.Properties - MinimumRate
+  case MINIMUM_RATE:
     dbus_respond_double(m, 0.0);
     return KeyConfig::ACTION_BLANK;
 
-  case PROP_MAXIMUM_RATE: // org.freedesktop.DBus.Properties - MaximumRate
+  case MAXIMUM_RATE:
     //TODO: to be made consistent
     dbus_respond_double(m, 10.125);
     return KeyConfig::ACTION_BLANK;
 
-
-  //--------------------------Player interface methods--------------------------
-  case PLAYER_GET_SOURCE: // org.mpris.MediaPlayer2.Player - GetSource
-    dbus_respond_string(m, get_filename().c_str());
-    return KeyConfig::ACTION_BLANK;
-
-  case PLAYER_NEXT: // org.mpris.MediaPlayer2.Player - Next
+  case NEXT:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_NEXT_CHAPTER;
 
-  case PLAYER_PREVIOUS: // org.mpris.MediaPlayer2.Player - Previous
+  case PREVIOUS:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PREVIOUS_CHAPTER;
 
-  case PLAYER_PAUSE: // org.mpris.MediaPlayer2.Player - Pause
+  case PAUSE:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PAUSE;
 
-  case PLAYER_PLAY: // org.mpris.MediaPlayer2.Player - Play
+  case PLAY:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PLAY;
 
-  case PLAYER_PLAY_PAUSE: // org.mpris.MediaPlayer2.Player - PlayPause
+  case PLAY_PAUSE:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_PLAYPAUSE;
 
-  case PLAYER_STOP: // org.mpris.MediaPlayer2.Player - Stop
+  case STOP:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_EXIT;
 
-  case PLAYER_SEEK: // org.mpris.MediaPlayer2.Player - Seek
+  case SEEK:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -474,7 +433,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
          return OMXControlResult(KeyConfig::ACTION_SEEK_RELATIVE, offset);
       }
     }
-  case PLAYER_SET_POSITION: // org.mpris.MediaPlayer2.Player - SetPosition
+
+  case SET_POSITION:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -497,7 +457,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return OMXControlResult(KeyConfig::ACTION_SEEK_ABSOLUTE, position);
       }
     }
-  case PLAYER_SET_ALPHA: // org.mpris.MediaPlayer2.Player - SetAlpha
+
+  case SET_ALPHA:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -520,7 +481,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return OMXControlResult(KeyConfig::ACTION_SET_ALPHA, alpha);
       }
     }
-  case PLAYER_SET_LAYER: // org.mpris.MediaPlayer2.Player - SetLayer
+
+  case SET_LAYER:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -542,7 +504,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return OMXControlResult(KeyConfig::ACTION_SET_LAYER, layer);
       }
     }
-  case PLAYER_SET_ASPECT_MODE: // org.mpris.MediaPlayer2.Player - SetAspectMode
+
+  case SET_ASPECT_MODE:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -565,19 +528,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspectMode);
       }
     }
-  case PLAYER_MUTE: // org.mpris.MediaPlayer2.Player - Mute
-    if(audio)
-      audio->SetMute(true);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_BLANK;
 
-  case PLAYER_UNMUTE: // org.mpris.MediaPlayer2.Player - Unmute
-    if(audio)
-      audio->SetMute(false);
-    dbus_respond_ok(m);
-    return KeyConfig::ACTION_BLANK;
-
-  case PLAYER_LIST_SUBTITLES: // org.mpris.MediaPlayer2.Player - ListSubtitles
+  case LIST_SUBTITLES:
     {
       int count = reader->SubtitleStreamCount();
       const char **values = new const char*[count];
@@ -600,15 +552,16 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_HIDE_VIDEO: // org.mpris.MediaPlayer2.Player - HideVideo
+
+  case HIDE_VIDEO:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_HIDE_VIDEO;
 
-  case PLAYER_UN_HIDE_VIDEO: // org.mpris.MediaPlayer2.Player - UnHideVideo
+  case UN_HIDE_VIDEO:
     dbus_respond_ok(m);
     return KeyConfig::ACTION_UNHIDE_VIDEO;
 
-  case PLAYER_LIST_AUDIO: // org.mpris.MediaPlayer2.Player - ListAudio
+  case LIST_AUDIO:
     {
       int count = reader->AudioStreamCount();
       const char **values = new const char*[count];
@@ -633,7 +586,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_LIST_VIDEO: // org.mpris.MediaPlayer2.Player - ListVideo
+
+  case LIST_VIDEO:
     {
       int count = reader->VideoStreamCount();
       const char **values = new const char*[count];
@@ -656,7 +610,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
 
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_SELECT_SUBTITLE: // org.mpris.MediaPlayer2.Player - SelectSubtitle
+
+  case SELECT_SUBTITLE:
     {
       int index;
       if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &index))
@@ -669,7 +624,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
       }
       return KeyConfig::ACTION_BLANK;
     }
-  case PLAYER_SELECT_AUDIO: // org.mpris.MediaPlayer2.Player - SelectAudio
+
+  case SELECT_AUDIO:
     {
       if(!audio)
         dbus_respond_boolean(m, 0);
@@ -686,17 +642,17 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
       return KeyConfig::ACTION_BLANK;
     }
   // TODO: SelectVideo ???
-  case PLAYER_SHOW_SUBTITLES: // org.mpris.MediaPlayer2.Player - ShowSubtitles
+  case SHOW_SUBTITLES:
     subtitles->SetVisible(true);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_SHOW_SUBTITLES;
 
-  case PLAYER_HIDE_SUBTITLES: // org.mpris.MediaPlayer2.Player - HideSubtitles
+  case HIDE_SUBTITLES:
     subtitles->SetVisible(false);
     dbus_respond_ok(m);
     return KeyConfig::ACTION_HIDE_SUBTITLES;
 
-  case PLAYER_OPEN_URI: // org.mpris.MediaPlayer2.Player - OpenUri
+  case OPEN_URI:
     {
       DBusError error;
       dbus_error_init(&error);
@@ -717,7 +673,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         return OMXControlResult(KeyConfig::ACTION_CHANGE_FILE, file);
       }
     }
-  case PLAYER_ACTION: // org.mpris.MediaPlayer2.Player - Action
+
+  case ACTION:
     {
       int action;
       if(!dbus_message_get_arg(m, DBUS_TYPE_INT32, &action))
@@ -726,47 +683,26 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
       dbus_respond_ok(m);
       return action; // Directly return enum
     }
-  // begin get properties
-  //Root interface:
 
-  case GET_ROOT_CAN_RAISE: // org.mpris.MediaPlayer2 - CanRaise
-    dbus_respond_boolean(m, 0);
-    return KeyConfig::ACTION_BLANK;
-
-  case GET_ROOT_CAN_SET_FULLSCREEN: // org.mpris.MediaPlayer2 - CanSetFullscreen
-    dbus_respond_boolean(m, 0);
-    return KeyConfig::ACTION_BLANK;
-
-  case GET_ROOT_FULLSCREEN: // org.mpris.MediaPlayer2 - Fullscreen //Fullscreen is read/write in theory not read only, but read only at the moment so...
-    dbus_respond_boolean(m, 1);
-    return KeyConfig::ACTION_BLANK;
-
-  case GET_ROOT_HAS_TRACK_LIST: // org.mpris.MediaPlayer2 - HasTrackList
-    dbus_respond_boolean(m, 0);
-    return KeyConfig::ACTION_BLANK;
-
-  //Player interface:
-  //MPRIS2 properties:
-
-  case GET_PLAYER_MINIMUM_RATE: // org.mpris.MediaPlayer2.Player - MinimumRate
+  case GET_PLAYER_MINIMUM_RATE:
     dbus_respond_double(m, (MIN_RATE)/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_MAXIMUM_RATE: // org.mpris.MediaPlayer2.Player - MaximumRate
+  case GET_PLAYER_MAXIMUM_RATE:
     dbus_respond_double(m, (MAX_RATE)/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_RATE: // org.mpris.MediaPlayer2.Player - Rate
+  case GET_PLAYER_RATE:
     //return current playing rate
     dbus_respond_double(m, (double)clock->OMXPlaySpeed()/1000.);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_VOLUME: // org.mpris.MediaPlayer2.Player - Volume
+  case GET_PLAYER_VOLUME:
     //return current volume
     dbus_respond_double(m, audio ? audio->GetVolume() : 0.0);
     return KeyConfig::ACTION_BLANK;
 
-  case GET_PLAYER_METADATA: // org.mpris.MediaPlayer2.Player - Metadata
+  case GET_PLAYER_METADATA:
     {
       DBusMessage *reply;
       reply = dbus_message_new_method_return(m);
@@ -815,9 +751,6 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
 
 OMXControlResult OMXControl::SetProperty(DBusMessage *m)
 {
-  DBusError error;
-  dbus_error_init(&error);
-
   //Retrieve interface, property name and value
   //Message has the form message[STRING:interface STRING:property DOUBLE:value] or message[STRING:interface STRING:property VARIANT[DOUBLE:value]]
   const char *interface, *property;
@@ -830,30 +763,21 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
     if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
       dbus_message_iter_get_basic (&args, &interface);
     else
-    {
-      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-      dbus_error_free(&error);
-      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-      return KeyConfig::ACTION_BLANK;
-    }
+      goto invalid_argument;
+
     //The property name
     if( dbus_message_iter_next(&args) && DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
       dbus_message_iter_get_basic (&args, &property);
     else
-    {
-      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-      dbus_error_free(&error);
-      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-      return KeyConfig::ACTION_BLANK;
-    }
+      goto invalid_argument;
+
     //The value (either double or double in variant)
     if (dbus_message_iter_next(&args))
     {
       //Simply a double
       if (DBUS_TYPE_DOUBLE == dbus_message_iter_get_arg_type(&args))
-      {
         dbus_message_iter_get_basic(&args, &new_property_value);
-      }
+
       //A double within a variant
       else if(DBUS_TYPE_VARIANT == dbus_message_iter_get_arg_type(&args))
       {
@@ -865,21 +789,10 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
         }
       }
       else
-      {
-        CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-        dbus_error_free(&error);
-        dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-        return KeyConfig::ACTION_BLANK;
-      }
+        goto invalid_argument;
     }
   }
-  if ( dbus_error_is_set(&error) )
-  {
-      CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
-      dbus_error_free(&error);
-      dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
-      return KeyConfig::ACTION_BLANK;
-  }
+
   //Player interface:
   if (strcmp(interface, OMXPLAYER_DBUS_INTERFACE_PLAYER)==0)
   {
@@ -943,6 +856,13 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
       dbus_respond_error(m, DBUS_ERROR_UNKNOWN_INTERFACE, "Unknown interface");
       return KeyConfig::ACTION_BLANK;
   }
+
+
+invalid_argument:
+  CLogLog(LOGWARNING, "Unhandled dbus message, member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
+  dbus_error_free(&error);
+  dbus_respond_error(m, DBUS_ERROR_INVALID_ARGS, "Invalid arguments");
+  return KeyConfig::ACTION_BLANK;
 }
 
 DBusHandlerResult OMXControl::dbus_respond_error(DBusMessage *m, const char *name, const char *msg)
