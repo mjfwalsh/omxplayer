@@ -59,20 +59,14 @@ OMXPlayerSubtitles::OMXPlayerSubtitles(int display,
                                        bool ghost_box,
                                        unsigned int lines,
                                        OMXClock* clock)
+:
+m_av_clock(clock)
 {
-  m_visible = false;
-  m_external_subtitle_stream = -1;
-  m_active_index = 0;
-  m_delay = 0;
-  m_thread_stopped.store(false, memory_order_relaxed);
-
   m_renderer = new SubtitleRenderer(display, layer,
                                     font_size,
                                     centered,
                                     ghost_box,
                                     lines);
-
-  m_av_clock = clock;
 
   Create();
 }

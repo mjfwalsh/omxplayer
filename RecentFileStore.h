@@ -27,11 +27,11 @@ public:
 	RecentFileStore();
 	bool readStore();
 	void forget(std::string &key);
-	void remember(std::string &url, int &dvd_track, int &pos, char *audio, char *subtitle, bool &subtitle_extern);
+	void remember(std::string &url, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
 	void saveStore();
 	bool checkIfLink(std::string &filename);
-	void readlink(std::string &filename, int &track, int &pos, char *audio, char *subtitle, int &sub_track);
-	void retrieveRecentInfo(std::string &filename, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track);
+	void readlink(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &subtitle_track);
+	void retrieveRecentInfo(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track);
 
 private:
 	struct fileInfo {
@@ -39,14 +39,15 @@ private:
 		int time = -1;
 		int dvd_track = -1;
 		char audio_lang[4] = "";
+		int audio_track = -1;
 		char subtitle_lang[4] = "";
-		bool subtitle_extern = false;
+		int subtitle_track = -1;
 	};
 
 	void readlink(fileInfo *f);
 	std::vector<std::string> getRecentFileList();
 	void clearRecents();
-	void setDataFromStruct(fileInfo *store_item, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track);
+	void setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
 
 	std::vector<fileInfo> store;
 	std::string recent_dir;

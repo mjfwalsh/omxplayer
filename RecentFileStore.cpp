@@ -99,28 +99,33 @@ bool split(string &line, string &key, string &val)
     return true;
 }
 
-void RecentFileStore::retrieveRecentInfo(string &filename, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track)
+void RecentFileStore::retrieveRecentInfo(string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track)
 {
 	for(unsigned i = 0; i < store.size(); i++) {
 		if(store[i].url == filename) {
-			setDataFromStruct(&store[i], track, pos, audio, subtitle_lang, sub_track);
+			setDataFromStruct(&store[i], track, pos, audio, audio_track, subtitle_lang, sub_track);
 			return;
 		}
 	}
 }
 
-void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, char *subtitle, int &sub_track)
+void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
 {
 	if(dvd_track == -1)
 		dvd_track = store_item->dvd_track;
+
 	if(pos == -1)
 		pos = store_item->time;
-	if(audio[0] == '\0')
+
+	if(audio[0] == '\0' && audio_track == -1) {
 		strncpy(audio, store_item->audio_lang, 3);
-	if(subtitle[0] == '\0')
+		audio_track = store_item->audio_track;
+	}
+
+	if(subtitle[0] == '\0' && subtitle_track == -1) {
 		strncpy(subtitle, store_item->subtitle_lang, 3);
-	if(store_item->subtitle_extern && sub_track == -1 && subtitle[0] == '\0')
-		sub_track = 0;
+		subtitle_track = store_item->subtitle_track;
+	}
 }
 
 bool is_valid_link_url(std::string &url)
@@ -156,10 +161,12 @@ void RecentFileStore::readlink(fileInfo *f)
 			f->dvd_track = atoi(val.c_str());
 		} else if(key == "audio_lang") {
 			strncpy(f->audio_lang, val.c_str(), 3);
+		} else if(key == "audio_track") {
+			f->audio_track = atoi(val.c_str());
 		} else if(key == "subtitle_lang") {
 			strncpy(f->subtitle_lang, val.c_str(), 3);
-		}  else if(key == "subtitle_extern" && val == "1") {
-			f->subtitle_extern = true;
+		}  else if(key == "subtitle_track") {
+			f->subtitle_track = atoi(val.c_str());
 		}
 	}
 
@@ -179,7 +186,7 @@ void RecentFileStore::readlink(fileInfo *f)
 	s.close();
 }
 
-void RecentFileStore::readlink(string &filename, int &track, int &pos, char *audio, char *subtitle_lang, int &sub_track)
+void RecentFileStore::readlink(string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &subtitle_track)
 {
 	fileInfo f;
 	f.url = filename;
@@ -187,7 +194,7 @@ void RecentFileStore::readlink(string &filename, int &track, int &pos, char *aud
 
 	filename = f.url;
 	
-	setDataFromStruct(&f, track, pos, audio, subtitle_lang, sub_track);
+	setDataFromStruct(&f, track, pos, audio, audio_track, subtitle_lang, subtitle_track);
 }
 
 vector<string> RecentFileStore::getRecentFileList()
@@ -221,23 +228,25 @@ void RecentFileStore::forget(string &key)
 	}
 }
 
-void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audio, char *subtitle, bool &subtitle_extern)
+void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
 {
 	fileInfo newFile;
 
 	newFile.url = url;
+	newFile.time = pos;
 
-	if(pos > 0)
-		newFile.time = pos;
-	if(dvd_track > 0)
+	if(dvd_track > -1)
 		newFile.dvd_track = dvd_track;
+
 	if(audio[0] != '\0')
 		strncpy(newFile.audio_lang, audio, 3);
+	else if(subtitle_track > -1)
+	    newFile.subtitle_track = subtitle_track;
 
 	if(subtitle[0] != '\0')
 		strncpy(newFile.subtitle_lang, subtitle, 3);
-	else if(subtitle_extern)
-	    newFile.subtitle_extern = true;
+	else if(subtitle_track > -1)
+	    newFile.subtitle_track = subtitle_track;
 
 	store.insert(store.begin(), newFile);
 }
@@ -293,8 +302,8 @@ void RecentFileStore::saveStore()
 
 		if(store[i].subtitle_lang[0] != '\0')
 			s << "subtitle_lang=" << store[i].subtitle_lang << "\n";
-		else if(store[i].subtitle_extern)
-			s << "subtitle_extern=1\n";
+		else if(store[i].subtitle_track > 0)
+			s << "subtitle_track=" << store[i].subtitle_track << "\n";
 
 		s.close();
 	}

@@ -75,6 +75,11 @@ public:
     return m_active_index;
   }
 
+  int GetStreamCount()
+  {
+    return m_stream_count;
+  }
+
   void SetDelay(int value);
 
   int GetDelay()
@@ -98,13 +103,13 @@ private:
 
   std::vector<boost::circular_buffer<Subtitle>> m_subtitle_buffers;
   Mailbox                                       m_mailbox;
-  bool                                          m_visible;
-  int                                           m_external_subtitle_stream;
+  bool                                          m_visible = false;
+  int                                           m_external_subtitle_stream = -1;
   std::vector<Subtitle>                         m_external_subtitles;
-  int                                           m_active_index;
+  int                                           m_active_index = 0;
   int                                           m_stream_count = 0;
-  int                                           m_delay;
-  std::atomic<bool>                             m_thread_stopped;
+  int                                           m_delay = 0;
+  std::atomic<bool>                             m_thread_stopped{false};
   SubtitleRenderer                              *m_renderer;
   OMXClock*                                     m_av_clock;
   uint32_t                                      *m_palette = NULL;
