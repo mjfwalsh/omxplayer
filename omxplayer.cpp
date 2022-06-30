@@ -296,9 +296,29 @@ int ExitFileNotFound(const std::string& path)
   return EXIT_FAILURE;
 }
 
-std::string get_filename()
+std::string& get_filename()
 {
   return m_filename;
+}
+
+// find the nearest element of the playspeeds array
+// to the inputted play speed
+int get_approx_speed(double &s)
+{
+  int new_speed = S(s);
+  const int arr_len = sizeof(playspeeds) / sizeof(int);
+
+  for(int i = 0; i < arr_len - 1; i++)  
+  {
+    int midpoint = (playspeeds[i] + playspeeds[i+1]) / 2;
+    if(new_speed < midpoint)
+    {
+      s = playspeeds[i];
+      return i;
+    }
+  }
+  s = playspeeds[arr_len - 1];
+  return arr_len - 1;
 }
 
 int change_file();
@@ -854,7 +874,8 @@ int main(int argc, char *argv[])
   m_omxcontrol.init(
     m_av_clock,
     m_player_subtitles,
-    get_filename
+    get_filename,
+    get_approx_speed
   );
 
   // 3d modes don't work without switch hdmi mode
@@ -1323,6 +1344,12 @@ int run_play_loop()
 
         m_stopped = true;
         return END_PLAY;
+      case KeyConfig::SET_SPEED:
+        playspeed_current = result.getIntArg();
+        SetSpeed(playspeeds[playspeed_current]);
+        osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
+        m_Pause = false;
+        break;
       case KeyConfig::ACTION_DECREASE_SPEED:
         if(playspeed_current > 0)
           playspeed_current--;
@@ -1461,16 +1488,16 @@ int run_play_loop()
         if(m_omx_reader->CanSeek()) m_incr = -600;
         break;
       case KeyConfig::ACTION_SEEK_RELATIVE:
-        if(m_omx_reader->CanSeek()) m_incr = result.getArg() * 1e-6;
+        if(m_omx_reader->CanSeek()) m_incr = result.getInt64Arg() * 1e-6;
         break;
       case KeyConfig::ACTION_SEEK_ABSOLUTE:
-        if(m_omx_reader->CanSeek()) m_incr = (result.getArg() - m_av_clock->OMXMediaTime()) * 1e-6;
+        if(m_omx_reader->CanSeek()) m_incr = (result.getInt64Arg() - m_av_clock->OMXMediaTime()) * 1e-6;
         break;
       case KeyConfig::ACTION_SET_ALPHA:
-        if(m_player_video) m_player_video->SetAlpha(result.getArg());
+        if(m_player_video) m_player_video->SetAlpha(result.getInt64Arg());
         break;
       case KeyConfig::ACTION_SET_LAYER:
-        if(m_player_video) m_player_video->SetLayer(result.getArg());
+        if(m_player_video) m_player_video->SetLayer(result.getInt64Arg());
         break;
       case KeyConfig::ACTION_PLAY:
       case KeyConfig::ACTION_PAUSE:

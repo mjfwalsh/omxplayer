@@ -44,6 +44,7 @@ class KeyConfig
         ACTION_PREVIOUS_FILE = 39,
         ACTION_NEXT_FILE = 40,
         SET_VOLUME = 41,
+        SET_SPEED = 42,
     };
 
     #define KEY_LEFT 0x5b44

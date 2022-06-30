@@ -18,6 +18,7 @@ class OMXControlResult {
   int key;
 
   union {
+    int intarg;
     int64_t int64arg;
     double doublearg;
     const char *strarg;
@@ -25,14 +26,18 @@ class OMXControlResult {
 
 public:
    OMXControlResult(int);
+   OMXControlResult(int, int);
    OMXControlResult(int, int64_t);
    OMXControlResult(int, double);
    OMXControlResult(int, const char *);
    int getKey();
-   int64_t getArg();
+   int getIntArg();
+   int64_t getInt64Arg();
    double getDoubleArg();
    const char *getStrArg();
 };
+
+class DMessage;
 
 class OMXControl
 {
@@ -42,10 +47,11 @@ protected:
   OMXPlayerAudio     *audio;
   OMXReader          *reader;
   OMXPlayerSubtitles *subtitles;
-  std::string (*get_filename)();
+  std::string& (*get_filename)();
+  int (*get_approx_speed)(double &s);
 public:
   ~OMXControl();
-  void init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string (*filename)());
+  void init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string& (*filename)(), int (*speed)(double &s));
   bool connect(std::string& dbus_name);
   void set_reader(OMXReader *omx_reader);
   void set_audio(OMXPlayerAudio *player_audio);
@@ -54,13 +60,6 @@ private:
   void dispatch();
   int dbus_connect(std::string& dbus_name);
   void dbus_disconnect();
-  OMXControlResult handle_event(DBusMessage *m, enum DBusMethod search_key);
-  OMXControlResult SetProperty(DBusMessage *m);
-  DBusHandlerResult dbus_respond_error(DBusMessage *m, const char *name, const char *msg);
-  DBusHandlerResult dbus_respond_ok(DBusMessage *m);
-  DBusHandlerResult dbus_respond_int64(DBusMessage *m, int64_t i);
-  DBusHandlerResult dbus_respond_double(DBusMessage *m, double d);
-  DBusHandlerResult dbus_respond_boolean(DBusMessage *m, int b);
-  DBusHandlerResult dbus_respond_string(DBusMessage *m, const char *text);
-  DBusHandlerResult dbus_respond_array(DBusMessage *m, const char *array[], int size);
+  OMXControlResult handle_event(DMessage &m, enum DBusMethod search_key);
+  OMXControlResult SetProperty(DMessage &m);
 };
