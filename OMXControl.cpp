@@ -60,12 +60,17 @@ OMXControlResult::OMXControlResult( int newKey ) {
 
 OMXControlResult::OMXControlResult( int newKey, int64_t newArg ) {
   key = newKey;
-  arg = newArg;
+  v.int64arg = newArg;
+}
+
+OMXControlResult::OMXControlResult( int newKey, double newArg ) {
+  key = newKey;
+  v.doublearg = newArg;
 }
 
 OMXControlResult::OMXControlResult( int newKey, const char *newArg ) {
   key = newKey;
-  winarg = newArg;
+  v.strarg = newArg;
 }
 
 int OMXControlResult::getKey() {
@@ -73,11 +78,15 @@ int OMXControlResult::getKey() {
 }
 
 int64_t OMXControlResult::getArg() {
-  return arg;
+  return v.int64arg;
 }
 
-const char *OMXControlResult::getWinArg() {
-  return winarg;
+double OMXControlResult::getDoubleArg() {
+  return v.doublearg;
+}
+
+const char *OMXControlResult::getStrArg() {
+  return v.strarg;
 }
 
 OMXControl::~OMXControl() 
@@ -238,7 +247,6 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
     {
       DBusError error;
       dbus_error_init(&error);
-      std::string key;
 
       //Retrieve interface and property name
       const char *interface, *property;
@@ -329,10 +337,8 @@ OMXControlResult OMXControl::handle_event(DBusMessage *m, enum DBusMethod search
         if(volume < 0.0)
           volume = 0.0;
 
-        audio->SetVolume(volume);
-
         dbus_respond_double(m, volume);
-        return KeyConfig::ACTION_BLANK;
+        return OMXControlResult(KeyConfig::SET_VOLUME, volume);
       }
     }
 
@@ -757,7 +763,9 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
   double new_property_value;
   DBusMessageIter args;
   dbus_message_iter_init(m, &args);
-  if(dbus_message_iter_has_next(&args))
+  if(!dbus_message_iter_has_next(&args))
+    goto invalid_argument;
+  else
   {
     //The interface name
     if( DBUS_TYPE_STRING == dbus_message_iter_get_arg_type(&args) )
@@ -802,16 +810,11 @@ OMXControlResult OMXControl::SetProperty(DBusMessage *m)
       //Min value is 0
       if(volume<.0)
       {
-        volume=.0;
+        volume = 0.0;
       }
 
-      if(audio)
-        audio->SetVolume(volume);
-      else
-        volume = 0.0;
-
       dbus_respond_double(m, volume);
-      return KeyConfig::ACTION_BLANK;
+      return OMXControlResult(KeyConfig::SET_VOLUME, volume);
     }
     else if (strcmp(property, "Rate")==0)
     {

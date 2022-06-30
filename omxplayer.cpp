@@ -1311,7 +1311,7 @@ int run_play_loop()
       switch(result.getKey())
       {
       case KeyConfig::ACTION_CHANGE_FILE:
-        m_replacement_filename = result.getWinArg();
+        m_replacement_filename = result.getStrArg();
 
         // Entering a pipe: would make no sense here
         if(IsPipe(m_replacement_filename))
@@ -1507,12 +1507,12 @@ int run_play_loop()
         if(m_player_video) m_player_video->SetAlpha(255);
         break;
       case KeyConfig::ACTION_SET_ASPECT_MODE:
-        if (m_player_video && result.getWinArg()) {
-          if (!strcasecmp(result.getWinArg(), "letterbox"))
+        if (m_player_video && result.getStrArg()) {
+          if (!strcasecmp(result.getStrArg(), "letterbox"))
             m_config_video.aspectMode = 1;
-          else if (!strcasecmp(result.getWinArg(), "fill"))
+          else if (!strcasecmp(result.getStrArg(), "fill"))
             m_config_video.aspectMode = 2;
-          else if (!strcasecmp(result.getWinArg(), "stretch"))
+          else if (!strcasecmp(result.getStrArg(), "stretch"))
             m_config_video.aspectMode = 3;
           else
             m_config_video.aspectMode = 0;
@@ -1532,6 +1532,16 @@ int run_play_loop()
         {
           m_Volume += 50;
           m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
+          osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
+        }
+      case KeyConfig::SET_VOLUME:
+        if(m_player_audio)
+        {
+          double new_vol = result.getDoubleArg();
+          if(new_vol < 0.0) new_vol = 0.0;
+
+          m_Volume = 2000 * log10(new_vol);
+          m_player_audio->SetVolume(new_vol);
           osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         }
         break;

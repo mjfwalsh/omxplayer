@@ -16,16 +16,22 @@ class OMXClock;
 
 class OMXControlResult {
   int key;
-  int64_t arg = 0;
-  const char *winarg = NULL;
+
+  union {
+    int64_t int64arg;
+    double doublearg;
+    const char *strarg;
+  } v;
 
 public:
    OMXControlResult(int);
    OMXControlResult(int, int64_t);
+   OMXControlResult(int, double);
    OMXControlResult(int, const char *);
    int getKey();
    int64_t getArg();
-   const char *getWinArg();
+   double getDoubleArg();
+   const char *getStrArg();
 };
 
 class OMXControl
