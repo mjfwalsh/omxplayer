@@ -192,6 +192,8 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
     {
       char response[80];
       vc_gencmd(response, sizeof response, "hvs_update_fields %d", 1);
+
+      atexit(turnOffNativeDeinterlace);
     }
 
     // if we are closer to ntsc version of framerate, let gpu know
@@ -286,6 +288,7 @@ void saveTVState()
     memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
     vc_tv_get_display_state(&tv_state);
     saved_tv_state = true;
+    atexit(restoreTVState);
   }
 }
 

@@ -53,10 +53,8 @@ long              m_Volume              = 0;
 long              m_Amplification       = 0;
 bool              m_NativeDeinterlace   = false;
 bool              m_osd                 = true;
-bool              m_keys                = true;
 std::string       m_external_subtitles_path;
 bool              m_cmd_line_subtitles  = false;
-std::string       m_dbus_name           = "org.mpris.MediaPlayer2.omxplayer";
 bool              m_Pause               = false;
 OMXReader         *m_omx_reader         = NULL;
 int               m_audio_index         = -1;
@@ -194,20 +192,13 @@ void osd_printf(int options, const char* format, ...) __attribute__((format(prin
 
 void osd_printf(int options, const char* format, ...)
 {
-    char buffer[60];
+    char buffer[120];
     va_list va;
     va_start(va, format);
-    vsnprintf(buffer, 60, format, va);
+    vsnprintf(buffer, 120, format, va);
     va_end(va);
 
     osd_print(options, &buffer[0]);
-}
-
-int exit_with_message(const char *msg)
-{
-  //osd_print(UM_ALL, msg);
-  puts(msg);
-  return END_PLAY_WITH_ERROR;
 }
 
 void show_progress_message(const char *msg, int pos)
@@ -286,16 +277,6 @@ static void FlushStreams(int64_t pts)
   }
 }
 
-int ExitFileNotFound(const std::string& path)
-{
-  osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
-
-  delete m_av_clock;
-
-  g_OMX.Deinitialize();
-  return EXIT_FAILURE;
-}
-
 std::string& get_filename()
 {
   return m_filename;
@@ -328,7 +309,7 @@ void end_of_play_loop();
 int playlist_control();
 int shutdown(bool exit_with_error = false);
 
-int main(int argc, char *argv[])
+int startup(int argc, char *argv[])
 {
   signal(SIGINT, sig_handler);
   signal(SIGTERM, sig_handler);
@@ -450,7 +431,9 @@ int main(int argc, char *argv[])
   uint32_t          background          = 0;
   std::string       keymap_file;
   int               log_level           = LOGNONE;
-  char              *log_file           = NULL;
+  std::string       log_file;
+  bool              use_key_ctrl        = true;
+  std::string       dbus_name           = "org.mpris.MediaPlayer2.omxplayer";
 
   while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
@@ -461,10 +444,7 @@ int main(int argc, char *argv[])
         break;
       case 'g':
         {
-          int size = optarg ? strlen(optarg) + 1 : 16;
-          log_file = (char *)calloc(size, sizeof(char));
-          if(log_file == NULL) return EXIT_FAILURE;
-          strcpy(log_file, optarg ? optarg : "./omxplayer.log");
+          log_file = optarg ? optarg : "./omxplayer.log";
 
           if(log_level == LOGNONE)
             log_level = LOGDEBUG;
@@ -643,7 +623,7 @@ int main(int argc, char *argv[])
         m_osd = false;
         break;
       case no_keys_opt:
-        m_keys = false;
+        use_key_ctrl = false;
         break;
       case font_size_opt:
         {
@@ -743,7 +723,7 @@ int main(int argc, char *argv[])
         break;
       }
       case dbus_name_opt:
-        m_dbus_name = optarg;
+        dbus_name = optarg;
         break;
       case loop_opt:
         if(m_incr > 0)
@@ -811,9 +791,7 @@ int main(int argc, char *argv[])
   m_filename = argv[optind];
 
   // start logging
-  CLogInit(log_level, log_file);
-  if(log_file != NULL)
-    free(log_file);
+  CLogInit(log_level, log_file.c_str());
 
   if (optind >= argc) {
     print_usage();
@@ -869,7 +847,7 @@ int main(int argc, char *argv[])
   if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
     printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
 
-  m_dbus_enabled = m_omxcontrol.connect(m_dbus_name);
+  m_dbus_enabled = m_omxcontrol.connect(dbus_name);
 
   m_omxcontrol.init(
     m_av_clock,
@@ -889,15 +867,16 @@ int main(int argc, char *argv[])
   if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
   {
     delete m_av_clock;
+    delete m_player_subtitles;
     g_OMX.Deinitialize();
     return EXIT_FAILURE;
   }
 
   // disable keys when using stdin for input
   if(m_filename == "pipe:" || m_filename == "pipe:0")
-    m_keys = false;
+    use_key_ctrl = false;
 
-  if(m_keys)
+  if(use_key_ctrl)
     m_keyboard = new Keyboard(keymap_file);
 
   // Disable seeking and playlists when reading from a pipe
@@ -912,8 +891,14 @@ int main(int argc, char *argv[])
   if (m_threshold < 0.0f)
     m_threshold = m_config_audio.is_live ? 0.7f : 0.2f;
 
+  return CHANGE_FILE;
+}
+
+
+int main(int argc, char *argv[])
+{
   // control loop
-  int rv = CHANGE_FILE;
+  int rv = startup(argc, argv);
 
   while(1) {
     switch(rv) {
@@ -962,7 +947,10 @@ int change_file()
   if(is_local_file)
   {
     if(!Exists(m_filename))
-      return ExitFileNotFound(m_filename);
+    {
+      osd_printf(UM_STDOUT, "File \%s not found.\n", getShortFileName().c_str());
+      return END_PLAY_WITH_ERROR;
+    }
 
     // get realpath for file
     char *fp = realpath(m_filename.c_str(), NULL);
@@ -982,7 +970,10 @@ int change_file()
       is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
 
       if(is_local_file && !Exists(m_filename))
-        return ExitFileNotFound(m_filename);
+      {
+        osd_printf(UM_STDOUT, "File \%s not found.\n", getShortFileName().c_str());
+        return END_PLAY_WITH_ERROR;
+      }
     }
   }
 
@@ -1040,7 +1031,8 @@ int change_playlist_item()
         m_DvdPlayer = new OMXDvdPlayer(m_filename);
     }
     catch(const char *msg) {
-        return exit_with_message(msg);
+        puts(msg);
+        return END_PLAY_WITH_ERROR;
     }
 
     // deletes small and some overlapping tracks
@@ -1061,7 +1053,10 @@ int change_playlist_item()
       m_track = 0;
 
     if(!m_DvdPlayer->OpenTrack(m_track))
-      return exit_with_message("Failed to open DVD track");
+    {
+      puts("Failed to open DVD track");
+      return END_PLAY_WITH_ERROR;
+    }
   }
   else
   {
@@ -1189,7 +1184,8 @@ int run_play_loop()
     }
     catch(const char *msg)
     {
-      return exit_with_message(msg);
+      puts(msg);
+      return END_PLAY_WITH_ERROR;
     }
   }
 
@@ -1255,7 +1251,8 @@ int run_play_loop()
     }
     catch(const char *msg)
     {
-      return exit_with_message(msg);
+      puts(msg);
+      return END_PLAY_WITH_ERROR;
     }
 
     // set volume
@@ -1272,7 +1269,10 @@ int run_play_loop()
   if(m_has_subtitle)
   {
     if(!m_player_subtitles->Open(m_omx_reader->SubtitleStreamCount(), m_external_subtitles_path))
-      return exit_with_message("Failed to open subtitles");
+    {
+      puts("Failed to open subtitles");
+      return END_PLAY_WITH_ERROR;
+    }
 
     if(m_cmd_line_subtitles)
       m_subtitle_index = m_omx_reader->SubtitleStreamCount() - 1;
@@ -1290,7 +1290,10 @@ int run_play_loop()
     if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
       if(!m_player_subtitles->initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
-        return exit_with_message("Failed to initialise DVD subtitles");
+      {
+        puts("Failed to initialise DVD subtitles");
+        return END_PLAY_WITH_ERROR;
+      }
     }
 
     if(!m_DvdPlayer && palette != NULL)
@@ -1593,7 +1596,10 @@ int run_play_loop()
 
     /* player got in an error state */
     if(m_player_audio && m_player_audio->Error())
-      return exit_with_message("Audio player error");
+    {
+      puts("Audio player error");
+      return END_PLAY_WITH_ERROR;
+    }
 
     if (update)
     {
@@ -1896,23 +1902,34 @@ int playlist_control()
 
 int shutdown(bool exit_with_error)
 {
-  // not playing anything else, so shutdown
-  if (m_NativeDeinterlace)
-    VideoCore::turnOffNativeDeinterlace();
+  // We may get here after receiving an error
+  // so be conservative and check before deleting objects
+  if(m_omx_pkt)
+    delete m_omx_pkt;
 
-  if(m_player_video && m_refresh)
-    VideoCore::restoreTVState();
+  if(m_player_video)
+    delete m_player_video;
 
-  delete m_av_clock;
-  delete m_player_subtitles;
-
-  if(m_keyboard)
-    delete m_keyboard;
+  if(m_player_audio)
+    delete m_player_audio;
 
   if(m_DvdPlayer)
     delete m_DvdPlayer;
 
+  if(m_keyboard)
+    delete m_keyboard;
+
+  if(m_player_subtitles)
+    delete m_player_subtitles;
+
+  if(m_av_clock)
+    delete m_av_clock;
+
   g_OMX.Deinitialize();
+
+  // Exit on failure
+  if(exit_with_error)
+    return EXIT_FAILURE;
 
   // save recent files
   if(m_playlist_enabled) {
@@ -1921,10 +1938,6 @@ int shutdown(bool exit_with_error)
   }
 
   puts("have a nice day ;)");
-
-  // Exit on failure
-  if(exit_with_error)
-    return EXIT_FAILURE;
 
   // If user has chosen to dump format exit with sucess
   if(m_dump_format_exit)

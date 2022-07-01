@@ -44,6 +44,7 @@ Keyboard::Keyboard(std::string &filename)
 
 Keyboard::~Keyboard()
 {
+  m_bAbort = true;
   if (ThreadHandle())
   {
     StopThread();
