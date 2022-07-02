@@ -1347,22 +1347,23 @@ int run_play_loop()
 
         m_stopped = true;
         return END_PLAY;
-      case KeyConfig::SET_SPEED:
-        playspeed_current = result.getIntArg();
-        SetSpeed(playspeeds[playspeed_current]);
-        osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
-        m_Pause = false;
-        break;
+      case KeyConfig::ACTION_SET_SPEED:
       case KeyConfig::ACTION_DECREASE_SPEED:
-        if(playspeed_current > 0)
-          playspeed_current--;
-        SetSpeed(playspeeds[playspeed_current]);
-        osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
-        m_Pause = false;
-        break;
       case KeyConfig::ACTION_INCREASE_SPEED:
-        if(playspeed_current < playspeed_max)
-          playspeed_current++;
+
+        if(result.getKey() == KeyConfig::ACTION_SET_SPEED)
+        {
+          playspeed_current = result.getIntArg();
+        }
+        else if(result.getKey() == KeyConfig::ACTION_DECREASE_SPEED)
+        {
+          if(playspeed_current > 0) playspeed_current--;
+        }
+        else
+        {
+          if(playspeed_current < playspeed_max) playspeed_current++;
+        }
+
         SetSpeed(playspeeds[playspeed_current]);
         osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
         m_Pause = false;
@@ -1380,10 +1381,19 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_PREVIOUS_AUDIO:
       case KeyConfig::ACTION_NEXT_AUDIO:
+      case KeyConfig::ACTION_UPDATE_AUDIO:
         if(m_player_audio)
         {
-          int delta = result.getKey() == KeyConfig::ACTION_NEXT_AUDIO ? 1 : -1;
-          m_audio_index = m_player_audio->SetActiveStreamDelta(delta);
+          if(result.getKey() == KeyConfig::ACTION_UPDATE_AUDIO)
+          {
+            m_audio_index = m_player_audio->GetActiveStream();
+          }
+          else
+          {
+            int delta = result.getKey() == KeyConfig::ACTION_NEXT_AUDIO ? 1 : -1;
+            m_audio_index = m_player_audio->SetActiveStreamDelta(delta);
+          }
+
           strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, m_audio_index).c_str());
           osd_printf(UM_NORM, "Audio stream: %d %s", m_audio_index + 1, m_audio_lang);
         }
@@ -1421,11 +1431,18 @@ int run_play_loop()
         break;
       case KeyConfig::ACTION_PREVIOUS_SUBTITLE:
       case KeyConfig::ACTION_NEXT_SUBTITLE:
+      case KeyConfig::ACTION_UPDATE_SUBTITLES:
         if(m_has_subtitle)
         {
-          int delta = result.getKey() == KeyConfig::ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
-
-          m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(delta);
+          if(result.getKey() == KeyConfig::ACTION_UPDATE_SUBTITLES)
+          {
+            m_subtitle_index = m_player_subtitles->GetActiveStream();
+          }
+          else
+          {
+            int delta = result.getKey() == KeyConfig::ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
+            m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(delta);
+          }
 
           if(m_subtitle_index == -1) {
             m_subtitle_lang[0] = '\0';
@@ -1537,39 +1554,23 @@ int run_play_loop()
         if(m_player_video) m_player_video->SetAlpha(255);
         break;
       case KeyConfig::ACTION_SET_ASPECT_MODE:
-        if (m_player_video && result.getStrArg()) {
-          if (!strcasecmp(result.getStrArg(), "letterbox"))
-            m_config_video.aspectMode = 1;
-          else if (!strcasecmp(result.getStrArg(), "fill"))
-            m_config_video.aspectMode = 2;
-          else if (!strcasecmp(result.getStrArg(), "stretch"))
-            m_config_video.aspectMode = 3;
-          else
-            m_config_video.aspectMode = 0;
+        if (m_player_video && result.getIntArg()) {
+          m_config_video.aspectMode = result.getIntArg();
           m_player_video->SetVideoRect(m_config_video.aspectMode);
         }
         break;
       case KeyConfig::ACTION_DECREASE_VOLUME:
-        if(m_player_audio)
-        {
-          m_Volume -= 50;
-          m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
-          osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
-        }
-        break;
       case KeyConfig::ACTION_INCREASE_VOLUME:
         if(m_player_audio)
         {
-          m_Volume += 50;
+          m_Volume += result.getKey() == KeyConfig::ACTION_INCREASE_VOLUME ? 50 : -50;
           m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
           osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         }
-      case KeyConfig::SET_VOLUME:
+      case KeyConfig::ACTION_SET_VOLUME:
         if(m_player_audio)
         {
           double new_vol = result.getDoubleArg();
-          if(new_vol < 0.0) new_vol = 0.0;
-
           m_Volume = 2000 * log10(new_vol);
           m_player_audio->SetVolume(new_vol);
           osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);

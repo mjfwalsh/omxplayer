@@ -317,8 +317,9 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
       double volume;
       if(m.get_arg(DBUS_TYPE_DOUBLE, &volume))
       {
+        if(volume < 0.0) volume = 0.0;
         m.respond(DBUS_TYPE_DOUBLE, volume);
-        return OMXControlResult(KeyConfig::SET_VOLUME, volume);
+        return OMXControlResult(KeyConfig::ACTION_SET_VOLUME, volume);
       }
       else
       {
@@ -375,7 +376,7 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
 
   case MAXIMUM_RATE:
     //TODO: to be made consistent
-    m.respond(DBUS_TYPE_DOUBLE, 10.125);
+    m.respond(DBUS_TYPE_DOUBLE, 4.0);
     return KeyConfig::ACTION_BLANK;
 
   case NEXT:
@@ -477,17 +478,29 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
       const char *aspectMode;
 
       // Make sure a value is sent for setting layer
-      if(m.ignore_arg() && m.get_arg(DBUS_TYPE_STRING, &aspectMode))
+      if(!m.ignore_arg() && m.get_arg(DBUS_TYPE_STRING, &aspectMode))
       {
-        m.respond(DBUS_TYPE_INT64, aspectMode);
-        return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspectMode);
+        CLogLog(LOGWARNING, "SetPosition D-Bus Error: Bad params");
+        m.respond_ok();
+        return KeyConfig::ACTION_BLANK;
       }
+
+      int aspect;
+      if (!strcasecmp(aspectMode, "letterbox"))
+        aspect = 1;
+      else if (!strcasecmp(aspectMode, "fill"))
+        aspect = 2;
+      else if (!strcasecmp(aspectMode, "stretch"))
+        aspect = 3;
       else
       {
         CLogLog(LOGWARNING, "SetPosition D-Bus Error: Bad params");
         m.respond_ok();
         return KeyConfig::ACTION_BLANK;
       }
+
+      m.respond(DBUS_TYPE_STRING, aspectMode);
+      return OMXControlResult(KeyConfig::ACTION_SET_ASPECT_MODE, aspect);
     }
 
   case LIST_SUBTITLES:
@@ -578,12 +591,13 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
       if(!m.get_arg(DBUS_TYPE_INT32, &index))
       {
         m.respond(DBUS_TYPE_BOOLEAN, 0);
+        return KeyConfig::ACTION_BLANK;
       }
       else
       {
         m.respond(DBUS_TYPE_BOOLEAN, subtitles->SetActiveStream(index) == index ? 1 : 0);
+        return KeyConfig::ACTION_UPDATE_SUBTITLES;
       }
-      return KeyConfig::ACTION_BLANK;
     }
 
   case SELECT_AUDIO:
@@ -595,21 +609,20 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
       if (!m.get_arg(DBUS_TYPE_INT32, &index))
       {
         m.respond(DBUS_TYPE_BOOLEAN, 0);
+        return KeyConfig::ACTION_BLANK;
       }
       else
       {
         m.respond(DBUS_TYPE_BOOLEAN, audio->SetActiveStream(index) ? 1 : 0);
+        return KeyConfig::ACTION_UPDATE_AUDIO;
       }
-      return KeyConfig::ACTION_BLANK;
     }
-  // TODO: SelectVideo ???
+
   case SHOW_SUBTITLES:
-    subtitles->SetVisible(true);
     m.respond_ok();
     return KeyConfig::ACTION_SHOW_SUBTITLES;
 
   case HIDE_SUBTITLES:
-    subtitles->SetVisible(false);
     m.respond_ok();
     return KeyConfig::ACTION_HIDE_SUBTITLES;
 
@@ -632,7 +645,7 @@ OMXControlResult OMXControl::handle_event(DMessage &m, enum DBusMethod search_ke
   case ACTION:
     {
       int action;
-      if(!m.get_arg(DBUS_TYPE_INT32, &action))
+      if(!m.get_arg(DBUS_TYPE_INT32, &action) || action > KeyConfig::ACTION_BLANK)
         action = KeyConfig::ACTION_BLANK;
 
       m.respond_ok();
@@ -727,7 +740,7 @@ OMXControlResult OMXControl::SetProperty(DMessage &m)
     if(new_speed == 0)
       return KeyConfig::ACTION_PAUSE;
     else
-      return OMXControlResult(KeyConfig::SET_SPEED, new_speed);
+      return OMXControlResult(KeyConfig::ACTION_SET_SPEED, new_speed);
   }
 
   //Wrong property

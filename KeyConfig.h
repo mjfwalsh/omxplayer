@@ -6,8 +6,13 @@ class KeyConfig
   public: 
     enum 
     {
+        // These enums are used by the Action dbus method so the
+        // numbers should be maintained for compatibility purposes
         ACTION_DECREASE_SPEED = 1,
         ACTION_INCREASE_SPEED = 2,
+        //ACTION_REWIND = 3,
+        //ACTION_FAST_FORWARD = 4,
+        //ACTION_SHOW_INFO = 5,
         ACTION_PREVIOUS_AUDIO = 6,
         ACTION_NEXT_AUDIO = 7,
         ACTION_PREVIOUS_CHAPTER = 8,
@@ -25,26 +30,38 @@ class KeyConfig
         ACTION_SEEK_FORWARD_SMALL = 20,
         ACTION_SEEK_BACK_LARGE = 21,
         ACTION_SEEK_FORWARD_LARGE = 22,
-        ACTION_SEEK_RELATIVE = 25,
-        ACTION_SEEK_ABSOLUTE = 26,
         ACTION_STEP = 23,
-        ACTION_BLANK = 24,
-        //ACTION_MOVE_VIDEO = 27,
+        //ACTION_BLANK = 24,
+        ACTION_SEEK_RELATIVE = 25,
+        //ACTION_SEEK_ABSOLUTE = 26, (needs param)
+        //ACTION_MOVE_VIDEO = 27, (needs param)
         ACTION_HIDE_VIDEO = 28,
         ACTION_UNHIDE_VIDEO = 29,
         ACTION_HIDE_SUBTITLES = 30,
         ACTION_SHOW_SUBTITLES = 31,
-        ACTION_SET_ALPHA = 32,
-        ACTION_SET_ASPECT_MODE = 33,
-        //ACTION_CROP_VIDEO = 34,
+        //ACTION_SET_ALPHA = 32, (needs param)
+        //ACTION_SET_ASPECT_MODE = 33, (needs param)
+        //ACTION_CROP_VIDEO = 34, (needs param)
         ACTION_PAUSE = 35,
         ACTION_PLAY = 36,
-        ACTION_CHANGE_FILE = 37,
-        ACTION_SET_LAYER = 38,
+        //ACTION_CHANGE_FILE = 37,
+        //ACTION_SET_LAYER = 38, (needs param)
+
         ACTION_PREVIOUS_FILE = 39,
         ACTION_NEXT_FILE = 40,
-        SET_VOLUME = 41,
-        SET_SPEED = 42,
+
+        // From here on the methods require parameters
+        // so they can't work with the Action method
+        ACTION_BLANK = 100,
+        ACTION_SEEK_ABSOLUTE,
+        ACTION_SET_ALPHA,
+        ACTION_SET_ASPECT_MODE,
+        ACTION_CHANGE_FILE,
+        ACTION_SET_LAYER,
+        ACTION_SET_VOLUME,
+        ACTION_SET_SPEED,
+        ACTION_UPDATE_SUBTITLES,
+        ACTION_UPDATE_AUDIO,
     };
 
     #define KEY_LEFT 0x5b44
