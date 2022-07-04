@@ -138,6 +138,8 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
   unsigned char *buffer   = NULL;
 
   m_pFormatContext     = avformat_alloc_context();
+  if(m_pFormatContext == NULL)
+    throw "avformat_alloc_context failed";
 
   result = av_set_options_string(m_pFormatContext, s_lavfdopts.c_str(), ":", ",");
 
@@ -294,11 +296,11 @@ OMXReader::~OMXReader()
 
 bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
 {
+  if(!CanSeek())
+    return false;
+
   if(time < 0)
     time = 0;
-
-  if(!m_pFormatContext)
-    return false;
 
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
@@ -327,7 +329,7 @@ bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
 
 OMXPacket *OMXReader::Read()
 {
-  if(!m_pFormatContext || m_eof)
+  if(m_eof)
     return NULL;
 
   // assume we are not eof
@@ -522,9 +524,6 @@ void OMXReader::GetChapters()
 
 void OMXReader::AddStream(int id)
 {
-  if(!m_pFormatContext)
-    return;
-
   AVStream *pStream = m_pFormatContext->streams[id];
 
   OMXStream *this_stream;
@@ -714,9 +713,6 @@ OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t cur_pts, int6
 
 int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
 {
-  if(m_pFormatContext == NULL)
-    return AV_NOPTS_VALUE;
-
   if (pts == AV_NOPTS_VALUE)
     return AV_NOPTS_VALUE;
 
@@ -738,9 +734,6 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
 
 void OMXReader::SetSpeed(int iSpeed)
 {
-  if(!m_pFormatContext)
-    return;
-
   if(m_speed != DVD_PLAYSPEED_PAUSE && iSpeed == DVD_PLAYSPEED_PAUSE)
   {
     av_read_pause(m_pFormatContext);
@@ -771,24 +764,18 @@ void OMXReader::SetSpeed(int iSpeed)
 
 int OMXReader::GetStreamLengthSeconds()
 {
-  if (!m_pFormatContext)
-    return 0;
-
   if(m_DvdPlayer)
     return (int)( m_DvdPlayer->getCurrentTrackLength() / 1000 );
-
-  return (int)(m_pFormatContext->duration / AV_TIME_BASE );
+  else
+    return (int)(m_pFormatContext->duration / AV_TIME_BASE );
 }
 
 int64_t OMXReader::GetStreamLengthMicro()
 {
-  if (!m_pFormatContext)
-    return 0;
-
   if(m_DvdPlayer)
     return (int64_t)m_DvdPlayer->getCurrentTrackLength() * 1000;
-
-  return m_pFormatContext->duration;
+  else
+    return m_pFormatContext->duration;
 }
 
 double OMXReader::NormalizeFrameduration(double frameduration)
@@ -954,7 +941,7 @@ bool OMXReader::CanSeek()
   if(m_ioContext)
     return m_ioContext->seekable;
 
-  if(!m_pFormatContext || !m_pFormatContext->pb)
+  if(!m_pFormatContext->pb)
     return false;
 
   if(m_pFormatContext->pb->seekable == AVIO_SEEKABLE_NORMAL)

@@ -1,4 +1,5 @@
 #include "OMXThread.h"
+#include "KeyConfig.h"
 #include <unordered_map>
 #include <string>
 #include <atomic>
@@ -17,7 +18,7 @@ class Keyboard : public OMXThread
   ~Keyboard();
   void Process() override;
   void Sleep(unsigned int dwMilliSeconds);
-  int getEvent();
+  enum Action getEvent();
  private:
   void restore_term();
 };

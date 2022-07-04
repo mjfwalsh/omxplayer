@@ -1,65 +1,62 @@
-#define OMXPLAYER_DBUS_INTERFACE_PLAYER "org.mpris.MediaPlayer2.Player"
+#pragma once
 
-#include <dbus/dbus.h>
-#include <string>
+#include "KeyConfig.h"
+#include "omxplayer.h"
 
-#include "DbusCommandSearch.h"
-
-class OMXPlayerAudio;
-class OMXPlayerSubtitles;
-class OMXReader;
-class OMXClock;
+struct DBusMessage;
+struct DBusConnection;
+struct DBusMessageIter;
 
 #define MIN_RATE (1)
 #define MAX_RATE (4 * DVD_PLAYSPEED_NORMAL)
 
-
-class OMXControlResult {
-  int key;
-
-  union {
-    int intarg;
-    int64_t int64arg;
-    double doublearg;
-    const char *strarg;
-  } v;
+class DMessage
+{
+private:
+  DBusMessage *m;
+  DBusMessageIter *m_args = NULL;
 
 public:
-   OMXControlResult(int);
-   OMXControlResult(int, int);
-   OMXControlResult(int, int64_t);
-   OMXControlResult(int, double);
-   OMXControlResult(int, const char *);
-   int getKey();
-   int getIntArg();
-   int64_t getInt64Arg();
-   double getDoubleArg();
-   const char *getStrArg();
+  explicit DMessage(DBusMessage *message);
+  ~DMessage();
+
+  operator DBusMessage*() const { return m; }
+
+  bool get_arg_int(int *value);
+  bool get_arg_int64(int64_t *value);
+  bool get_arg_double(double *value);
+  bool get_arg_string(const char **value);
+
+  bool ignore_arg();
+
+  void respond_unknown_property();
+  void respond_unknown_method();
+  void respond_invalid_args();
+
+  void respond_int64(int64_t value);
+  void respond_double(double value);
+  void respond_bool(bool value);
+  void respond_string(const char *value);
+
+  void respond_array(const char *array[], int size);
+  bool needs_response = true;
+
+  void send_metadata(const char *url, int64_t *duration);
+private:
+  void respond(int type, void *value);
+  bool get_arg(int type, void *value);
+  void respond_error(const char *name, const char *msg);
 };
 
-class DMessage;
 
 class OMXControl
 {
-protected:
-  DBusConnection     *bus;
-  OMXClock           *clock;
-  OMXPlayerAudio     *audio;
-  OMXReader          *reader;
-  OMXPlayerSubtitles *subtitles;
-  std::string& (*get_filename)();
-  int (*get_approx_speed)(double &s);
 public:
   ~OMXControl();
-  void init(OMXClock *av_clock, OMXPlayerSubtitles *player_subtitles, std::string& (*filename)(), int (*speed)(double &s));
-  bool connect(std::string& dbus_name);
-  void set_reader(OMXReader *omx_reader);
-  void set_audio(OMXPlayerAudio *player_audio);
-  OMXControlResult getEvent();
+  bool connect(const char *dbus_name);
+  enum ControlFlow getEvent();
 private:
   void dispatch();
-  int dbus_connect(std::string& dbus_name);
+  bool dbus_connect(const char *dbus_name);
   void dbus_disconnect();
-  OMXControlResult handle_event(DMessage &m, enum DBusMethod search_key);
-  OMXControlResult SetProperty(DMessage &m);
 };

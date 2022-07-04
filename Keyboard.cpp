@@ -2,7 +2,6 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <dbus/dbus.h>
 #include <errno.h>
 
 #include "utils/log.h"
@@ -95,7 +94,7 @@ void Keyboard::Process()
   }
 }
 
-int Keyboard::getEvent()
+enum Action Keyboard::getEvent()
 {
-  return m_action.exchange(-1);
+  return (enum Action)m_action.exchange(-1);
 }
