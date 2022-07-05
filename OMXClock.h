@@ -24,8 +24,8 @@
 
 #include "OMXCore.h"
 
-#define DVD_PLAYSPEED_PAUSE       0       // frame stepping
-#define DVD_PLAYSPEED_NORMAL      1000
+#define DVD_PLAYSPEED_PAUSE       0.0
+#define DVD_PLAYSPEED_NORMAL      1.0
 
 static inline OMX_TICKS ToOMXTime(int64_t pts)
 {
@@ -45,7 +45,7 @@ class OMXClock
 protected:
   bool              m_pause;
   pthread_mutex_t   m_lock;
-  int               m_omx_speed;
+  float             m_omx_speed;
   OMX_U32           m_WaitMask;
   OMX_TIME_CLOCKSTATE   m_eState;
   OMX_TIME_REFCLOCKTYPE m_eClock;
@@ -66,8 +66,8 @@ public:
   bool OMXMediaTime(int64_t pts, bool lock = true);
   bool OMXPause(bool lock = true);
   bool OMXResume(bool lock = true);
-  bool OMXSetSpeed(int speed, bool lock = true, bool pause_resume = false);
-  int  OMXPlaySpeed() { return m_omx_speed; };
+  bool OMXSetSpeed(float speed, bool lock = true);
+  float  OMXPlaySpeed() { return m_omx_speed; };
   COMXCoreComponent *GetOMXClock();
   bool OMXStateExecute(bool lock = true);
   void OMXStateIdle(bool lock = true);

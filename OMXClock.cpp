@@ -321,7 +321,7 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
   }
   else
   {
-    double speed = m_pause ? 0.0 : (double)m_omx_speed / DVD_PLAYSPEED_NORMAL;
+    double speed = m_pause ? 0.0 : m_omx_speed;
     pts = m_last_media_time + (now - m_last_media_time_read) * speed;
     //CLogLog(LOGINFO, "OMXClock::MediaTime cached %.2f (%.2f, %.2f)", pts, m_last_media_time, now - m_last_media_time_read);
   }
@@ -381,7 +381,7 @@ bool OMXClock::OMXPause(bool lock /* = true */)
     if(lock)
       Lock();
 
-    if (OMXSetSpeed(0, false, true))
+    if(OMXSetSpeed(0.0f, false))
       m_pause = true;
 
     m_last_media_time = 0;
@@ -401,7 +401,7 @@ bool OMXClock::OMXResume(bool lock /* = true */)
     if(lock)
       Lock();
 
-    if (OMXSetSpeed(m_omx_speed, false, true))
+    if(OMXSetSpeed(m_omx_speed, false))
       m_pause = false;
 
     m_last_media_time = 0;
@@ -411,7 +411,7 @@ bool OMXClock::OMXResume(bool lock /* = true */)
   return m_pause == false;
 }
 
-bool OMXClock::OMXSetSpeed(int speed, bool lock /* = true */, bool pause_resume /* = false */)
+bool OMXClock::OMXSetSpeed(float speed, bool lock /* = true */)
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
@@ -419,26 +419,25 @@ bool OMXClock::OMXSetSpeed(int speed, bool lock /* = true */, bool pause_resume 
   if(lock)
     Lock();
 
-  CLogLog(LOGDEBUG, "OMXClock::OMXSetSpeed(%.2f) pause_resume:%d", (float)speed / (float)DVD_PLAYSPEED_NORMAL, pause_resume);
+  CLogLog(LOGDEBUG, "OMXClock::OMXSetSpeed(%.2f)", speed);
 
-  if (pause_resume)
-  {
-    OMX_ERRORTYPE omx_err = OMX_ErrorNone;
-    OMX_TIME_CONFIG_SCALETYPE scaleType;
-    OMX_INIT_STRUCTURE(scaleType);
-
-    scaleType.xScale = (speed << 16) / DVD_PLAYSPEED_NORMAL;
-    omx_err = m_omx_clock.SetConfig(OMX_IndexConfigTimeScale, &scaleType);
-    if(omx_err != OMX_ErrorNone)
-    {
-      CLogLog(LOGERROR, "OMXClock::OMXSetSpeed error setting OMX_IndexConfigTimeClockState");
-      if(lock)
-        UnLock();
-      return false;
-    }
-  }
-  if (!pause_resume)
+  if(speed > 0.0f)
     m_omx_speed = speed;
+
+  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
+  OMX_TIME_CONFIG_SCALETYPE scaleType;
+  OMX_INIT_STRUCTURE(scaleType);
+
+  scaleType.xScale = speed * 65536.0;
+  omx_err = m_omx_clock.SetConfig(OMX_IndexConfigTimeScale, &scaleType);
+  if(omx_err != OMX_ErrorNone)
+  {
+    printf("OMXClock::OMXSetSpeed error setting OMX_IndexConfigTimeClockState\n");
+    if(lock)
+      UnLock();
+
+    return false;
+  }
 
   m_last_media_time = 0;
   if(lock)

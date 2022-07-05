@@ -96,7 +96,7 @@ private:
   OMXStream                 m_video_streams[MAX_VIDEO_STREAMS];
   OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
   int                       m_chapter_count   = 0;
-  int                       m_speed;
+  float                     m_speed;
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
   int                       m_height          = 0;
@@ -130,7 +130,7 @@ public:
   double GetAspectRatio() { return m_aspect; };
   int GetWidth() { return m_width; };
   int GetHeight() { return m_height; };
-  void SetSpeed(int iSpeed);
+  void SetSpeed(float iSpeed);
   SeekResult SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts);
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();

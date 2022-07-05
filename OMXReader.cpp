@@ -732,7 +732,7 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
   return timestamp * AV_TIME_BASE;
 }
 
-void OMXReader::SetSpeed(int iSpeed)
+void OMXReader::SetSpeed(float iSpeed)
 {
   if(m_speed != DVD_PLAYSPEED_PAUSE && iSpeed == DVD_PLAYSPEED_PAUSE)
   {
@@ -745,11 +745,11 @@ void OMXReader::SetSpeed(int iSpeed)
   m_speed = iSpeed;
 
   AVDiscard discard = AVDISCARD_NONE;
-  if(m_speed > 4*DVD_PLAYSPEED_NORMAL)
+  if(m_speed > 4.0)
     discard = AVDISCARD_NONKEY;
-  else if(m_speed > 2*DVD_PLAYSPEED_NORMAL)
+  else if(m_speed > 2.0)
     discard = AVDISCARD_BIDIR;
-  else if(m_speed < DVD_PLAYSPEED_PAUSE)
+  else if(m_speed < 0.0)
     discard = AVDISCARD_NONKEY;
 
   for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)

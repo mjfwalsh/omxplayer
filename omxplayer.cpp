@@ -100,8 +100,7 @@ bool              m_playlist_enabled    = true;
 float             m_latency             = 0.0f;
 bool              m_dbus_enabled;
 
-#define S(x) (int)(DVD_PLAYSPEED_NORMAL*(x))
-int playspeeds[] = {S(0), S(1/16.0), S(1/8.0), S(1/4.0), S(1/2.0), S(0.975), S(1.0), S(1.125), S(2.0), S(4.0)};
+float playspeeds[] = {0, 1/16.0, 1/8.0, 1/4.0, 1/2.0, 0.975, 1.0, 1.125, 2.0, 4.0};
 const int playspeed_max = 9, playspeed_normal = 6;
 int playspeed_current = playspeed_normal;
 
@@ -229,12 +228,10 @@ static void PrintSubtitleInfo()
          m_has_subtitle ? m_player_subtitles->GetDelay() : 0);
 }
 
-static void SetSpeed(int iSpeed)
+static void SetSpeed(float iSpeed)
 {
   m_omx_reader->SetSpeed(iSpeed);
-
   m_av_clock->OMXSetSpeed(iSpeed);
-  m_av_clock->OMXSetSpeed(iSpeed, true, true);
 }
 
 static void FlushStreams(int64_t pts)
@@ -267,21 +264,20 @@ static void FlushStreams(int64_t pts)
 
 // find the nearest element of the playspeeds array
 // to the inputted play speed
-int get_approx_speed(double &s)
+int get_approx_speed(double &new_speed)
 {
-  int new_speed = S(s);
   const int arr_len = sizeof(playspeeds) / sizeof(int);
 
   for(int i = 0; i < arr_len - 1; i++)  
   {
-    int midpoint = (playspeeds[i] + playspeeds[i+1]) / 2;
+    float midpoint = (playspeeds[i] + playspeeds[i+1]) / 2.0;
     if(new_speed < midpoint)
     {
-      s = playspeeds[i];
+      new_speed = playspeeds[i];
       return i;
     }
   }
-  s = playspeeds[arr_len - 1];
+  new_speed = playspeeds[arr_len - 1];
   return arr_len - 1;
 }
 
@@ -1111,7 +1107,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
     else if(search_key == ACTION_DECREASE_SPEED)
     {
-      if(playspeed_current > 0) playspeed_current--;
+      if(playspeed_current > 1) playspeed_current--;
     }
     else
     {
@@ -1119,7 +1115,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
 
     SetSpeed(playspeeds[playspeed_current]);
-    osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]/1000.0f);
+    osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]);
     m_Pause = false;
     break;
 
@@ -1298,7 +1294,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
           m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
       {
         playspeed_current = playspeed_normal;
-        SetSpeed(playspeeds[playspeed_current]);
+        SetSpeed(playspeeds[playspeed_normal]);
       }
 
       if(m_has_subtitle)
@@ -1677,11 +1673,11 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
 
   case GET_MINIMUM_RATE:
-    m->respond_double(0.0625f);
+    m->respond_double(playspeeds[1]);
     break;
 
   case GET_MAXIMUM_RATE:
-    m->respond_double(4.0f);
+    m->respond_double(playspeeds[playspeed_max]);
     break;
 
   case GET_RATE:
@@ -2070,8 +2066,7 @@ int run_play_loop()
             else if (m_latency > 1.1f*m_threshold)
               speed = 1.001f;
 
-            m_av_clock->OMXSetSpeed(S(speed));
-            m_av_clock->OMXSetSpeed(S(speed), true, true);
+            m_av_clock->OMXSetSpeed(speed);
             CLogLog(LOGDEBUG, "Live: %.2f (%.2f) S:%.3f T:%.2f", m_latency, latency, speed, m_threshold);
           }
         }
