@@ -3,70 +3,72 @@
 #include <fstream>
 #include <iostream>
 #include <stdlib.h>
+#include <string.h>
 
 #include "KeyConfig.h"
 
 using namespace std;
 
+namespace KeyConfig {
+
+struct action_lookup
+{
+  const char* k;
+  enum Action v;
+};
+
+const struct action_lookup table[] = {
+// NB this list is CASE SENSITIVELY sorted
+  {"DECREASE_SPEED", ACTION_DECREASE_SPEED},
+  {"DECREASE_SUBTITLE_DELAY", ACTION_DECREASE_SUBTITLE_DELAY},
+  {"DECREASE_VOLUME", ACTION_DECREASE_VOLUME},
+  {"EXIT", ACTION_EXIT},
+  {"HIDE_SUBTITLES", ACTION_HIDE_SUBTITLES},
+  {"INCREASE_SPEED", ACTION_INCREASE_SPEED},
+  {"INCREASE_SUBTITLE_DELAY", ACTION_INCREASE_SUBTITLE_DELAY},
+  {"INCREASE_VOLUME", ACTION_INCREASE_VOLUME},
+  {"NEXT_AUDIO", ACTION_NEXT_AUDIO},
+  {"NEXT_CHAPTER", ACTION_NEXT_CHAPTER},
+  {"NEXT_FILE", ACTION_NEXT_FILE},
+  {"NEXT_SUBTITLE", ACTION_NEXT_SUBTITLE},
+  {"PAUSE", ACTION_PLAYPAUSE},
+  {"PREVIOUS_AUDIO", ACTION_PREVIOUS_AUDIO},
+  {"PREVIOUS_CHAPTER", ACTION_PREVIOUS_CHAPTER},
+  {"PREVIOUS_FILE", ACTION_PREVIOUS_FILE},
+  {"PREVIOUS_SUBTITLE", ACTION_PREVIOUS_SUBTITLE},
+  {"SEEK_BACK_LARGE", ACTION_SEEK_BACK_LARGE},
+  {"SEEK_BACK_SMALL", ACTION_SEEK_BACK_SMALL},
+  {"SEEK_FORWARD_LARGE", ACTION_SEEK_FORWARD_LARGE},
+  {"SEEK_FORWARD_SMALL", ACTION_SEEK_FORWARD_SMALL},
+  {"SHOW_SUBTITLES", ACTION_SHOW_SUBTITLES},
+  {"STEP", ACTION_STEP},
+  {"TOGGLE_SUBTITLE", ACTION_TOGGLE_SUBTITLE},
+};
+
+const int item_size = sizeof(const action_lookup);
+const int item_count = sizeof(table) / sizeof(const action_lookup);
+
+static int compare(const void *a, const void *b)
+{
+	const char *ia = (const char *)a;
+	const struct action_lookup *ib = (const struct action_lookup *)b;
+
+	return strcmp(ia, ib->k);
+}
+
 /* Converts the action string from the config file into 
  * the corresponding enum value
  */
-int convertStringToAction(const string &str_action)
+static int convertStringToAction(const string &str_action)
 {
-    if(str_action == "DECREASE_SPEED")
-        return ACTION_DECREASE_SPEED;
-    if(str_action == "INCREASE_SPEED")
-        return ACTION_INCREASE_SPEED;
-    if(str_action == "PREVIOUS_AUDIO")
-        return ACTION_PREVIOUS_AUDIO;
-    if(str_action == "NEXT_AUDIO")
-        return ACTION_NEXT_AUDIO;
-    if(str_action == "PREVIOUS_CHAPTER")
-        return ACTION_PREVIOUS_CHAPTER;
-    if(str_action == "NEXT_CHAPTER")
-        return ACTION_NEXT_CHAPTER;
-    if(str_action == "PREVIOUS_FILE")
-        return ACTION_PREVIOUS_FILE;
-    if(str_action == "NEXT_FILE")
-        return ACTION_NEXT_FILE;
-    if(str_action == "PREVIOUS_SUBTITLE")
-        return ACTION_PREVIOUS_SUBTITLE;
-    if(str_action == "NEXT_SUBTITLE")
-        return ACTION_NEXT_SUBTITLE;
-    if(str_action == "TOGGLE_SUBTITLE")
-        return ACTION_TOGGLE_SUBTITLE;
-    if(str_action == "DECREASE_SUBTITLE_DELAY")
-        return ACTION_DECREASE_SUBTITLE_DELAY;
-    if(str_action == "INCREASE_SUBTITLE_DELAY")
-        return ACTION_INCREASE_SUBTITLE_DELAY;
-    if(str_action == "EXIT")
-        return ACTION_EXIT;
-    if(str_action == "PAUSE")
-        return ACTION_PLAYPAUSE;
-    if(str_action == "DECREASE_VOLUME")
-        return ACTION_DECREASE_VOLUME;
-    if(str_action == "INCREASE_VOLUME")
-        return ACTION_INCREASE_VOLUME;
-    if(str_action == "SEEK_BACK_SMALL")
-       return ACTION_SEEK_BACK_SMALL;
-    if(str_action == "SEEK_FORWARD_SMALL")
-        return ACTION_SEEK_FORWARD_SMALL;
-    if(str_action == "SEEK_BACK_LARGE")
-        return ACTION_SEEK_BACK_LARGE;
-    if(str_action == "SEEK_FORWARD_LARGE")
-        return ACTION_SEEK_FORWARD_LARGE;
-    if(str_action == "STEP")
-        return ACTION_STEP;
-    if(str_action == "SHOW_SUBTITLES")
-        return ACTION_SHOW_SUBTITLES;
-    if(str_action == "HIDE_SUBTITLES")
-        return ACTION_HIDE_SUBTITLES;
-            
-    return -1;
+	struct action_lookup *result = (struct action_lookup *)
+			bsearch(str_action.c_str(), table, item_count, item_size, compare);
+
+	return result == NULL ? -1 : result->v;
 }
 /* Parses a line from the config file in the mode 'action:key'. Looks up
 the action in the relevant enum array. Returns true on success. */
-bool getActionAndKeyFromString(string line, int &int_action, string &key)
+static bool getActionAndKeyFromString(string line, int &int_action, string &key)
 {
     string str_action;
 
@@ -77,7 +79,7 @@ bool getActionAndKeyFromString(string line, int &int_action, string &key)
     if(colonIndex == string::npos)
         return false;
 
-    str_action = line.substr(0,colonIndex);
+    str_action = line.substr(0, colonIndex);
     key = line.substr(colonIndex+1);
 
     int_action = convertStringToAction(str_action);
@@ -91,7 +93,7 @@ bool getActionAndKeyFromString(string line, int &int_action, string &key)
 /* Returns a keymap consisting of the default
  *  keybinds specified with the -k option 
  */
-void KeyConfig::buildDefaultKeymap(unordered_map<int,int> &keymap)
+static void buildDefaultKeymap(unordered_map<int,int> &keymap)
 {
     keymap['<'] = ACTION_DECREASE_SPEED;
     keymap['>'] = ACTION_INCREASE_SPEED;
@@ -126,7 +128,7 @@ void KeyConfig::buildDefaultKeymap(unordered_map<int,int> &keymap)
 
 /* Parses the supplied config file and turns it into a map object.
  */
-void KeyConfig::parseConfigFile(string &filepath, unordered_map<int, int> &keymap)
+static void parseConfigFile(const char *filepath, unordered_map<int, int> &keymap)
 {
     ifstream config_file(filepath);
 
@@ -191,4 +193,15 @@ void KeyConfig::parseConfigFile(string &filepath, unordered_map<int, int> &keyma
             }
         }
     }
+}
+
+void buildKeymap(const char *filename, unordered_map<int, int> &map)
+{
+  if(filename == NULL) {
+    buildDefaultKeymap(map);
+  } else {
+    parseConfigFile(filename, map);
+  }
+}
+
 }

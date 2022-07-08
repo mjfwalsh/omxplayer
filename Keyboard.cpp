@@ -8,14 +8,10 @@
 #include "Keyboard.h"
 #include "KeyConfig.h"
 
-Keyboard::Keyboard(std::string &filename)
+Keyboard::Keyboard(const char *filename)
 {
   // setKeymap
-  if(filename.empty()) {
-    KeyConfig::buildDefaultKeymap(m_keymap);
-  } else {
-    KeyConfig::parseConfigFile(filename, m_keymap);
-  }
+  KeyConfig::buildKeymap(filename, m_keymap);
 
   if (isatty(STDIN_FILENO)) 
   {
@@ -48,11 +44,7 @@ Keyboard::~Keyboard()
   {
     StopThread();
   }
-  restore_term();
-}
 
-void Keyboard::restore_term() 
-{
   if (isatty(STDIN_FILENO)) 
   {
     tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);

@@ -70,17 +70,16 @@ const struct lookup_item table[] = {
 
 static int cmp_item(const void *a, const void *b)
 {
-  const struct lookup_item *aa = (const struct lookup_item *)a;
+  const char *aa = (const char *)a;
   const struct lookup_item *bb = (const struct lookup_item *)b;
 
-  return strcmp(aa->key, bb->key);
+  return strcmp(aa, bb->key);
 }
 
-struct lookup_item *search_table(const char *name)
+struct lookup_item *search_table(const char *needle)
 {
-	struct lookup_item needle = {.key = name};
 	return static_cast<struct lookup_item*>(
-		bsearch(&needle,
+		bsearch(needle,
 				table,
 				sizeof(table) / sizeof(lookup_item),
 				sizeof(struct lookup_item),

@@ -1,7 +1,6 @@
 #include "OMXThread.h"
 #include "KeyConfig.h"
 #include <unordered_map>
-#include <string>
 #include <atomic>
 #include <termios.h>
 
@@ -14,11 +13,9 @@ class Keyboard : public OMXThread
 
   std::unordered_map<int,int> m_keymap;
  public:
-  explicit Keyboard(std::string &filename);
+  explicit Keyboard(const char *filename);
   ~Keyboard();
   void Process() override;
   void Sleep(unsigned int dwMilliSeconds);
   enum Action getEvent();
- private:
-  void restore_term();
 };

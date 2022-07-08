@@ -115,10 +115,7 @@ enum Action
 #define KEY_DOWN 0x5b42
 #define KEY_ESC 27
 
-class KeyConfig
+namespace KeyConfig
 {
-
-  public:
-    static void buildDefaultKeymap(std::unordered_map<int, int> &keymap);
-    static void parseConfigFile(std::string &filepath, std::unordered_map<int, int> &keymap);
-};
+	void buildKeymap(const char *filepath, std::unordered_map<int, int> &keymap);
+}

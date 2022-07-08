@@ -408,7 +408,7 @@ int startup(int argc, char *argv[])
   float             font_size           = 0.055f;
   bool              no_hdmi_clock_sync  = false;
   uint32_t          background          = 0;
-  std::string       keymap_file;
+  const char        *keymap_file        = NULL;
   int               log_level           = LOGNONE;
   std::string       log_file;
   bool              use_key_ctrl        = true;
