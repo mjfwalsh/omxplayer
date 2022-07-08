@@ -20,6 +20,7 @@
 
 #include "OMXClock.h"
 #include "utils/log.h"
+#include "utils/SingleLock.h"
 
 #define OMX_PRE_ROLL 200
 
@@ -33,8 +34,6 @@ m_eClock(OMX_TIME_RefClockNone),
 m_last_media_time(0),
 m_last_media_time_read(0)
 {
-  pthread_mutex_init(&m_lock, NULL);
-
   if(!m_omx_clock.Initialize("OMX.broadcom.clock", OMX_IndexParamOtherInit))
     throw "Failed to initialise media clock";
 }
@@ -46,18 +45,6 @@ OMXClock::~OMXClock()
 
   if(m_omx_clock.GetComponent() != NULL)
     m_omx_clock.Deinitialize();
-
-  pthread_mutex_destroy(&m_lock);
-}
-
-void OMXClock::Lock()
-{
-  pthread_mutex_lock(&m_lock);
-}
-
-void OMXClock::UnLock()
-{
-  pthread_mutex_unlock(&m_lock);
 }
 
 void OMXClock::OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio)
@@ -81,10 +68,9 @@ void OMXClock::OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_
   }
 }
 
-bool OMXClock::OMXSetReferenceClock(bool has_audio, bool lock /* = true */)
+bool OMXClock::OMXSetReferenceClock(bool has_audio)
 {
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   bool ret = true;
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
@@ -109,58 +95,47 @@ bool OMXClock::OMXSetReferenceClock(bool has_audio, bool lock /* = true */)
     m_eClock = refClock.eClock;
   }
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return ret;
 }
 
-bool OMXClock::OMXStateExecute(bool lock /* = true */)
+bool OMXClock::OMXStateExecute()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
 
   if(m_omx_clock.GetState() != OMX_StateExecuting)
   {
-
-    OMXStateIdle(false);
+    OMXStateIdle();
 
     omx_err = m_omx_clock.SetStateForComponent(OMX_StateExecuting);
     if (omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "OMXClock::StateExecute m_omx_clock.SetStateForComponent");
-      if(lock)
-        UnLock();
       return false;
     }
   }
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }
 
-void OMXClock::OMXStateIdle(bool lock /* = true */)
+void OMXClock::OMXStateIdle()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   if(m_omx_clock.GetState() != OMX_StateIdle)
     m_omx_clock.SetStateForComponent(OMX_StateIdle);
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 }
 
 COMXCoreComponent *OMXClock::GetOMXClock()
@@ -168,13 +143,12 @@ COMXCoreComponent *OMXClock::GetOMXClock()
   return &m_omx_clock;
 }
 
-bool  OMXClock::OMXStop(bool lock /* = true */)
+bool  OMXClock::OMXStop()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   CLogLog(LOGDEBUG, "OMXClock::OMXStop");
 
@@ -189,26 +163,21 @@ bool  OMXClock::OMXStop(bool lock /* = true */)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "OMXClock::Stop error setting OMX_IndexConfigTimeClockState");
-    if(lock)
-      UnLock();
     return false;
   }
   m_eState = clock.eState;
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }
 
-bool OMXClock::OMXStep(int steps /* = 1 */, bool lock /* = true */)
+bool OMXClock::OMXStep(int steps /* = 1 */)
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_PARAM_U32TYPE param;
@@ -221,31 +190,24 @@ bool OMXClock::OMXStep(int steps /* = 1 */, bool lock /* = true */)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "OMXClock::Error setting OMX_IndexConfigSingleStep");
-    if(lock)
-      UnLock();
     return false;
   }
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   CLogLog(LOGDEBUG, "OMXClock::Step (%d)", steps);
   return true;
 }
 
-bool OMXClock::OMXReset(bool has_video, bool has_audio, bool lock /* = true */)
+bool OMXClock::OMXReset(bool has_video, bool has_audio)
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
-  if(!OMXSetReferenceClock(has_audio, false))
+  if(!OMXSetReferenceClock(has_audio))
   {
-    if(lock)
-      UnLock();
     return false;
   }
 
@@ -265,8 +227,6 @@ bool OMXClock::OMXReset(bool has_video, bool has_audio, bool lock /* = true */)
       if(omx_err != OMX_ErrorNone)
       {
         CLogLog(LOGERROR, "OMXClock::OMXReset error setting OMX_IndexConfigTimeClockState");
-        if(lock)
-          UnLock();
         return false;
       }
       CLogLog(LOGDEBUG, "OMXClock::OMXReset audio / video : %d / %d wait mask %d->%d state : %d->%d",
@@ -278,13 +238,11 @@ bool OMXClock::OMXReset(bool has_video, bool has_audio, bool lock /* = true */)
   }
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }
 
-int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
+int64_t OMXClock::OMXMediaTime()
 {
   int64_t pts = 0;
   if(m_omx_clock.GetComponent() == NULL)
@@ -293,8 +251,7 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
   int64_t now = GetAbsoluteClock();
   if (now - m_last_media_time_read > 100000 || m_last_media_time == 0)
   {
-    if(lock)
-      Lock();
+    CSingleLock lock(m_lock);
 
     OMX_ERRORTYPE omx_err = OMX_ErrorNone;
 
@@ -306,8 +263,6 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "OMXClock::MediaTime error getting OMX_IndexConfigTimeCurrentMediaTime");
-      if(lock)
-        UnLock();
       return 0;
     }
 
@@ -315,9 +270,6 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
     //CLogLog(LOGINFO, "OMXClock::MediaTime %.2f (%.2f, %.2f)", pts, m_last_media_time, now - m_last_media_time_read);
     m_last_media_time = pts;
     m_last_media_time_read = now;
-
-    if(lock)
-      UnLock();
   }
   else
   {
@@ -330,13 +282,12 @@ int64_t OMXClock::OMXMediaTime(bool lock /* = true */)
 
 // Set the media time, so calls to get media time use the updated value,
 // useful after a seek so mediatime is updated immediately (rather than waiting for first decoded packet)
-bool OMXClock::OMXMediaTime(int64_t pts, bool lock /* = true*/)
+bool OMXClock::OMXMediaTime(int64_t pts)
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_INDEXTYPE index;
@@ -356,8 +307,6 @@ bool OMXClock::OMXMediaTime(int64_t pts, bool lock /* = true*/)
   {
     CLogLog(LOGERROR, "OMXClock::OMXMediaTime error setting %s", index == OMX_IndexConfigTimeCurrentAudioReference ?
        "OMX_IndexConfigTimeCurrentAudioReference":"OMX_IndexConfigTimeCurrentVideoReference");
-    if(lock)
-      UnLock();
     return false;
   }
 
@@ -365,59 +314,50 @@ bool OMXClock::OMXMediaTime(int64_t pts, bool lock /* = true*/)
        "OMX_IndexConfigTimeCurrentAudioReference":"OMX_IndexConfigTimeCurrentVideoReference", pts);
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }
 
-bool OMXClock::OMXPause(bool lock /* = true */)
+bool OMXClock::OMXPause()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
   if(!m_pause)
   {
-    if(lock)
-      Lock();
+    CSingleLock lock(m_lock);
 
-    if(OMXSetSpeed(0.0f, false))
+    if(OMXSetSpeed(0.0f))
       m_pause = true;
 
     m_last_media_time = 0;
-    if(lock)
-      UnLock();
   }
   return m_pause == true;
 }
 
-bool OMXClock::OMXResume(bool lock /* = true */)
+bool OMXClock::OMXResume()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
   if(m_pause)
   {
-    if(lock)
-      Lock();
+    CSingleLock lock(m_lock);
 
-    if(OMXSetSpeed(m_omx_speed, false))
+    if(OMXSetSpeed(m_omx_speed))
       m_pause = false;
 
     m_last_media_time = 0;
-    if(lock)
-      UnLock();
   }
   return m_pause == false;
 }
 
-bool OMXClock::OMXSetSpeed(float speed, bool lock /* = true */)
+bool OMXClock::OMXSetSpeed(float speed)
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   CLogLog(LOGDEBUG, "OMXClock::OMXSetSpeed(%.2f)", speed);
 
@@ -433,26 +373,21 @@ bool OMXClock::OMXSetSpeed(float speed, bool lock /* = true */)
   if(omx_err != OMX_ErrorNone)
   {
     printf("OMXClock::OMXSetSpeed error setting OMX_IndexConfigTimeClockState\n");
-    if(lock)
-      UnLock();
 
     return false;
   }
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }
 
-bool OMXClock::HDMIClockSync(bool lock /* = true */)
+bool OMXClock::HDMIClockSync()
 {
   if(m_omx_clock.GetComponent() == NULL)
     return false;
 
-  if(lock)
-    Lock();
+  CSingleLock lock(m_lock);
 
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_CONFIG_LATENCYTARGETTYPE latencyTarget;
@@ -471,14 +406,10 @@ bool OMXClock::HDMIClockSync(bool lock /* = true */)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "OMXClock::Speed error setting OMX_IndexConfigLatencyTarget");
-    if(lock)
-      UnLock();
     return false;
   }
 
   m_last_media_time = 0;
-  if(lock)
-    UnLock();
 
   return true;
 }

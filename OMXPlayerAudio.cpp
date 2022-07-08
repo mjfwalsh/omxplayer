@@ -49,7 +49,6 @@ OMXPlayerAudio::~OMXPlayerAudio()
 
   pthread_cond_destroy(&m_audio_cond);
   pthread_cond_destroy(&m_packet_cond);
-  pthread_mutex_destroy(&m_lock);
   pthread_mutex_destroy(&m_lock_decoder);
 }
 
@@ -84,7 +83,6 @@ m_config(config)
 {
   pthread_cond_init(&m_packet_cond, NULL);
   pthread_cond_init(&m_audio_cond, NULL);
-  pthread_mutex_init(&m_lock, NULL);
   pthread_mutex_init(&m_lock_decoder, NULL);
 
   m_bAbort = false;

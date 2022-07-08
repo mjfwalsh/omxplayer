@@ -23,6 +23,7 @@
 #define _AVCLOCK_H_
 
 #include "OMXCore.h"
+#include "utils/SingleLock.h"
 
 #define DVD_PLAYSPEED_PAUSE       0.0
 #define DVD_PLAYSPEED_NORMAL      1.0
@@ -44,7 +45,7 @@ class OMXClock
 {
 protected:
   bool              m_pause;
-  pthread_mutex_t   m_lock;
+  CCriticalSection  m_lock;
   float             m_omx_speed;
   OMX_U32           m_WaitMask;
   OMX_TIME_CLOCKSTATE   m_eState;
@@ -59,27 +60,25 @@ public:
   ~OMXClock();
 
   bool OMXIsPaused() { return m_pause; };
-  bool OMXStop(bool lock = true);
-  bool OMXStep(int steps = 1, bool lock = true);
-  bool OMXReset(bool has_video, bool has_audio, bool lock = true);
-  int64_t OMXMediaTime(bool lock = true);
-  bool OMXMediaTime(int64_t pts, bool lock = true);
-  bool OMXPause(bool lock = true);
-  bool OMXResume(bool lock = true);
-  bool OMXSetSpeed(float speed, bool lock = true);
+  bool OMXStop();
+  bool OMXStep(int steps = 1);
+  bool OMXReset(bool has_video, bool has_audio);
+  int64_t OMXMediaTime();
+  bool OMXMediaTime(int64_t pts);
+  bool OMXPause();
+  bool OMXResume();
+  bool OMXSetSpeed(float speed);
   float  OMXPlaySpeed() { return m_omx_speed; };
   COMXCoreComponent *GetOMXClock();
-  bool OMXStateExecute(bool lock = true);
-  void OMXStateIdle(bool lock = true);
-  bool HDMIClockSync(bool lock = true);
+  bool OMXStateExecute();
+  void OMXStateIdle();
+  bool HDMIClockSync();
   static int64_t CurrentHostCounter();
   static int64_t GetAbsoluteClock();
   static void OMXSleep(unsigned int dwMilliSeconds);
 private:
-  void Lock();
-  void UnLock();
   void OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
-  bool OMXSetReferenceClock(bool has_audio, bool lock = true);
+  bool OMXSetReferenceClock(bool has_audio);
 };
 
 #endif

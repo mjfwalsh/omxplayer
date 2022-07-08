@@ -27,7 +27,6 @@ extern "C" {
 }
 
 #include "OMXStreamInfo.h"
-#include "OMXThread.h"
 #include "utils/simple_geometry.h"
 
 #include <stdint.h>
