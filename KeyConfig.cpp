@@ -178,7 +178,17 @@ void KeyConfig::parseConfigFile(string &filepath, unordered_map<int, int> &keyma
                   keymap[n] = key_action;
               }
             }
-            else keymap[key[0]] = key_action;
+            else
+            {
+              // this deals with unicode chars
+              int len = std::min((int)key.length(), 4);
+              int k = key[0];
+
+              for(int i = 1; i < len; i++)
+                k = (k << 8) | key[i];
+
+              keymap[k] = key_action;
+            }
         }
     }
 }

@@ -82,15 +82,35 @@ void Keyboard::Process()
 
     while ((ch[chnum] = getchar()) != EOF) chnum++;
 
-    if (chnum > 1) ch[0] = ch[chnum - 1] | (ch[chnum - 2] << 8);
+    if(chnum > 0)
+    {
+      int result = 0;
 
-    if (chnum > 0)
-      CLogLog(LOGDEBUG, "Keyboard: character %c (0x%x)", ch[0], ch[0]);
+      if(chnum == 1)
+      {
+        result = ch[0];
+      }
+      else if(ch[0] == '\e')
+      {
+        if(chnum > 5) chnum = 5;
+        for(int i = 1; i < chnum; i++)
+          result = (result << 8) | ch[i];
+      }
+      else
+      {
+        if(chnum > 4) chnum = 4;
+        for(int i = 0; i < chnum; i++)
+          result = (result << 8) | ch[i];
+      }
 
-    if (m_keymap[ch[0]] != 0)
-          m_action = m_keymap[ch[0]];
-    else
-      Sleep(20);
+      CLogLog(LOGDEBUG, "Keyboard: character %c (0x%x)", result, result);
+
+      int action = m_keymap[result];
+      if(action != 0)
+        m_action = action;
+    }
+
+    Sleep(20);
   }
 }
 
