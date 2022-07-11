@@ -20,9 +20,11 @@
 
 #include <string>
 #include <vector>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
-#include <boost/algorithm/string.hpp>
 #include <cairo/cairo.h>
+#include <cairo/cairo-ft.h>
 
 #include "utils/RegExp.h"
 #include "SubtitleRenderer.h"
@@ -89,10 +91,25 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 	// Create layer
 	subtitleLayer = new DispmanxLayer(4, text_subtitle_rect);
 
-	// font faces
-	cairo_font_face_t *normal_font = cairo_toy_font_face_create("FreeSans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-	cairo_font_face_t *italic_font = cairo_toy_font_face_create("FreeSans", CAIRO_FONT_SLANT_ITALIC, CAIRO_FONT_WEIGHT_NORMAL);
-	cairo_font_face_t *bold_font = cairo_toy_font_face_create("FreeSans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+	/*    *    *    *     *    *    *    *    *    *    *    *
+	 *                      Set up fonts                     *
+	 *    *    *    *     *    *    *    *    *    *    *    */
+
+	if(FT_Init_FreeType(&m_ft_library) != 0)
+		throw "Failed to initiate FreeType";
+
+	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSans.ttf", 0, &m_ft_face_normal) != 0)
+		throw "Failed to load font";
+
+	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf", 0, &m_ft_face_italic) != 0)
+		throw "Failed to load font";
+
+	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf", 0, &m_ft_face_bold) != 0)
+		throw "Failed to load font";
+
+	cairo_font_face_t *normal_font = cairo_ft_font_face_create_for_ft_face(m_ft_face_normal, 0);
+	cairo_font_face_t *italic_font = cairo_ft_font_face_create_for_ft_face(m_ft_face_italic, 0);
+	cairo_font_face_t *bold_font = cairo_ft_font_face_create_for_ft_face(m_ft_face_bold, 0);
 
 	// prepare scaled fonts
     cairo_matrix_t sizeMatrix, ctm;
@@ -100,14 +117,14 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
     cairo_matrix_init_scale(&sizeMatrix, m_font_size, m_font_size);
     cairo_font_options_t *options = cairo_font_options_create();
 
-	m_normal_font_scaled = cairo_scaled_font_create(normal_font, &sizeMatrix, &ctm, options);
-	m_italic_font_scaled = cairo_scaled_font_create(italic_font, &sizeMatrix, &ctm, options);
-	m_bold_font_scaled = cairo_scaled_font_create(bold_font, &sizeMatrix, &ctm, options);
+	m_scaled_font[NORMAL_FONT] = cairo_scaled_font_create(normal_font, &sizeMatrix, &ctm, options);
+	m_scaled_font[ITALIC_FONT] = cairo_scaled_font_create(italic_font, &sizeMatrix, &ctm, options);
+	m_scaled_font[BOLD_FONT] = cairo_scaled_font_create(bold_font, &sizeMatrix, &ctm, options);
 
 	// font colours
-	m_ghost_box_transparency = cairo_pattern_create_rgba(0, 0, 0, 0.5f);
-	m_default_font_color = cairo_pattern_create_rgba(0.866667, 0.866667, 0.866667, 1);
-	m_black_font_outline = cairo_pattern_create_rgba(0, 0, 0, 1);
+	m_ghost_box_transparency = cairo_pattern_create_rgba(0.0f, 0.0f, 0.0f, 0.5f);
+	m_default_font_color = cairo_pattern_create_rgba(0.866667, 0.866667, 0.866667, 1.0f);
+	m_black_font_outline = cairo_pattern_create_rgba(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// cleanup
 	cairo_font_options_destroy(options);
@@ -155,44 +172,33 @@ void SubtitleRenderer::deInitDVDSubs()
 		delete dvdSubLayer;
 }
 
-void SubtitleRenderer::set_font(int new_font_type)
+void SubtitleRenderer::set_font(int *old_font, int new_font)
 {
-	if(new_font_type == m_current_font) return;
+	if(new_font == *old_font) return;
 
-	switch(new_font_type) {
-		case NORMAL_FONT:
-			cairo_set_scaled_font(m_cr, m_normal_font_scaled);
-			break;
-		case BOLD_FONT:
-			cairo_set_scaled_font(m_cr, m_bold_font_scaled);
-			break;
-		case ITALIC_FONT:
-			cairo_set_scaled_font(m_cr, m_italic_font_scaled);
-			break;
-	}
-
-	m_current_font = new_font_type;
+	cairo_set_scaled_font(m_cr, m_scaled_font[new_font]);
+	*old_font = new_font;
 }
 
-void SubtitleRenderer::set_color(int new_color)
+void SubtitleRenderer::set_color(unsigned int *old_color, unsigned int new_color)
 {
-	if(new_color == m_color) return;
+	if(new_color == *old_color) return;
 
-	if(new_color == -1)
+	if(new_color == FC_OFF_WHITE)
 		cairo_set_source(m_cr, m_default_font_color);
-	else if(new_color == -2)
+	else if(new_color == FC_GHOST)
 		cairo_set_source(m_cr, m_ghost_box_transparency);
-	else if(new_color == 0)
+	else if(new_color == FC_BLACK)
 		cairo_set_source(m_cr, m_black_font_outline);
 	else {
 		float r = ((new_color >> 16) & 0xFF) / 255.0f;
 		float g = ((new_color >>  8) & 0xFF) / 255.0f;
 		float b = ((new_color >>  0) & 0xFF) / 255.0f;
 
-		cairo_set_source_rgba(m_cr, r, g, b, 1);
+		cairo_set_source_rgba(m_cr, r, g, b, 1.0f);
 	}
 
-	m_color = new_color;
+	*old_color = new_color;
 }
 
 
@@ -217,11 +223,16 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 {
 	// create surface
 	m_surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, subtitleLayer->getSourceWidth(), subtitleLayer->getSourceHeight());
-	m_cr = cairo_create(m_surface);
+	if(cairo_surface_status(m_surface) != CAIRO_STATUS_SUCCESS)
+		throw "Failed to create cairo surface";
 
-	// Reset font control vars as no font or drawing dolour has been set
-	m_current_font = -500;
-	m_color = -500;
+	m_cr = cairo_create(m_surface);
+	if(cairo_status(m_cr) != CAIRO_STATUS_SUCCESS)
+		throw "Failed to create cairo object";
+
+	// Reset font control vars
+	int font = UNSET_FONT;
+	unsigned int color = FC_NOT_SET;
 
 	// cursor y position
 	int cursor_y_position = subtitleLayer->getSourceHeight() - m_padding;
@@ -238,25 +249,24 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 		int cursor_x_position = 0;
 
 		for(int j = 0; j < text_parts; j++) {
-			set_font(parsed_lines[i][j].font);
-
 			// prepare font glyphs
-			cairo_status_t status = cairo_scaled_font_text_to_glyphs(
-					cairo_get_scaled_font(m_cr),
+			if(cairo_scaled_font_text_to_glyphs(
+					m_scaled_font[parsed_lines[i][j].font],
 					cursor_x_position + m_padding,
 					cursor_y_position - (m_padding / 4),
 					parsed_lines[i][j].text.data(),
 					parsed_lines[i][j].text.length(),
 					&parsed_lines[i][j].glyphs,
 					&parsed_lines[i][j].num_glyphs,
-					NULL, NULL, NULL);
-
-			if (status != CAIRO_STATUS_SUCCESS)
-				return;
+					NULL, NULL, NULL) != CAIRO_STATUS_SUCCESS)
+			{
+				throw "cairo_scaled_font_text_to_glyphs failed";
+			}
 
 			// calculate font extents
 			cairo_text_extents_t extents;
-			cairo_glyph_extents (m_cr,
+			cairo_scaled_font_glyph_extents(
+				m_scaled_font[parsed_lines[i][j].font],
 				parsed_lines[i][j].glyphs,
 				parsed_lines[i][j].num_glyphs,
 				&extents);
@@ -272,7 +282,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 			for(int j = 0; j < text_parts; j++) {
 				cairo_glyph_t *p = parsed_lines[i][j].glyphs;
 				for(int h = 0; h < parsed_lines[i][j].num_glyphs; h++, p++) {
-					p->x +=cursor_x_position;
+					p->x += cursor_x_position;
 				}
 			}
 		} else {
@@ -281,15 +291,15 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 
 		// draw ghost box
 		if(m_ghost_box) {
-			set_color(-2);
+			set_color(&color, FC_GHOST);
 			cairo_rectangle(m_cr, cursor_x_position, cursor_y_position - m_font_size, box_width,
 				m_font_size + m_padding);
 			cairo_fill(m_cr);
 		}
 
 		for(int j = 0; j < text_parts; j++) {
-			set_font(parsed_lines[i][j].font);
-			set_color(parsed_lines[i][j].color);
+			set_font(&font, parsed_lines[i][j].font);
+			set_color(&color, parsed_lines[i][j].color);
 
 			// draw text
 			cairo_glyph_path(m_cr, parsed_lines[i][j].glyphs, parsed_lines[i][j].num_glyphs);
@@ -300,7 +310,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 
 		// draw black text outline
 		cairo_fill_preserve(m_cr);
-		set_color(0);
+		set_color(&color, FC_BLACK);
 		cairo_set_line_width(m_cr, 2);
 		cairo_stroke(m_cr);
 
@@ -308,8 +318,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 		cursor_y_position -= m_font_size + m_padding;
 	}
 
-	cairo_image_data = cairo_image_surface_get_data(m_surface);
-	m_prepared_from_text = true;
+	m_cairo_image_data = cairo_image_surface_get_data(m_surface);
 }
 
 
@@ -321,7 +330,7 @@ void SubtitleRenderer::make_subtitle_image(Subtitle &sub)
 	if(sub.image.rect.x + sub.image.rect.width  > dvdSubLayer->getSourceWidth() || sub.image.rect.y + sub.image.rect.height  > dvdSubLayer->getSourceHeight())
 	  return;
 
-	p = other_image_data = (unsigned char *)malloc(dvdSubLayer->getSourceWidth() * dvdSubLayer->getSourceHeight());
+	p = m_bitmap_image_data = new unsigned char[dvdSubLayer->getSourceWidth() * dvdSubLayer->getSourceHeight()];
 
 	auto mem_set = [&p](int num_pixels)
 	{
@@ -349,19 +358,17 @@ void SubtitleRenderer::make_subtitle_image(Subtitle &sub)
 
 	// blanks char at bottom
 	mem_set(bottom_padding * dvdSubLayer->getSourceWidth());
-
-	m_prepared_from_image = true;
 }
 
 void SubtitleRenderer::show_next()
 {
-	if(m_prepared_from_image) {
+	if(m_bitmap_image_data) {
 		subtitleLayer->hideElement();
-		dvdSubLayer->setImageData(other_image_data);
+		dvdSubLayer->setImageData(m_bitmap_image_data);
 		unprepare();
-	} else if(m_prepared_from_text) {
+	} else if(m_cairo_image_data) {
 		if(dvdSubLayer) dvdSubLayer->hideElement();
-		subtitleLayer->setImageData(cairo_image_data);
+		subtitleLayer->setImageData(m_cairo_image_data);
 		unprepare();
 	}
 }
@@ -380,15 +387,15 @@ void SubtitleRenderer::clear()
 
 void SubtitleRenderer::unprepare()
 {
-	if(m_prepared_from_image) {
-		free(other_image_data);
-		m_prepared_from_image = false;
+	if(m_bitmap_image_data) {
+		delete[] m_bitmap_image_data;
+		m_bitmap_image_data = NULL;
 	}
 
-	if(m_prepared_from_text) {
+	if(m_cairo_image_data) {
 		cairo_destroy(m_cr);
 		cairo_surface_destroy(m_surface);
-		m_prepared_from_text = false;
+		m_cairo_image_data = NULL;
 	}
 }
 
@@ -398,7 +405,7 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
 	vector<vector<SubtitleText> > formatted_lines(1);
 
 	bool bold = false, italic = false;
-	int color = -1;
+	unsigned int color = FC_OFF_WHITE;
 
     int pos = 0, old_pos = 0;
     while (pos < lines_length) {
@@ -418,30 +425,36 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
         // No more tags found
         if(pos < 0) break;
 
-        // Parse Tag
-        boost::algorithm::to_lower(fullTag);
+        // convert to lower case
+        for(uint i = 0; i < fullTag.length(); i++)
+            if(fullTag[i] >= 'A' && fullTag[i] <= 'Z')
+                fullTag[i] += 32;
+
         pos += fullTag.length();
         old_pos = pos;
 
+        // Parse Tag
         if (fullTag == "\n" ) {
             formatted_lines.emplace_back();
         } else if (fullTag == "<b>" || fullTag == "{\\b1}") {
             bold = true;
-        } else if ((fullTag == "</b>" || fullTag == "{\\b0}") && bold) {
+        } else if (fullTag == "</b>" || fullTag == "{\\b0}") {
             bold = false;
         } else if (fullTag == "<i>" || fullTag == "{\\i1}") {
             italic = true;
-        } else if ((fullTag == "</i>" || fullTag == "{\\i0}") && italic) {
+        } else if (fullTag == "</i>" || fullTag == "{\\i0}") {
             italic = false;
-        } else if ((fullTag == "</font>" || fullTag == "{\\c}") && color != -1) {
-            color = -1;
+        } else if (fullTag == "</font>" || fullTag == "{\\c}") {
+            color = FC_OFF_WHITE;
         } else if (fullTag.substr(0,5) == "<font") {
             if(m_font_color_html->RegFind(fullTag.c_str(), 5) >= 0) {
                 color = hex2int(m_font_color_html->GetMatch(1).c_str());
             }
         } else if(m_font_color_curly->RegFind(fullTag.c_str(), 0) >= 0) {
-            string t = m_font_color_curly->GetMatch(3) + m_font_color_curly->GetMatch(2)
-                + m_font_color_curly->GetMatch(1);
+            string t = m_font_color_curly->GetMatch(3) +
+                       m_font_color_curly->GetMatch(2) +
+                       m_font_color_curly->GetMatch(1);
+
             color = hex2int(t.c_str());
         }
     }
@@ -450,9 +463,9 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
 }
 
 // expects 6 lowercase, digit hex string
-int SubtitleRenderer::hex2int(const char *hex)
+unsigned int SubtitleRenderer::hex2int(const char *hex)
 {
-	int r = 0;
+	unsigned int r = 0;
 	for(int i = 0, f = 20; i < 6; i++, f -= 4)
 		if(hex[i] >= 'a')
 			r += (hex[i] - 87) << f;
@@ -473,9 +486,21 @@ SubtitleRenderer::~SubtitleRenderer()
 	DispmanxLayer::closeDisplay();
 
 	// destroy cairo fonts
-	cairo_scaled_font_destroy(m_normal_font_scaled);
-	cairo_scaled_font_destroy(m_italic_font_scaled);
-	cairo_scaled_font_destroy(m_bold_font_scaled);
+	for(int i = 0; i < 3; i++)
+		cairo_scaled_font_destroy(m_scaled_font[i]);
+
+	// and patterns
+	cairo_pattern_destroy(m_ghost_box_transparency);
+	cairo_pattern_destroy(m_default_font_color);
+	cairo_pattern_destroy(m_black_font_outline);
+
+	// and the free type stuff
+	FT_Done_Face(m_ft_face_normal);
+	FT_Done_Face(m_ft_face_italic);
+	FT_Done_Face(m_ft_face_bold);
+
+	// and free type library
+	FT_Done_FreeType(m_ft_library);
 
 	//delete regexes
 	delete m_tags;

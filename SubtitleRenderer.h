@@ -22,6 +22,8 @@
 #include <vector>
 
 #include <cairo/cairo.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 class CRegExp;
 class DispmanxLayer;
@@ -59,12 +61,12 @@ class SubtitleRenderer {
 			public:
 				std::string text;
 				int font;
-				int color;
+				unsigned int color;
 
 				cairo_glyph_t *glyphs = NULL;
 				int num_glyphs = -1;
 
-				SubtitleText(const char *t, int l, int f, int c)
+				SubtitleText(const char *t, int l, int f, unsigned int c)
 				: font(f), color(c)
 				{
 				    text.assign(t, l);
@@ -74,34 +76,43 @@ class SubtitleRenderer {
 		void parse_lines(const char *text, int lines_length);
 		void make_subtitle_image(std::vector<std::vector<SubtitleText> > &parsed_lines);
 		void make_subtitle_image(Subtitle &sub);
-		int hex2int(const char *hex);
+		unsigned int hex2int(const char *hex);
 
 		CRegExp *m_tags;
 		CRegExp *m_font_color_html;
 		CRegExp *m_font_color_curly;
 
-		void set_font(int new_font_type);
-		void set_color(int new_color);
+		void set_font(int *old_font, int new_font);
+		void set_color(unsigned int *old_color, unsigned int new_color);
 
 		enum {
+			UNSET_FONT = -1,
 			NORMAL_FONT,
 			ITALIC_FONT,
 			BOLD_FONT,
 		};
 
-		bool m_prepared_from_image = false;
-		bool m_prepared_from_text = false;
-		unsigned char *cairo_image_data;
-		unsigned char *other_image_data;
+		// use the upper 8 bits for these as user selected colours use the lower 24 bits
+		const unsigned int FC_NOT_SET   = 0x10000000;
+		const unsigned int FC_OFF_WHITE = 0x20000000;
+		const unsigned int FC_BLACK     = 0x30000000;
+		const unsigned int FC_GHOST     = 0x40000000;
+
+		unsigned char *m_cairo_image_data = NULL;
+		unsigned char *m_bitmap_image_data = NULL;
 
 		// cairo stuff
 		cairo_surface_t *m_surface;
 		cairo_t *m_cr;
 
 		// fonts
-		cairo_scaled_font_t *m_normal_font_scaled;
-		cairo_scaled_font_t *m_italic_font_scaled;
-		cairo_scaled_font_t *m_bold_font_scaled;
+		FT_Library  m_ft_library;
+
+		FT_Face     m_ft_face_normal;
+		FT_Face     m_ft_face_italic;
+		FT_Face     m_ft_face_bold;
+
+		cairo_scaled_font_t *m_scaled_font[3];
 
 		cairo_pattern_t *m_ghost_box_transparency;
 		cairo_pattern_t *m_default_font_color;
@@ -115,6 +126,4 @@ class SubtitleRenderer {
 		// font properties
 		int m_padding;
 		int m_font_size;
-		int m_current_font;
-		int m_color;
 };

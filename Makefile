@@ -8,11 +8,12 @@ LDFLAGS+=-L/opt/vc/lib -L./ $(addprefix -L,$(wildcard ffmpeg/lib[as]*))
 
 LDLIBS+=-lasound -lavcodec -lavformat -lavutil -lbcm_host -lbrcmEGL -lbrcmGLESv2 -lc -lcairo
 LDLIBS+=-ldbus-1 -ldl -lopenmaxil -lpcre2-8 -lpthread -lrt -lswresample -lswscale -lvchiq_arm
-LDLIBS+=-lvchostif -lvcos -lz
+LDLIBS+=-lvchostif -lvcos -lz -lfreetype
 
 INCLUDES+=-I./ -isystem ffmpeg -isystem/usr/include/dbus-1.0
 INCLUDES+=-isystem/usr/lib/arm-linux-gnueabihf/dbus-1.0/include
 INCLUDES+=-isystem/opt/vc/include -isystem/opt/vc/include/interface/vcos/pthreads
+INCLUDES+=-isystem/usr/include/freetype2
 
 DIST ?= omxplayer-dist
 STRIP ?= strip
