@@ -68,29 +68,27 @@ public:
   COMXVideo(OMXClock *clock, const OMXVideoConfig &config);
   ~COMXVideo();
 
-  // Required overrides
-  bool SendDecoderConfig();
-  bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
-  bool PortSettingsChanged();
-  void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
   unsigned int GetFreeSpace();
   bool  Decode(OMXPacket *pkt);
   void Reset(void);
   std::string GetDecoderName() { return m_video_codec_name; };
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
-  void SetVideoRect();
   void SetAlpha(int alpha);
   void SetLayer(int layer);
   int GetInputBufferSize();
   void SubmitEOS();
   bool IsEOS();
-  bool SubmittedEOS() { return m_submitted_eos; }
-  bool BadState() { return m_omx_decoder.BadState(); };
+
+private:
+  bool SendDecoderConfig();
+  bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
+  bool PortSettingsChanged();
+  void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
+  void SetVideoRect();
+
 protected:
   // Video format
-  bool              m_drop_state = false;
-
   OMX_VIDEO_CODINGTYPE m_codingType;
 
   COMXCoreComponent m_omx_decoder;

@@ -151,7 +151,6 @@ private:
   void GetStreams();
   void GetDvdStreams();
   void GetChapters();
-  void ClearStreams();
   void AddStream(int id);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);

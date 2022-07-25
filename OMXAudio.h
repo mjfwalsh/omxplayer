@@ -57,23 +57,12 @@ public:
 class COMXAudio
 {
 public:
-  enum EEncoded {
-    ENCODED_NONE = 0,
-    ENCODED_IEC61937_AC3,
-    ENCODED_IEC61937_EAC3,
-    ENCODED_IEC61937_DTS,
-    ENCODED_IEC61937_MPEG,
-    ENCODED_IEC61937_UNKNOWN,
-  };
-
   int64_t GetDelay();
   int64_t GetCacheTime();
   int64_t GetCacheTotal();
-  unsigned int GetAudioRenderingLatency();
-  float GetMaxLevel(int64_t &pts);
+
   COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample);
   ~COMXAudio();
-  bool PortSettingsChanged();
 
   bool AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size);
   unsigned int GetSpace();
@@ -82,32 +71,32 @@ public:
   float GetVolume();
   void SetMute(bool bOnOff);
   void SetDynamicRangeCompression(long drc);
-  bool ApplyVolume();
+
   void SubmitEOS();
   bool IsEOS();
-
   void Flush();
-
-  bool SetClock(OMXClock *clock);
-  void SetCodingType(AVCodecID codec);
-  bool CanHWDecode(AVCodecID codec);
   static bool HWDecode(AVCodecID codec);
 
+private:
+  bool PortSettingsChanged();
+  float GetMaxLevel(int64_t &pts);
+  unsigned int GetAudioRenderingLatency();
+  bool ApplyVolume();
+  void SetCodingType(AVCodecID codec);
+  bool CanHWDecode(AVCodecID codec);
   void PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[]);
-  void PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, std::string direction);
+  void PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, const char *direction);
   void UpdateAttenuation();
   void BuildChannelMap(enum PCMChannels *channelMap, uint64_t layout);
   int BuildChannelMapCEA(enum PCMChannels *channelMap, uint64_t layout);
   void BuildChannelMapOMX(enum OMX_AUDIO_CHANNELTYPE *channelMap, uint64_t layout);
   uint64_t GetChannelLayout(enum PCMLayout layout);
 
-private:
   float         m_CurrentVolume;
   bool          m_Mute;
   unsigned int  m_BytesPerSec;
   float         m_InputBytesPerMicrosec;
   unsigned int  m_BufferLen;
-  unsigned int  m_ChunkLen;
   unsigned int  m_InputChannels;
   unsigned int  m_OutputChannels;
   unsigned int  m_BitsPerSample;

@@ -43,19 +43,15 @@ class OMXReader;
 class OMXPlayerAudio : public OMXThread
 {
 protected:
-  AVStream                  *m_pStream           = NULL;
   std::deque<OMXPacket *>   m_packets;
   int64_t                   m_iCurrentPts        = AV_NOPTS_VALUE;
   pthread_cond_t            m_packet_cond;
-  pthread_cond_t            m_audio_cond;
   pthread_mutex_t           m_lock_decoder;
   OMXClock                  *m_av_clock;
   OMXReader                 *m_omx_reader;
   COMXAudio                 *m_decoder           = NULL;
   std::atomic<int>          m_stream_index;
   int                       m_stream_count;
-  std::string               m_codec_name;
-  std::string               m_device;
   bool                      m_passthrough        = false;
   bool                      m_hw_decode          = false;
   bool                      m_flush              = false;
@@ -68,40 +64,38 @@ protected:
   bool                      m_mute               = false;
   bool                      m_player_ok          = true;
 
-  void Lock();
-  void UnLock();
   void LockDecoder();
   void UnLockDecoder();
 private:
 public:
   OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int active_stream);
   ~OMXPlayerAudio();
-  bool Decode(OMXPacket *pkt);
-  void Process() override;
+
   void Flush();
   int GetActiveStream();
   bool SetActiveStream(int new_index);
   int SetActiveStreamDelta(int delta);
   bool AddPacket(OMXPacket *pkt);
-  bool OpenAudioCodec();
-  void CloseAudioCodec();      
-  bool IsPassthrough(COMXStreamInfo hints);
-  bool OpenDecoder();
-  bool CloseDecoder();
   int64_t GetDelay();
   int64_t GetCacheTime();
   int64_t GetCacheTotal();
   int64_t GetCurrentPTS() { return m_iCurrentPts; };
   void SubmitEOS();
-  void SubmitEOSInternal();
   bool IsEOS();
   unsigned int GetCached() { return m_cached_size; };
-  unsigned int GetMaxCached() { return m_config.queue_size * 1024 * 1024; };
-  unsigned int GetLevel() { return m_config.queue_size ? 100.0f * m_cached_size / (m_config.queue_size * 1024.0f * 1024.0f) : 0; };
   void SetVolume(float fVolume)                          { m_CurrentVolume = fVolume; if(m_decoder) m_decoder->SetVolume(fVolume); }
   float GetVolume()                                      { return m_CurrentVolume; }
   void SetMute(bool bOnOff)                              { m_mute = bOnOff; if(m_decoder) m_decoder->SetMute(bOnOff); }
   void SetDynamicRangeCompression(long drc)              { m_amplification = drc; if(m_decoder) m_decoder->SetDynamicRangeCompression(drc); }
   bool Error() { return !m_player_ok; };
+private:
+  void SubmitEOSInternal();
+  bool Decode(OMXPacket *pkt);
+  void Process() override;
+  bool OpenAudioCodec();
+  void CloseAudioCodec();
+  bool IsPassthrough(COMXStreamInfo hints);
+  bool OpenDecoder();
+  bool CloseDecoder();
 };
 #endif

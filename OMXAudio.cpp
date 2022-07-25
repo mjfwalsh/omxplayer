@@ -106,7 +106,7 @@ bool COMXAudio::PortSettingsChanged()
 
     CLogLog(LOGDEBUG, "%s::%s - Output bps %d samplerate %d channels %d buffer size %d bytes per second %d",
         CLASSNAME, __func__, (int)m_pcm_output.nBitPerSample, (int)m_pcm_output.nSamplingRate, (int)m_pcm_output.nChannels, m_BufferLen, m_BytesPerSec);
-    PrintPCM(&m_pcm_output, std::string("output"));
+    PrintPCM(&m_pcm_output, "output");
 
     if( m_omx_splitter.IsInitialized() )
     {
@@ -429,7 +429,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   // should be big enough that common formats (e.g. 6 channel DTS) fit in a single packet.
   // we don't mind less common formats being split (e.g. ape/wma output large frames)
   // 6 channel 32bpp float to 8 channel 16bpp in, so a full 48K input buffer will fit the output buffer
-  m_ChunkLen = AUDIO_DECODE_OUTPUT_BUFFER * (m_InputChannels * m_BitsPerSample) >> (rounded_up_channels_shift[m_InputChannels] + 4);
+  unsigned int chunkLen = AUDIO_DECODE_OUTPUT_BUFFER * (m_InputChannels * m_BitsPerSample) >> (rounded_up_channels_shift[m_InputChannels] + 4);
 
   m_wave_header.Samples.wSamplesPerBlock    = 0;
   m_wave_header.Format.nChannels            = m_InputChannels;
@@ -474,7 +474,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   }
 
   port_param.format.audio.eEncoding = m_eEncoding;
-  port_param.nBufferSize = m_ChunkLen;
+  port_param.nBufferSize = chunkLen;
   port_param.nBufferCountActual = std::max(port_param.nBufferCountMin, 16U);
 
   omx_err = m_omx_decoder.SetParameter(OMX_IndexParamPortDefinition, &port_param);
@@ -612,7 +612,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
 
   CLogLog(LOGDEBUG, "COMXAudio::Initialize Input bps %d samplerate %d channels %d buffer size %d bytes per microsecond %d",
       (int)m_pcm_input.nBitPerSample, (int)m_pcm_input.nSamplingRate, (int)m_pcm_input.nChannels, m_BufferLen, (int)((float)m_InputBytesPerMicrosec * (float)AV_TIME_BASE));
-  PrintPCM(&m_pcm_input, std::string("input"));
+  PrintPCM(&m_pcm_input, "input");
   CLogLog(LOGDEBUG, "COMXAudio::Initialize device %s passthrough %d hwdecode %d",
       m_config.device.c_str(), m_config.passthrough, m_config.hwdecode);
 }
@@ -1262,9 +1262,9 @@ void COMXAudio::PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[])
   }
 }
 
-void COMXAudio::PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, std::string direction)
+void COMXAudio::PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, const char *direction)
 {
-  CLogLog(LOGDEBUG, "pcm->direction      : %s", direction.c_str());
+  CLogLog(LOGDEBUG, "pcm->direction      : %s", direction);
   CLogLog(LOGDEBUG, "pcm->nPortIndex     : %d", (int)pcm->nPortIndex);
   CLogLog(LOGDEBUG, "pcm->eNumData       : %d", pcm->eNumData);
   CLogLog(LOGDEBUG, "pcm->eEndian        : %d", pcm->eEndian);

@@ -43,7 +43,6 @@ m_iVideoDelay(0),
 m_config(config)
 {
   pthread_cond_init(&m_packet_cond, NULL);
-  pthread_mutex_init(&m_lock, NULL);
   pthread_mutex_init(&m_lock_decoder, NULL);
 
   if (m_config.hints.fpsrate && m_config.hints.fpsscale)
@@ -85,18 +84,7 @@ OMXPlayerVideo::~OMXPlayerVideo()
   delete m_decoder;
 
   pthread_cond_destroy(&m_packet_cond);
-  pthread_mutex_destroy(&m_lock);
   pthread_mutex_destroy(&m_lock_decoder);
-}
-
-void OMXPlayerVideo::Lock()
-{
-  pthread_mutex_lock(&m_lock);
-}
-
-void OMXPlayerVideo::UnLock()
-{
-  pthread_mutex_unlock(&m_lock);
 }
 
 void OMXPlayerVideo::LockDecoder()

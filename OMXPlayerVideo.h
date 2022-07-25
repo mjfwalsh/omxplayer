@@ -32,7 +32,6 @@ class OMXClock;
 class OMXPacket;
 struct AVStream;
 
-
 class OMXPlayerVideo : public OMXThread
 {
 protected:
@@ -48,27 +47,20 @@ protected:
   int64_t                   m_iVideoDelay = 0;
   OMXVideoConfig            m_config;
 
-  void Lock();
-  void UnLock();
   void LockDecoder();
   void UnLockDecoder();
 public:
   OMXPlayerVideo(OMXClock *av_clock, const OMXVideoConfig &config);
   ~OMXPlayerVideo();
   void Reset();
-  bool Decode(OMXPacket *pkt);
-  void Process() override;
+
   void Flush();
   bool AddPacket(OMXPacket *pkt);
   int  GetDecoderBufferSize();
   int  GetDecoderFreeSpace();
   int64_t GetCurrentPTS() { return m_iCurrentPts; };
-  double GetFPS() { return m_fps; };
   unsigned int GetCached() { return m_cached_size; };
-  unsigned int GetMaxCached() { return m_config.queue_size * 1024 * 1024; };
-  unsigned int GetLevel() { return m_config.queue_size ? 100.0f * m_cached_size / (m_config.queue_size * 1024.0f * 1024.0f) : 0; };
   void SubmitEOS();
-  void SubmitEOSInternal();
   bool IsEOS();
   void SetDelay(int64_t delay) { m_iVideoDelay = delay; }
   int64_t GetDelay() { return m_iVideoDelay; }
@@ -77,6 +69,9 @@ public:
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
 private:
+  void Process() override;
+  bool Decode(OMXPacket *pkt);
+  void SubmitEOSInternal();
   OMXPlayerVideo(const OMXPlayerVideo&) = delete;
   OMXPlayerVideo& operator=(const OMXPlayerVideo&) = delete;
 };

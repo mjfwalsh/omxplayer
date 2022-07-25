@@ -602,7 +602,6 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
 
   SendDecoderConfig();
 
-  m_drop_state        = false;
   m_setStartTime      = true;
 
   switch(m_config.hints.orientation)
@@ -675,9 +674,6 @@ bool COMXVideo::Decode(OMXPacket *pkt)
 {
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
-
-  if( m_drop_state)
-    return true;
 
   if (pkt->data && pkt->size > 0)
   {

@@ -4,11 +4,7 @@
 #include "omxplayer.h"
 
 struct DBusMessage;
-struct DBusConnection;
 struct DBusMessageIter;
-
-#define MIN_RATE (1)
-#define MAX_RATE (4 * DVD_PLAYSPEED_NORMAL)
 
 class DMessage
 {

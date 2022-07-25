@@ -47,19 +47,8 @@ OMXPlayerAudio::~OMXPlayerAudio()
   CloseDecoder();
   CloseAudioCodec();
 
-  pthread_cond_destroy(&m_audio_cond);
   pthread_cond_destroy(&m_packet_cond);
   pthread_mutex_destroy(&m_lock_decoder);
-}
-
-void OMXPlayerAudio::Lock()
-{
-  pthread_mutex_lock(&m_lock);
-}
-
-void OMXPlayerAudio::UnLock()
-{
-  pthread_mutex_unlock(&m_lock);
 }
 
 void OMXPlayerAudio::LockDecoder()
@@ -82,7 +71,6 @@ m_flush_requested(false),
 m_config(config)
 {
   pthread_cond_init(&m_packet_cond, NULL);
-  pthread_cond_init(&m_audio_cond, NULL);
   pthread_mutex_init(&m_lock_decoder, NULL);
 
   m_bAbort = false;
@@ -360,7 +348,7 @@ bool OMXPlayerAudio::OpenDecoder()
   if(m_passthrough)
     m_hw_decode = false;
 
-  m_codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, m_stream_index);
+  std::string codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, m_stream_index);
 
   try {
     m_decoder = new COMXAudio(m_av_clock, m_config, m_pAudioCodec->GetChannelMap(), m_pAudioCodec->GetBitsPerSample());
@@ -375,12 +363,12 @@ bool OMXPlayerAudio::OpenDecoder()
   if(m_passthrough)
   {
     printf("Audio codec %s passthrough channels %d samplerate %d bitspersample %d\n",
-      m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
+      codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
   }
   else
   {
     printf("Audio codec %s channels %d samplerate %d bitspersample %d\n",
-      m_codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
+      codec_name.c_str(), m_config.hints.channels, m_config.hints.samplerate, m_config.hints.bitspersample);
   }
 
   // setup current volume settings

@@ -100,23 +100,11 @@ void *OMXThread::Run(void *arg)
 
 void OMXThread::Lock()
 {
-  if(!m_running)
-  {
-    CLogLog(LOGDEBUG, "%s::%s - No thread running", CLASSNAME, __func__);
-    return;
-  }
-
   pthread_mutex_lock(&m_lock);
 }
 
 void OMXThread::UnLock()
 {
-  if(!m_running)
-  {
-    CLogLog(LOGDEBUG, "%s::%s - No thread running", CLASSNAME, __func__);
-    return;
-  }
-
   pthread_mutex_unlock(&m_lock);
 }
 

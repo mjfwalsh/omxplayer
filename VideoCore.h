@@ -14,10 +14,9 @@ namespace VideoCore {
   void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace);
   bool blank_background(uint32_t rgba, int layer, int video_display);
   void saveTVState();
-  void restoreTVState();
 
   float getDisplayAspect();
-  std::string getAudioDevice();
+  const char *getAudioDevice();
   bool canPassThroughAC3();
   bool canPassThroughDTS();
   void turnOffNativeDeinterlace();

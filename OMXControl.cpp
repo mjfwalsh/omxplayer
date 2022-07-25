@@ -105,10 +105,14 @@ enum ControlFlow OMXControl::getEvent()
   CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 
   const char *method = dbus_message_get_member(m);
+  if (method == NULL)
+    return CONTINUE;
+
   enum Action action = dbus_find_method(method);
 
   if(action < START_OF_DBUS_METHODS)
   {
+    dbus_message_unref(m);
     return handle_event(action, NULL);
   }
   else

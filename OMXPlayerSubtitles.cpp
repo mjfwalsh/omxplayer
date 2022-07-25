@@ -72,22 +72,20 @@ m_av_clock(clock)
 }
 
 
-bool OMXPlayerSubtitles::Open(size_t stream_count,
-                              string &subtitle_path)
+bool OMXPlayerSubtitles::Open(size_t internal_stream_count, string &subtitle_path)
 {
-
+  m_stream_count = internal_stream_count;
 
   if(subtitle_path.size() > 0)
   {
     if(!ReadSrt(subtitle_path, m_external_subtitles))
       return false;
 
-    m_external_subtitle_stream = stream_count;
-    stream_count++;
+    m_external_subtitle_stream = m_stream_count;
+    m_stream_count++;
   }
 
-  m_stream_count = stream_count;
-  m_subtitle_buffers.resize(stream_count, circular_buffer<Subtitle>(32));
+  m_subtitle_buffers.resize(internal_stream_count, circular_buffer<Subtitle>(32));
 
   return true;
 }
@@ -203,7 +201,7 @@ void OMXPlayerSubtitles::RenderLoop()
   bool showing = false;
   bool osd = false;
   chrono::time_point<std::chrono::steady_clock> osd_stop;
-  int delay = false;
+  int delay = 0;
 
   auto GetCurrentTime = [&]
   {
@@ -543,9 +541,12 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 {
   AVSubtitle s;
   int got_sub_ptr = -1;
-  avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
+  int r = avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
 
-  if(got_sub_ptr < 1 || s.num_rects < 1 || s.rects[0]->nb_colors != 4)
+  if(r < 0 || got_sub_ptr < 1)
+    return false;
+
+  if(s.num_rects < 1 || s.rects[0]->nb_colors != 4)
   {
     avsubtitle_free(&s);
     return false;

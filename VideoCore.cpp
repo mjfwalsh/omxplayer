@@ -281,6 +281,12 @@ bool blank_background(uint32_t rgba, int layer, int video_display)
   return true;
 }
 
+static void restoreTVState()
+{
+  if(saved_tv_state && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
+    vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
+}
+
 void saveTVState()
 {
   if(!saved_tv_state)
@@ -290,12 +296,6 @@ void saveTVState()
     saved_tv_state = true;
     atexit(restoreTVState);
   }
-}
-
-void restoreTVState()
-{
-  if(saved_tv_state && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
-    vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
 }
 
 float getDisplayAspect()
@@ -317,7 +317,7 @@ float getDisplayAspect()
   return display_aspect;
 }
 
-std::string getAudioDevice()
+const char *getAudioDevice()
 {
   if (vc_tv_hdmi_audio_supported(EDID_AudioFormat_ePCM, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) == 0)
     return "omx:hdmi";
