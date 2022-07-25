@@ -1588,21 +1588,29 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
   case LIST_SUBTITLES:
     {
-      int count = m_omx_reader->SubtitleStreamCount();
-      const char **values = new const char*[count];
-      char *data = new char[30 * count];
+      int total_count = m_player_subtitles->GetStreamCount();
+      const char **values = new const char*[total_count];
+      char *data = new char[30 * total_count];
       char *p = &data[0];
-      char *end = &data[(30 * count) - 1];
+      char *end = &data[(30 * total_count) - 1];
 
-      for (int i = 0; i < count && p < end; i++)
+      int internal_count = m_omx_reader->SubtitleStreamCount();
+      int i = 0;
+      for (i = 0; i < internal_count && p < end; i++)
       {
          values[i] = p;
          p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
                            m_omx_reader->GetStreamMetaData(OMXSTREAM_SUBTITLE, i).c_str(),
                            m_player_subtitles->GetActiveStream() == i ? "active" : "");
       }
+      if(i < total_count && p < end)
+      {
+         values[i] = p;
+         p += 1 + snprintf(p, end - p, "%d:und:external:srt:%s", i,
+                           m_player_subtitles->GetActiveStream() == i ? "active" : "");
+      }
 
-      m->respond_array(values, count);
+      m->respond_array(values, total_count);
 
       delete[] values;
       delete[] data;
