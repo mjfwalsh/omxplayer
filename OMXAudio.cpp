@@ -917,7 +917,7 @@ void COMXAudio::UpdateAttenuation()
     v.pts = level_pts;
     m_ampqueue.push_back(v);
   }
-  int64_t stamp = m_av_clock->OMXMediaTime();
+  int64_t stamp = m_av_clock->GetMediaTime();
   // discard too old data
   while(!m_ampqueue.empty())
   {
@@ -982,7 +982,7 @@ int64_t COMXAudio::GetDelay()
   CSingleLock lock (m_critSection);
   int64_t stamp = AV_NOPTS_VALUE;
   if (m_last_pts != AV_NOPTS_VALUE && m_av_clock)
-    stamp = m_av_clock->OMXMediaTime();
+    stamp = m_av_clock->GetMediaTime();
   // if possible the delay is current media time - time of last submitted packet
   if (stamp != AV_NOPTS_VALUE)
   {

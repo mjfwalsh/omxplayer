@@ -205,7 +205,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
   auto GetCurrentTime = [&]
   {
-    return static_cast<int>(m_av_clock->OMXMediaTime()/1000) - delay;
+    return static_cast<int>(m_av_clock->GetMediaTime()/1000) - delay;
   };
 
   auto TryPrepare = [&](int time)

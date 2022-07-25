@@ -120,8 +120,8 @@ public:
 
   bool SeekTime(int64_t time, bool backwords, int64_t *startpts);
   OMXPacket *Read();
-  bool GetHints(AVStream *stream, COMXStreamInfo *hints);
-  void GetHints(OMXStreamType type, int index, COMXStreamInfo &hints);
+  bool SetHints(AVStream *stream, COMXStreamInfo *hints);
+  COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();
   int  AudioStreamCount() { return m_audio_count; };
   int  VideoStreamCount() { return m_video_count; };

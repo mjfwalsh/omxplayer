@@ -59,26 +59,26 @@ public:
   OMXClock();
   ~OMXClock();
 
-  bool OMXIsPaused() { return m_pause; };
-  bool OMXStop();
-  bool OMXStep(int steps = 1);
-  bool OMXReset(bool has_video, bool has_audio);
-  int64_t OMXMediaTime();
-  bool OMXMediaTime(int64_t pts);
-  bool OMXPause();
-  bool OMXResume();
-  bool OMXSetSpeed(float speed);
-  float  OMXPlaySpeed() { return m_omx_speed; };
+  bool IsPaused() { return m_pause; };
+  bool Stop();
+  bool Step(int steps = 1);
+  bool Reset(bool has_video, bool has_audio);
+  int64_t GetMediaTime();
+  bool SetMediaTime(int64_t pts);
+  bool Pause();
+  bool Resume();
+  bool SetSpeed(float speed);
+  float  PlaySpeed() { return m_omx_speed; };
   COMXCoreComponent *GetOMXClock();
-  bool OMXStateExecute();
-  void OMXStateIdle();
+  bool StateExecute();
+  void StateIdle();
   bool HDMIClockSync();
   static int64_t CurrentHostCounter();
   static int64_t GetAbsoluteClock();
-  static void OMXSleep(unsigned int dwMilliSeconds);
+  static void Sleep(unsigned int dwMilliSeconds);
 private:
-  void OMXSetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
-  bool OMXSetReferenceClock(bool has_audio);
+  void SetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
+  bool SetReferenceClock(bool has_audio);
 };
 
 #endif

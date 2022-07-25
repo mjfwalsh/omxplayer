@@ -144,7 +144,7 @@ bool OMXPlayerVideo::Decode(OMXPacket *pkt)
 
   while((int) m_decoder->GetFreeSpace() < pkt->size)
   {
-    OMXClock::OMXSleep(10);
+    OMXClock::Sleep(10);
     if(m_flush_requested) return true;
   }
 

@@ -184,7 +184,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
 
       while((int) m_decoder->GetSpace() < decoded_size)
       {
-        OMXClock::OMXSleep(10);
+        OMXClock::Sleep(10);
         if(m_flush_requested) return true;
       }
 
@@ -196,7 +196,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
   {
     while((int) m_decoder->GetSpace() < pkt->size)
     {
-      OMXClock::OMXSleep(10);
+      OMXClock::Sleep(10);
       if(m_flush_requested) return true;
     }
 

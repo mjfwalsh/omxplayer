@@ -395,7 +395,7 @@ OMXPacket *OMXReader::Read()
     m_omx_pkt->pts = AV_NOPTS_VALUE;
   }
 
-  GetHints(pStream, &m_omx_pkt->hints);
+  SetHints(pStream, &m_omx_pkt->hints);
 
   // check if stream has passed full duration, needed for live streams
   // Do this before we convert dts and pts values
@@ -569,7 +569,7 @@ void OMXReader::AddStream(int id)
   this_stream->stream      = pStream;
   this_stream->codec_name  = GetStreamCodecName(pStream);
   this_stream->id          = id;
-  GetHints(pStream, &this_stream->hints);
+  SetHints(pStream, &this_stream->hints);
 
   AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
   if (langTag)
@@ -608,7 +608,7 @@ double OMXReader::SelectAspect(AVStream* st, bool& forced)
   return 1.0;
 }
 
-bool OMXReader::GetHints(AVStream *stream, COMXStreamInfo *hints)
+bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
 {
   if(!hints || !stream)
     return false;
@@ -663,21 +663,18 @@ bool OMXReader::GetHints(AVStream *stream, COMXStreamInfo *hints)
   return true;
 }
 
-void OMXReader::GetHints(OMXStreamType type, int index, COMXStreamInfo &hints)
+COMXStreamInfo OMXReader::GetHints(OMXStreamType type, int index)
 {
   switch (type)
   {
     case OMXSTREAM_AUDIO:
-      hints = m_audio_streams[index].hints;
-      break;
+      return m_audio_streams[index].hints;
     case OMXSTREAM_VIDEO:
-      hints = m_video_streams[index].hints;
-      break;
+      return m_video_streams[index].hints;
     case OMXSTREAM_SUBTITLE:
-      hints = m_subtitle_streams[index].hints;
-      break;
+      return m_subtitle_streams[index].hints;
     default:
-      break;
+      abort();
   }
 }
 

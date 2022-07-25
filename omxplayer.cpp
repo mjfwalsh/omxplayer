@@ -165,7 +165,7 @@ void osd_print(int options, const char *msg)
   }
 
   // useful when we want to display some osd before exiting the program
-  if(m_osd && (options & UM_SLEEP)) m_av_clock->OMXSleep((options & UM_LONG) ? 3000 : 1500);
+  if(m_osd && (options & UM_SLEEP)) OMXClock::Sleep((options & UM_LONG) ? 3000 : 1500);
 }
 
 void osd_print(const char *msg)
@@ -231,13 +231,13 @@ static void PrintSubtitleInfo()
 static void SetSpeed(float iSpeed)
 {
   m_omx_reader->SetSpeed(iSpeed);
-  m_av_clock->OMXSetSpeed(iSpeed);
+  m_av_clock->SetSpeed(iSpeed);
 }
 
 static void FlushStreams(int64_t pts)
 {
-  m_av_clock->OMXStop();
-  m_av_clock->OMXPause();
+  m_av_clock->Stop();
+  m_av_clock->Pause();
 
   if(m_player_video)
     m_player_video->Reset();
@@ -247,9 +247,9 @@ static void FlushStreams(int64_t pts)
 
   if(pts != AV_NOPTS_VALUE)
   {
-    m_av_clock->OMXMediaTime(pts);
-    m_av_clock->OMXPause();
-    m_av_clock->OMXReset(m_player_video, m_player_audio);
+    m_av_clock->SetMediaTime(pts);
+    m_av_clock->Pause();
+    m_av_clock->Reset(m_player_video, m_player_audio);
   }
 
   if(m_has_subtitle)
@@ -1121,8 +1121,8 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
   case ACTION_STEP:
     {
-      m_av_clock->OMXStep();
-      int t = m_av_clock->OMXMediaTime() * 1e-3;
+      m_av_clock->Step();
+      int t = m_av_clock->GetMediaTime() * 1e-3;
       show_progress_message("Step", t);
     }
     break;
@@ -1158,7 +1158,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       int64_t new_pts;
       int ch = search_key == ACTION_NEXT_CHAPTER ? 1 : -1;
 
-      switch(m_omx_reader->SeekChapter(&ch, m_av_clock->OMXMediaTime(), &new_pts))
+      switch(m_omx_reader->SeekChapter(&ch, m_av_clock->GetMediaTime(), &new_pts))
       {
       case OMXReader::SEEK_SUCCESS:
         osd_printf(UM_NORM, "Chapter %d", ch);
@@ -1290,8 +1290,8 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
           :
         search_key == ACTION_PAUSE;
 
-      if (m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_NORMAL &&
-          m_av_clock->OMXPlaySpeed() != DVD_PLAYSPEED_PAUSE)
+      if (m_av_clock->PlaySpeed() != DVD_PLAYSPEED_NORMAL &&
+          m_av_clock->PlaySpeed() != DVD_PLAYSPEED_PAUSE)
       {
         playspeed_current = playspeed_normal;
         SetSpeed(playspeeds[playspeed_normal]);
@@ -1303,7 +1303,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
         else m_player_subtitles->Resume();
       }
 
-      int t = m_av_clock->OMXMediaTime() * 1e-6;
+      int t = m_av_clock->GetMediaTime() * 1e-6;
       show_progress_message(m_Pause ? "Pause" : "Play", t);
     }
     break;
@@ -1421,7 +1421,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case GET_PLAYBACK_STATUS:
-    m->respond_string(m_av_clock->OMXIsPaused() ? "Paused" : "Playing");
+    m->respond_string(m_av_clock->IsPaused() ? "Paused" : "Playing");
     break;
 
   case GET_SOURCE:
@@ -1463,7 +1463,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
   case GET_POSITION:
     // Returns the current position in microseconds
-    m->respond_int64(m_av_clock->OMXMediaTime());
+    m->respond_int64(m_av_clock->GetMediaTime());
     break;
 
   case GET_ASPECT:
@@ -1514,7 +1514,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       {
         m->respond_int64(position);
 
-        m_incr = (position - m_av_clock->OMXMediaTime()) * 1e-6;
+        m_incr = (position - m_av_clock->GetMediaTime()) * 1e-6;
       }
       else
       {
@@ -1690,7 +1690,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
   case GET_RATE:
     //return current playing rate
-    m->respond_double((double)m_av_clock->OMXPlaySpeed()/1000.0f);
+    m->respond_double((double)m_av_clock->PlaySpeed()/1000.0f);
     break;
 
   case GET_VOLUME:
@@ -1738,9 +1738,9 @@ int run_play_loop()
   m_loop          = m_loop && m_omx_reader->CanSeek();
 
   // stop the clock
-  m_av_clock->OMXStateIdle();
-  m_av_clock->OMXStop();
-  m_av_clock->OMXPause();
+  m_av_clock->StateIdle();
+  m_av_clock->Stop();
+  m_av_clock->Pause();
 
   // seek at start
   if(m_incr > 0 && !m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, true, NULL))
@@ -1793,7 +1793,7 @@ int run_play_loop()
 
   if(m_omx_reader->VideoStreamCount() > 0)
   {
-    m_omx_reader->GetHints(OMXSTREAM_VIDEO, 0, m_config_video.hints);
+    m_config_video.hints = m_omx_reader->GetHints(OMXSTREAM_VIDEO, 0);
 
     if(m_fps > 0.0f)
     {
@@ -1866,7 +1866,7 @@ int run_play_loop()
       m_config_audio.subdevice = "default";
 
     // get audio hints (ie params, info) from OMXReader
-    m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_audio_index, m_config_audio.hints);
+    m_config_audio.hints = m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_audio_index);
 
     if(m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3)
     {
@@ -1939,8 +1939,8 @@ int run_play_loop()
     m_audio_index = -1;
 
   // start the clock
-  m_av_clock->OMXReset(m_player_video, m_player_audio);
-  m_av_clock->OMXStateExecute();
+  m_av_clock->Reset(m_player_video, m_player_audio);
+  m_av_clock->StateExecute();
 
   // forget seek time of all files being played
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
@@ -1974,13 +1974,13 @@ int run_play_loop()
 
     if(m_incr != 0)
     {
-      int64_t seek_pos = m_av_clock->OMXMediaTime() + (int64_t)m_incr * AV_TIME_BASE;
+      int64_t seek_pos = m_av_clock->GetMediaTime() + (int64_t)m_incr * AV_TIME_BASE;
 
       if(m_omx_reader->SeekTime(seek_pos, m_incr < 0, &startpts))
       {
         show_progress_message("Seek", (int)(startpts*1e-6));
         FlushStreams(startpts);
-        CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->OMXMediaTime());
+        CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->GetMediaTime());
       }
 
       m_incr = 0;
@@ -1996,7 +1996,7 @@ int run_play_loop()
     if (update)
     {
       /* when the video/audio fifos are low, we pause clock, when high we resume */
-      int64_t stamp = m_av_clock->OMXMediaTime();
+      int64_t stamp = m_av_clock->GetMediaTime();
       int64_t audio_pts = m_player_audio ? m_player_audio->GetCurrentPTS() : AV_NOPTS_VALUE;
       int64_t video_pts = m_player_video ? m_player_video->GetCurrentPTS() : AV_NOPTS_VALUE;
 
@@ -2052,12 +2052,12 @@ int run_play_loop()
           latency = video_fifo;
         if (!m_Pause && latency != AV_NOPTS_VALUE)
         {
-          if (m_av_clock->OMXIsPaused())
+          if (m_av_clock->IsPaused())
           {
             if (latency > m_threshold)
             {
               CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader->IsEof(), m_omx_pkt);
-              m_av_clock->OMXResume();
+              m_av_clock->Resume();
               m_latency = latency;
             }
           }
@@ -2074,27 +2074,27 @@ int run_play_loop()
             else if (m_latency > 1.1f*m_threshold)
               speed = 1.001f;
 
-            m_av_clock->OMXSetSpeed(speed);
+            m_av_clock->SetSpeed(speed);
             CLogLog(LOGDEBUG, "Live: %.2f (%.2f) S:%.3f T:%.2f", m_latency, latency, speed, m_threshold);
           }
         }
       }
       else if(!m_Pause && (m_omx_reader->IsEof() || m_omx_pkt || (audio_fifo_high && video_fifo_high)))
       {
-        if (m_av_clock->OMXIsPaused())
+        if (m_av_clock->IsPaused())
         {
           CLogLog(LOGDEBUG, "Resume %.2f,%.2f (%d,%d,%d,%d) EOF:%d PKT:%p", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_omx_reader->IsEof(), m_omx_pkt);
-          m_av_clock->OMXResume();
+          m_av_clock->Resume();
         }
       }
       else if (m_Pause || audio_fifo_low || video_fifo_low)
       {
-        if (!m_av_clock->OMXIsPaused())
+        if (!m_av_clock->IsPaused())
         {
           if (!m_Pause)
             m_threshold = std::min(2.0f*m_threshold, 16.0f);
           CLogLog(LOGDEBUG, "Pause %.2f,%.2f (%d,%d,%d,%d) %.2f", audio_fifo, video_fifo, audio_fifo_low, video_fifo_low, audio_fifo_high, video_fifo_high, m_threshold);
-          m_av_clock->OMXPause();
+          m_av_clock->Pause();
         }
       }
     }
@@ -2115,7 +2115,7 @@ int run_play_loop()
       if ( (m_player_video && !m_player_video->IsEOS()) ||
            (m_player_audio && !m_player_audio->IsEOS()) )
       {
-        OMXClock::OMXSleep(10);
+        OMXClock::Sleep(10);
         continue;
       }
 
@@ -2133,7 +2133,7 @@ int run_play_loop()
 
     if(!m_omx_pkt)
     {
-      OMXClock::OMXSleep(10);
+      OMXClock::Sleep(10);
     }
     else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
     {
@@ -2142,7 +2142,7 @@ int run_play_loop()
         if(m_player_video->AddPacket(m_omx_pkt))
           m_omx_pkt = NULL;
         else
-          OMXClock::OMXSleep(10);
+          OMXClock::Sleep(10);
       }
     }
     else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_AUDIO)
@@ -2152,7 +2152,7 @@ int run_play_loop()
         if(m_player_audio->AddPacket(m_omx_pkt))
           m_omx_pkt = NULL;
         else
-          OMXClock::OMXSleep(10);
+          OMXClock::Sleep(10);
       }
     }
     else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
@@ -2179,7 +2179,7 @@ void end_of_play_loop()
 
   m_player_subtitles->Clear();
 
-  int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
+  int t = (int)(m_av_clock->GetMediaTime()*1e-6);
   int dur = m_omx_reader->GetStreamLengthSeconds();
   printf("Stopped at: %02d:%02d:%02d\n", (t/3600), (t/60)%60, t%60);
   printf("  Duration: %02d:%02d:%02d\n", (dur/3600), (dur/60)%60, dur%60);
@@ -2225,7 +2225,7 @@ void end_of_play_loop()
 
 int playlist_control()
 {
-  int t = (int)(m_av_clock->OMXMediaTime()*1e-6);
+  int t = (int)(m_av_clock->GetMediaTime()*1e-6);
 
   if(m_playlist_enabled) {
     if(!m_stopped && m_send_eos && m_next_prev_file == 0)
