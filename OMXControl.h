@@ -3,6 +3,8 @@
 #include "KeyConfig.h"
 #include "omxplayer.h"
 
+#include <stdint.h>
+
 struct DBusMessage;
 struct DBusMessageIter;
 

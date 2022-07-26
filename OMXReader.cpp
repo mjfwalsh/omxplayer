@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <unordered_map>
+#include <stdexcept>
 
 extern "C" {
 #include <libavutil/avutil.h>
