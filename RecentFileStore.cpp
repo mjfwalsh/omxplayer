@@ -307,4 +307,7 @@ void RecentFileStore::saveStore()
 
 		s.close();
 	}
+
+	m_init = false;
+	store.clear();
 }

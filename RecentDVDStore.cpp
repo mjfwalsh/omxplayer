@@ -92,6 +92,8 @@ void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, cha
 {
 	current_dvd = key;
 
+	if(current_dvd.empty()) return;
+
 	for(auto i = store.begin(); i != store.end(); i++) {
 		if(i->key == key) {
 			if(time == -1 && track == -1) {
@@ -115,6 +117,8 @@ void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, cha
 
 void RecentDVDStore::remember(int &track, int &time, char *audio, char *subtitle)
 {
+	if(current_dvd.empty()) return;
+
 	DVDInfo d;
 	d.key = current_dvd;
 	d.time = time;
@@ -143,4 +147,7 @@ void RecentDVDStore::saveStore()
 	}
 	
 	s.close();
+
+	store.clear();
+	m_init = false;
 }

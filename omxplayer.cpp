@@ -975,7 +975,7 @@ int change_file()
     } else {
       m_playlist_enabled = m_file_store.readStore();
 
-      if(!started_from_link)
+      if(m_playlist_enabled && !started_from_link)
         m_file_store.retrieveRecentInfo(m_filename, m_track, m_incr,
                                         &m_audio_lang[0], m_audio_index,
                                         &m_subtitle_lang[0], m_subtitle_index);
@@ -1013,11 +1013,7 @@ int change_playlist_item()
     // Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_playlist_enabled)
     {
-      // if we have a valid DVD id check the store and retrieve
-      if(!m_DvdPlayer->GetID().empty())
-        m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
-      else
-        m_playlist_enabled = false;
+      m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
     }
 
     // If m_track is set to -1, look for the first enabled track
@@ -1071,11 +1067,11 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       m_replacement_filename.assign(file);
 
       // Entering a pipe: would make no sense here
-      if(IsPipe(m_replacement_filename))
+      if(IsPipe(m_filename) || IsPipe(m_replacement_filename))
       {
         m_replacement_filename.clear();
         m->respond_invalid_args();
-        CLogLog(LOGDEBUG, "Providing a pipe via dbus is not supported.");
+        CLogLog(LOGDEBUG, "Providing a pipe or replacing one via dbus is not supported.");
         break;
       }
 
@@ -2273,6 +2269,11 @@ int playlist_control()
     if(m_DvdPlayer) {
       delete m_DvdPlayer;
       m_DvdPlayer = NULL;
+    }
+
+    if(m_playlist_enabled) {
+      if(m_is_dvd_device) m_dvd_store.saveStore();
+      else m_file_store.saveStore();
     }
 
     m_filename = m_replacement_filename;
