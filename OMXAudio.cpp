@@ -353,15 +353,16 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   :
   m_CurrentVolume   (0      ),
   m_Mute            (false  ),
+  m_BitsPerSample   (uiBitsPerSample),
   m_amplification   (1.0f   ),
   m_attenuation     (1.0f   ),
   m_submitted       (0.0f   ),
-  m_eEncoding       (OMX_AUDIO_CodingPCM)
+  m_eEncoding       (OMX_AUDIO_CodingPCM),
+  m_config          (config)
 {
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
 
-  m_config = config;
   m_InputChannels = count_bits(channelMap);
 
   if(m_InputChannels == 0)
@@ -408,18 +409,16 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
     // force out layout to stereo if input is not multichannel - it gives the receiver a chance to upmix
     if (channelMap == (AV_CH_FRONT_LEFT | AV_CH_FRONT_RIGHT) || channelMap == AV_CH_FRONT_CENTER)
       m_config.layout = PCM_LAYOUT_2_0;
-    BuildChannelMap(inLayout, channelMap);
-    m_OutputChannels = BuildChannelMapCEA(outLayout, GetChannelLayout(m_config.layout));
-    CPCMRemap m_remap;
-    /*outLayout = */m_remap.SetInputFormat (m_InputChannels, inLayout, uiBitsPerSample / 8, m_config.hints.samplerate, m_config.layout, m_config.boostOnDownmix);
-    m_remap.SetOutputFormat(m_OutputChannels, outLayout);
+    BuildChannelMap(&inLayout[0], channelMap);
+    m_OutputChannels = BuildChannelMapCEA(&outLayout[0], GetChannelLayout(m_config.layout));
+
+    CPCMRemap m_remap(m_InputChannels, &inLayout[0], m_OutputChannels, &outLayout[0], m_config.layout, m_config.boostOnDownmix);
     m_remap.GetDownmixMatrix(m_downmix_matrix);
+
     m_wave_header.dwChannelMask = channelMap;
     BuildChannelMapOMX(m_input_channels, channelMap);
     BuildChannelMapOMX(m_output_channels, GetChannelLayout(m_config.layout));
   }
-
-  m_BitsPerSample = uiBitsPerSample;
 
   m_BytesPerSec   = m_config.hints.samplerate * 2 << rounded_up_channels_shift[m_InputChannels];
   m_BufferLen     = m_BytesPerSec * AUDIO_BUFFER_SECONDS;
@@ -449,10 +448,8 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
 
   OMX_CONFIG_BOOLEANTYPE boolType;
   OMX_INIT_STRUCTURE(boolType);
-  if(m_config.passthrough)
-    boolType.bEnabled = OMX_TRUE;
-  else
-    boolType.bEnabled = OMX_FALSE;
+  boolType.bEnabled = m_config.passthrough ? OMX_TRUE : OMX_FALSE;
+
   omx_err = m_omx_decoder.SetParameter(OMX_IndexParamBrcmDecoderPassThrough, &boolType);
   if(omx_err != OMX_ErrorNone)
   {

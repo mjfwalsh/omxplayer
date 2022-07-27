@@ -23,7 +23,6 @@
  */
 
 #include <vector>
-#include <string>
 
 #define PCM_MAX_CH 18
 enum PCMChannels
@@ -83,49 +82,33 @@ struct PCMMapInfo
    - user uses this information to create the desired output channelmap,
      and calls SetOutputFormat to set it (if the channelmap contains channels
      that do not exist in the configured speaker layout, they will contain
-     only silence unless ignoreLayout is true)
+     only silence)
  */
 
 class CPCMRemap
 {
 protected:
-  bool               m_inSet, m_outSet;
   enum PCMLayout     m_channelLayout;
   unsigned int       m_inChannels, m_outChannels;
-  unsigned int       m_inSampleSize;
   enum PCMChannels   m_inMap [PCM_MAX_CH];
   enum PCMChannels   m_outMap[PCM_MAX_CH];
-  enum PCMChannels   m_layoutMap[PCM_MAX_CH + 1];
 
-  bool               m_ignoreLayout;
   bool               m_useable  [PCM_MAX_CH];
   struct PCMMapInfo  m_lookupMap[PCM_MAX_CH + 1][PCM_MAX_CH + 1];
   int                m_counts[PCM_MAX_CH];
 
-  float              m_attenuation;
-  float              m_sampleRate;
   bool               m_dontnormalize;
 
   struct PCMMapInfo* ResolveChannel(enum PCMChannels channel, float level, bool ifExists, std::vector<enum PCMChannels> path, struct PCMMapInfo *tablePtr);
-  void               ResolveChannels(); //!< Partial BuildMap(), just enough to see which output channels are active
+  void               ResolveChannels();
   void               BuildMap();
-  void               DumpMap(std::string info, int unsigned channels, enum PCMChannels *channelMap);
+  void               DumpMap(const char *type, unsigned int channels, enum PCMChannels *channelMap);
   const char*        PCMChannelStr(enum PCMChannels ename);
   const char*        PCMLayoutStr(enum PCMLayout ename);
 
-  void               CheckBufferSize(int size);
-  void               ProcessInput(void* data, void* out, unsigned int samples, float gain);
-  void               AddGain(float* buf, unsigned int samples, float gain);
-  void               ProcessLimiter(unsigned int samples, float gain);
-  void               ProcessOutput(void* out, unsigned int samples, float gain);
-
 public:
-
-  CPCMRemap();
-
-  enum PCMChannels *SetInputFormat (unsigned int channels, enum PCMChannels *channelMap, unsigned int sampleSize, unsigned int sampleRate, enum PCMLayout channelLayout, bool dontnormalize);
-  void SetOutputFormat(unsigned int channels, enum PCMChannels *channelMap, bool ignoreLayout = false);
-  void               GetDownmixMatrix(float *downmix);
+  CPCMRemap(unsigned int inChannels, enum PCMChannels *inChannelMap, unsigned int outChannels, enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize);
+  void GetDownmixMatrix(float *downmix);
 };
 
 #endif
