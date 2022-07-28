@@ -116,4 +116,4 @@ deps: $(DEPS)
 
 .PHONY: %.d
 %.d: %.cpp rm-dep-mak
-	$(CXX) -MM -MG -MF - $(CFLAGS) $(INCLUDES) -c $< >> deps.mak
+	$(CXX) -MM -MG -MF - -MT $(@:.d=.o) $(CFLAGS) $(INCLUDES) -c $< >> deps.mak
