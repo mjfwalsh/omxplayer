@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <pthread.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "log.h"
 
@@ -38,7 +39,7 @@ static pthread_mutex_t   m_log_mutex;
 static char levelNames[][8] =
 {"NONE", "FATAL", "SEVERE", "ERROR", "WARNING", "NOTICE", "INFO", "DEBUG"};
 
-bool logging_enabled = false;
+bool g_logging_enabled = false;
 
 static void CLogClose()
 {
@@ -84,19 +85,19 @@ bool CLogInit(int level, const char* path)
   pthread_mutex_init(&m_log_mutex, NULL);
 
   m_logLevel = level;
-  logging_enabled = true;
+  g_logging_enabled = true;
   atexit(CLogClose);
 
   if(path == NULL)
   {
     m_stream = stdout;
-    m_file_is_open = logging_enabled = true;
+    m_file_is_open = g_logging_enabled = true;
   }
   else
   {
     m_stream = fopen(path, "w");
-    m_file_is_open = logging_enabled = m_stream != NULL;
+    m_file_is_open = g_logging_enabled = m_stream != NULL;
   }
 
-  return logging_enabled;
+  return g_logging_enabled;
 }

@@ -410,7 +410,7 @@ int startup(int argc, char *argv[])
   uint32_t          background          = 0;
   const char        *keymap_file        = NULL;
   int               log_level           = LOGNONE;
-  std::string       log_file;
+  const char        *log_file           = NULL;
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
 
@@ -770,7 +770,7 @@ int startup(int argc, char *argv[])
   m_filename = argv[optind];
 
   // start logging
-  CLogInit(log_level, log_file.c_str());
+  CLogInit(log_level, log_file);
 
   if (optind >= argc) {
     print_usage();

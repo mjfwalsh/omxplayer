@@ -21,8 +21,6 @@
  *
  */
 
-#include <stdio.h>
-
 #define LOGNONE    0
 #define LOGFATAL   1
 #define LOGSEVERE  2
@@ -39,9 +37,9 @@
 #define ATTRIB_LOG_FORMAT
 #endif
 
-extern bool logging_enabled;
+extern bool g_logging_enabled;
 
 void _CLogLog(int loglevel, const char *format, ... ) ATTRIB_LOG_FORMAT;
 bool CLogInit(int level, const char* path);
 
-#define CLogLog(...) { if(logging_enabled) { _CLogLog(__VA_ARGS__); } }
+#define CLogLog(...) { if(g_logging_enabled) { _CLogLog(__VA_ARGS__); } }

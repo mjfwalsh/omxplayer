@@ -352,7 +352,7 @@ void CPCMRemap::BuildMap()
         dst->copy  = false;
       }
 
-      if(logging_enabled)
+      if(g_logging_enabled)
       {
         s += PCMChannelStr(dst->channel);
         s += "(" + std::to_string(dst->level) + (dst->copy ? "*" : "") + ") ";
@@ -364,7 +364,7 @@ void CPCMRemap::BuildMap()
 
 void CPCMRemap::DumpMap(const char *type, unsigned int channels, enum PCMChannels *channelMap)
 {
-  if(!logging_enabled) return;
+  if(!g_logging_enabled) return;
 
   std::string mapping;
   for(unsigned int i = 0; i < channels; i++)
