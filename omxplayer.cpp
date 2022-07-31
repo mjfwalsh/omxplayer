@@ -1151,21 +1151,22 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_PREVIOUS_CHAPTER:
   case ACTION_NEXT_CHAPTER:
     {
-      int64_t new_pts;
+      int64_t cur_pts = m_av_clock->GetMediaTime();
       int ch = search_key == ACTION_NEXT_CHAPTER ? 1 : -1;
 
-      switch(m_omx_reader->SeekChapter(&ch, m_av_clock->GetMediaTime(), &new_pts))
+      switch(m_omx_reader->SeekChapter(&ch, &cur_pts))
       {
       case OMXReader::SEEK_SUCCESS:
         osd_printf(UM_NORM, "Chapter %d", ch);
-        FlushStreams(new_pts);
+        FlushStreams(cur_pts);
         break;
       case OMXReader::SEEK_OUT_OF_BOUNDS:
         m_send_eos = true;
         m_next_prev_file = ch;
         return END_PLAY;
       case OMXReader::SEEK_NO_CHAPTERS:
-        m_incr = ch * 600;
+        show_progress_message("Seek", (int)(cur_pts * 1e-6));
+        FlushStreams(cur_pts);
       case OMXReader::SEEK_ERROR:
         break;
       }
@@ -1739,7 +1740,7 @@ int run_play_loop()
   m_av_clock->Pause();
 
   // seek at start
-  if(m_incr > 0 && !m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, true, NULL))
+  if(m_incr > 0 && !m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, false))
   {
     puts("Seeking failed");
     m_incr = 0;
@@ -1942,7 +1943,6 @@ int run_play_loop()
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
 
   int64_t last_check_time = 0;
-  int64_t startpts = 0;
 
   while(!m_stopped)
   {
@@ -1970,13 +1970,13 @@ int run_play_loop()
 
     if(m_incr != 0)
     {
-      int64_t seek_pos = m_av_clock->GetMediaTime() + (int64_t)m_incr * AV_TIME_BASE;
+      int64_t cur_pts = m_av_clock->GetMediaTime();
 
-      if(m_omx_reader->SeekTime(seek_pos, m_incr < 0, &startpts))
+      if(m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, &cur_pts))
       {
-        show_progress_message("Seek", (int)(startpts*1e-6));
-        FlushStreams(startpts);
-        CLogLog(LOGDEBUG, "Seeked %.0f %lld %lld", (double)seek_pos/AV_TIME_BASE, startpts, m_av_clock->GetMediaTime());
+        show_progress_message("Seek", (int)(cur_pts * 1e-6));
+        FlushStreams(cur_pts);
+        CLogLog(LOGDEBUG, "Seeked %lld", cur_pts);
       }
 
       m_incr = 0;
@@ -2117,9 +2117,9 @@ int run_play_loop()
 
       if (m_loop)
       {
-        if(m_omx_reader->SeekTime((int64_t)m_loop_from * AV_TIME_BASE, true, NULL))
+        if(m_omx_reader->SeekTime((int64_t)m_loop_from * AV_TIME_BASE, true))
         {
-          FlushStreams(startpts);
+          FlushStreams(0);
           continue;
         }
       }

@@ -183,9 +183,7 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
     m_pFormatContext->pb = m_ioContext;
     result = avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
     if(result < 0)
-    {
       throw "avformat_open_input failed";
-    }
   }
   else
   {
@@ -295,37 +293,50 @@ OMXReader::~OMXReader()
   avformat_network_deinit();
 }
 
-bool OMXReader::SeekTime(int64_t time, bool backwords, int64_t *startpts)
+bool OMXReader::SeekTime(int64_t seek_pts, bool backwards)
 {
   if(!CanSeek())
     return false;
 
-  if(time < 0)
-    time = 0;
-
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
-  int64_t seek_pts = time;
   if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
     seek_pts += m_pFormatContext->start_time;
 
   RESET_TIMEOUT(1);
-  int ret = av_seek_frame(m_pFormatContext, -1, seek_pts, backwords ? AVSEEK_FLAG_BACKWARD : 0);
-
-  // in this case the start time is requested time
-  if(startpts)
-    *startpts = time;
+  int ret = av_seek_frame(m_pFormatContext, -1, seek_pts, backwards ? AVSEEK_FLAG_BACKWARD : 0);
 
   // demuxer will return failure, if you seek to eof
-  m_eof = false;
-  if (ret < 0)
-  {
-    m_eof = true;
-    ret = 0;
-  }
+  m_eof = ret < 0;
 
-  return (ret >= 0);
+  return !m_eof;
+}
+
+bool OMXReader::SeekTime(int64_t rel_pts, int64_t *cur_pts)
+{
+  if(!CanSeek())
+    return false;
+
+  if(m_ioContext)
+    m_ioContext->buf_ptr = m_ioContext->buf_end;
+
+  int flags = *cur_pts > rel_pts ? AVSEEK_FLAG_BACKWARD : 0;
+
+  int64_t start_offset = 0;
+  if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
+    start_offset = m_pFormatContext->start_time;
+
+  RESET_TIMEOUT(1);
+  int ret = av_seek_frame(m_pFormatContext, -1, start_offset + *cur_pts + rel_pts, flags);
+
+  // hopefully the current time is now the requested (this can be a second or two off)
+  *cur_pts += rel_pts;
+
+  // demuxer will return failure, if you seek to eof
+  m_eof = ret < 0;
+
+  return !m_eof;
 }
 
 OMXPacket *OMXReader::Read()
@@ -493,13 +504,6 @@ void OMXReader::GetStreams()
 
 void OMXReader::GetChapters()
 {
-  for(int i = 0; i < MAX_OMX_CHAPTERS; i++)
-  {
-    m_chapters[i] = 0;
-  }
-
-  m_chapter_count = 0;
-
   if(m_DvdPlayer)
   {
     m_chapter_count = (m_DvdPlayer->TotalChapters() > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_DvdPlayer->TotalChapters();
@@ -684,17 +688,18 @@ bool OMXReader::IsEof()
   return m_eof;
 }
 
-OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t cur_pts, int64_t* new_pts)
+OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t *cur_pts)
 {
-  if(cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
+  if(*cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
 
-  // do we have chapters to seek to
-  if(m_chapter_count == 0) return SEEK_NO_CHAPTERS;
+  // If we have no chapters to seek to, just seek 10 mins up or down
+  if(m_chapter_count == 0)
+    return SeekTime(*chapter * 600, cur_pts) ? SEEK_NO_CHAPTERS : SEEK_ERROR;
 
   // Find current chapter
   int current_chapter = 0;
   for(; current_chapter < m_chapter_count - 1; current_chapter++)
-    if(cur_pts >=   m_chapters[current_chapter] && cur_pts <  m_chapters[current_chapter+1])
+    if(*cur_pts >=   m_chapters[current_chapter] && *cur_pts <  m_chapters[current_chapter+1])
       break;
 
   // turn delta into absolute value and check in within range
@@ -705,7 +710,7 @@ OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t cur_pts, int6
   // convert delta new chapter
   *chapter = new_chapter;
 
-  return SeekTime(m_chapters[new_chapter], *new_pts < cur_pts, new_pts)
+  return SeekTime(m_chapters[new_chapter], m_chapters[new_chapter] < *cur_pts)
     ? SEEK_SUCCESS : SEEK_ERROR;
 }
 
