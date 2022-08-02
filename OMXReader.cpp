@@ -252,23 +252,22 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
     throw "avformat_find_stream_info failed";
   }
 
-  // get stream info
+  // fill in rest of metadata
   if(m_DvdPlayer)
-    GetDvdStreams();
-  else
-    GetStreams();
+  {
+    m_pFormatContext->duration = (int64_t)m_DvdPlayer->getCurrentTrackLength() * 1000;
 
-  // get chapter info
-  GetChapters();
+    GetDvdStreams();
+  }
+  else
+  {
+    GetStreams();
+    GetChapters();
+  }
 
   // print chapter info
   if(dump_format)
-  {
-    for(int i = 0; i < m_chapter_count; i++)
-      printf("Chapter : \t%d \t%8.2f\n", i, (double)m_chapters[i]/AV_TIME_BASE);
-
     av_dump_format(m_pFormatContext, 0, filename.c_str(), 0);
-  }
 }
 
 
@@ -293,7 +292,7 @@ OMXReader::~OMXReader()
   avformat_network_deinit();
 }
 
-bool OMXReader::SeekTime(int64_t seek_pts, bool backwards)
+bool OMXReader::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
 {
   if(!CanSeek())
     return false;
@@ -301,11 +300,19 @@ bool OMXReader::SeekTime(int64_t seek_pts, bool backwards)
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
+  if(cur_pts != NULL)
+    backwards = seek_pts < *cur_pts;
+
+  int64_t start_offset = 0;
   if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
-    seek_pts += m_pFormatContext->start_time;
+    start_offset = m_pFormatContext->start_time;
 
   RESET_TIMEOUT(1);
-  int ret = av_seek_frame(m_pFormatContext, -1, seek_pts, backwards ? AVSEEK_FLAG_BACKWARD : 0);
+  int ret = av_seek_frame(m_pFormatContext, -1, start_offset + seek_pts,
+                          backwards ? AVSEEK_FLAG_BACKWARD : 0);
+
+  if(cur_pts != NULL)
+    *cur_pts = seek_pts;
 
   // demuxer will return failure, if you seek to eof
   m_eof = ret < 0;
@@ -313,7 +320,7 @@ bool OMXReader::SeekTime(int64_t seek_pts, bool backwards)
   return !m_eof;
 }
 
-bool OMXReader::SeekTime(int64_t rel_pts, int64_t *cur_pts)
+bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
 {
   if(!CanSeek())
     return false;
@@ -321,17 +328,9 @@ bool OMXReader::SeekTime(int64_t rel_pts, int64_t *cur_pts)
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
-  int flags = *cur_pts > rel_pts ? AVSEEK_FLAG_BACKWARD : 0;
-
-  int64_t start_offset = 0;
-  if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
-    start_offset = m_pFormatContext->start_time;
-
+  int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
   RESET_TIMEOUT(1);
-  int ret = av_seek_frame(m_pFormatContext, -1, start_offset + *cur_pts + rel_pts, flags);
-
-  // hopefully the current time is now the requested (this can be a second or two off)
-  *cur_pts += rel_pts;
+  int ret = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE);
 
   // demuxer will return failure, if you seek to eof
   m_eof = ret < 0;
@@ -504,26 +503,17 @@ void OMXReader::GetStreams()
 
 void OMXReader::GetChapters()
 {
-  if(m_DvdPlayer)
+  m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
+  for(int i = 0; i < m_chapter_count; i++)
   {
-    m_chapter_count = (m_DvdPlayer->TotalChapters() > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_DvdPlayer->TotalChapters();
-    for(int i = 0; i < m_chapter_count; i++)
-      m_chapters[i]   = m_DvdPlayer->GetChapterStartTime(i);
-  }
-  else
-  {
-    m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
-    for(int i = 0; i < m_chapter_count; i++)
+    AVChapter *chapter = m_pFormatContext->chapters[i];
+    if(!chapter)
     {
-      AVChapter *chapter = m_pFormatContext->chapters[i];
-      if(!chapter)
-      {
-        m_chapter_count = i;
-        break;
-      }
-
-      m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
+      m_chapter_count = i;
+      break;
     }
+
+    m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
   }
 }
 
@@ -688,30 +678,51 @@ bool OMXReader::IsEof()
   return m_eof;
 }
 
-OMXReader::SeekResult OMXReader::SeekChapter(int *chapter, int64_t *cur_pts)
+OMXReader::SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
 {
-  if(*cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
+  if(cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
 
-  // If we have no chapters to seek to, just seek 10 mins up or down
-  if(m_chapter_count == 0)
-    return SeekTime(*chapter * 600, cur_pts) ? SEEK_NO_CHAPTERS : SEEK_ERROR;
+  if(m_DvdPlayer)
+  {
+    bool backwards = chapter < 1;
+    int cur_ch = m_DvdPlayer->getChapter(cur_pts);
+    int seek_ch = cur_ch + chapter;
 
-  // Find current chapter
-  int current_chapter = 0;
-  for(; current_chapter < m_chapter_count - 1; current_chapter++)
-    if(*cur_pts >=   m_chapters[current_chapter] && *cur_pts <  m_chapters[current_chapter+1])
-      break;
+    // check if within bounds
+    if(seek_ch < 0 || seek_ch >= m_DvdPlayer->TotalChapters())
+      return SEEK_OUT_OF_BOUNDS;
 
-  // turn delta into absolute value and check in within range
-  int new_chapter = current_chapter + *chapter;
-  if(new_chapter < 0 || new_chapter >= m_chapter_count)
-    return SEEK_OUT_OF_BOUNDS;
+    // Do the seek
+    if(!SeekBytes(m_DvdPlayer->GetChapterBytePos(seek_ch), backwards))
+    	return SEEK_ERROR;
 
-  // convert delta new chapter
-  *chapter = new_chapter;
+    // convert delta new chapter
+    chapter = seek_ch;
 
-  return SeekTime(m_chapters[new_chapter], m_chapters[new_chapter] < *cur_pts)
-    ? SEEK_SUCCESS : SEEK_ERROR;
+    return SEEK_SUCCESS;
+  }
+  else
+  {
+    // If we have no chapters to seek to, just seek 10 mins up or down
+    if(m_chapter_count == 0)
+      return SEEK_NO_CHAPTERS;
+
+    // Find current chapter
+    int current_chapter = 0;
+    for(; current_chapter < m_chapter_count - 1; current_chapter++)
+      if(cur_pts >=   m_chapters[current_chapter] && cur_pts <  m_chapters[current_chapter+1])
+        break;
+
+    // turn delta into absolute value and check in within range
+    int new_chapter = current_chapter + chapter;
+    if(new_chapter < 0 || new_chapter >= m_chapter_count)
+      return SEEK_OUT_OF_BOUNDS;
+
+    // convert delta new chapter
+    chapter = new_chapter;
+
+    return SeekTime(m_chapters[new_chapter], &cur_pts) ? SEEK_SUCCESS : SEEK_ERROR;
+  }
 }
 
 int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
@@ -767,18 +778,12 @@ void OMXReader::SetSpeed(float iSpeed)
 
 int OMXReader::GetStreamLengthSeconds()
 {
-  if(m_DvdPlayer)
-    return (int)( m_DvdPlayer->getCurrentTrackLength() / 1000 );
-  else
-    return (int)(m_pFormatContext->duration / AV_TIME_BASE );
+  return (int)(m_pFormatContext->duration / AV_TIME_BASE );
 }
 
 int64_t OMXReader::GetStreamLengthMicro()
 {
-  if(m_DvdPlayer)
-    return (int64_t)m_DvdPlayer->getCurrentTrackLength() * 1000;
-  else
-    return m_pFormatContext->duration;
+  return m_pFormatContext->duration;
 }
 
 double OMXReader::NormalizeFrameduration(double frameduration)

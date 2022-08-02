@@ -172,14 +172,13 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 				break;
 			}
 		}
-		if(last_sector == -1) {
-			int last = cell_count - 1;
-			last_sector = pgc->cell_playback[last].last_sector;
-		}
+		if(last_sector == -1)
+			last_sector = pgc->cell_playback[cell_count - 1].last_sector;
+
 		tracks[write_track].last_sector = last_sector;
 
 		// Chapters
-		tracks[write_track].chapters = (int *)calloc(tracks[write_track].chapter_count, sizeof(int));
+		tracks[write_track].chapters = (track_info::chapter_info *)calloc(tracks[write_track].chapter_count, sizeof(track_info::chapter_info));
 		if(!tracks[write_track].chapters) {
 			fputs("Memory error\n", stderr);
 			throw "Failed to open DVD";
@@ -189,12 +188,13 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		int cell_i = 0;
 		for (int i=0; i<tracks[write_track].chapter_count; i++) {
 			int idx = pgc->program_map[i] - 1;
-			int first_cell_sector = pgc->cell_playback[idx].first_sector;
-			if(first_cell_sector > last_sector) {
+			int cell_start = pgc->cell_playback[idx].first_sector;
+			if(cell_start > last_sector) {
 				tracks[write_track].chapter_count = i;
 				break;
 			}
-			tracks[write_track].chapters[i] = acc_chapter;
+			tracks[write_track].chapters[i].time = acc_chapter;
+			tracks[write_track].chapters[i].cell = cell_start;
 
             for(; cell_i <= idx; cell_i++) {
                 acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
@@ -276,7 +276,6 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) dvdread->ifoClose(ifo[i]);
 	free(ifo);
 	dvdread->ifoClose(ifo_zero);
-	m_allocated = true;
 	puts("Finished parsing DVD meta data");
 }
 
@@ -377,6 +376,43 @@ int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
 	return 0;
 }
 
+// search for the chapter the timestamp is in
+int OMXDvdPlayer::getChapter(int64_t timestamp)
+{
+	int needle = timestamp / 1000;
+	int l = 0;
+	int r = tracks[current_track].chapter_count - 1;
+
+	if(needle >= tracks[current_track].chapters[r].time)
+		return r;
+
+	while(r - l > 1)
+	{
+		int m = (l + r) / 2;
+
+		if(needle >= tracks[current_track].chapters[m].time)
+			l = m;
+		else
+			r = m;
+	}
+
+	return l;
+}
+
+int OMXDvdPlayer::GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos)
+{
+    int seek_ch = getChapter(seek_ts);
+    seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
+	byte_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
+
+	return seek_ch;
+}
+
+int64_t OMXDvdPlayer::GetChapterBytePos(int seek_ch)
+{
+	return (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
+}
+
 int64_t OMXDvdPlayer::GetSizeInBytes()
 {
 	return (int64_t)total_blocks * DVD_VIDEO_LB_LEN;
@@ -393,11 +429,6 @@ bool OMXDvdPlayer::IsEOF()
 int OMXDvdPlayer::TotalChapters()
 {
 	return tracks[current_track].chapter_count;
-}
-
-int64_t OMXDvdPlayer::GetChapterStartTime(int i)
-{
-	return tracks[current_track].chapters[i] * 1000.0;
 }
 
 void OMXDvdPlayer::CloseTrack()
@@ -441,29 +472,25 @@ OMXDvdPlayer::~OMXDvdPlayer()
 	if(m_open)
 		CloseTrack();
 
-	if(m_allocated) {
-		for(int i = 0; i < track_count; i++) {
-			if(tracks[i].title != NULL) {
-				free(tracks[i].title->audio_streams);
-				free(tracks[i].title->subtitle_streams);
+	for(int i = 0; i < track_count; i++) {
+		if(tracks[i].title != NULL) {
+			free(tracks[i].title->audio_streams);
+			free(tracks[i].title->subtitle_streams);
 
-				for(int h = i + 1; h < track_count; h++)
-					if(tracks[i].title == tracks[h].title)
-						tracks[h].title = NULL;
+			for(int h = i + 1; h < track_count; h++)
+				if(tracks[i].title == tracks[h].title)
+					tracks[h].title = NULL;
 
-				free(tracks[i].title);
-				tracks[i].title = NULL;
-			}
-			free(tracks[i].chapters);
+			free(tracks[i].title);
+			tracks[i].title = NULL;
 		}
-		free(tracks);
+		free(tracks[i].chapters);
 	}
+	free(tracks);
 
-	if(dvd_device)
-		dvdread->DVDClose(dvd_device);
+	dvdread->DVDClose(dvd_device);
 
-	if(dvdread)
-	    delete dvdread;
+	delete dvdread;
 }
 
 int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)

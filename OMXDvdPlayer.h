@@ -38,12 +38,13 @@ class OMXDvdPlayer
 
 	int Read(unsigned char *lpBuf, int64_t uiBufSize);
 	int64_t Seek(int64_t iFilePosition, int iWhence);
+	int getChapter(int64_t timestamp);
+	int GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos);
+	int64_t GetChapterBytePos(int seek_ch);
 	bool IsEOF();
 	int64_t GetSizeInBytes();
 	int getCurrentTrackLength();
 	int TotalChapters();
-	int64_t GetChapterStartTime(int i);
-	int GetCurrentTrack() const { return current_track; }
 	int GetAudioStreamCount();
 	int GetSubtitleStreamCount();
 	int GetAudioStreamId(int i);
@@ -63,13 +64,12 @@ class OMXDvdPlayer
 	void read_disc_serial_number();
 
 	bool m_open = false;
-	bool m_allocated = false;
 	int pos = 0;
 	int pos_byte_offset = 0;
-	DVD *dvdread = NULL;
+	DVD *dvdread;
 
-	dvd_reader_t *dvd_device = NULL;
-	dvd_file_t *dvd_track = NULL;
+	dvd_reader_t *dvd_device;
+	dvd_file_t *dvd_track;
 
 	int current_track = -1;
 	int total_blocks = 0;
@@ -96,7 +96,10 @@ class OMXDvdPlayer
 		title_info *title;
 		int length;
 		int chapter_count;
-		int *chapters;
+		struct chapter_info {
+			int cell;
+			int time;
+		} *chapters;
 		int first_sector;
 		int last_sector;
 	} *tracks;

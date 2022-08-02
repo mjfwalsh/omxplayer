@@ -118,8 +118,8 @@ public:
   OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd);
   ~OMXReader();
 
-  bool SeekTime(int64_t time, bool backwords);
-  bool SeekTime(int64_t time, int64_t *cur_pts);
+  bool SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false);
+  bool SeekBytes(int64_t seek_bytes, bool backwords);
   OMXPacket *Read();
   bool SetHints(AVStream *stream, COMXStreamInfo *hints);
   COMXStreamInfo GetHints(OMXStreamType type, int index);
@@ -131,7 +131,7 @@ public:
   int GetWidth() { return m_width; };
   int GetHeight() { return m_height; };
   void SetSpeed(float iSpeed);
-  SeekResult SeekChapter(int *chapter, int64_t *cur_pts);
+  SeekResult SeekChapter(int &chapter, int64_t &cur_pts);
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
