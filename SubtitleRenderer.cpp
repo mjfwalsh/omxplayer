@@ -38,8 +38,10 @@ using namespace std;
 // in East Asian scripts) would result in shorter not longer subtitles.
 #define MAX_SUBTITLE_LINE_WIDTH 1300
 
-SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_size,
-	bool centered, bool box_opacity, unsigned int lines)
+SubtitleRenderer::SubtitleRenderer(float r_font_size,
+									bool centered,
+									bool box_opacity,
+									unsigned int lines)
 : m_centered(centered),
   m_ghost_box(box_opacity),
   m_max_lines(lines)
@@ -48,9 +50,6 @@ SubtitleRenderer::SubtitleRenderer(int display_num, int layer_num, float r_font_
 	m_tags = new CRegExp("(\\n|<[^>]*>|\\{\\\\[^\\}]*\\})");
 	m_font_color_html = new CRegExp("color[ \\t]*=[ \\t\"']*#?([a-f0-9]{6})");
 	m_font_color_curly = new CRegExp("^\\{\\\\c&h([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})&\\}$");
-
-	// Open display
-	DispmanxLayer::openDisplay(display_num, layer_num);
 
 	// Determine screen size
 	Dimension screen = DispmanxLayer::getScreenDimensions();
@@ -485,7 +484,6 @@ SubtitleRenderer::~SubtitleRenderer()
 	// remove DispmanX layer
 	delete subtitleLayer;
 	if(dvdSubLayer) delete dvdSubLayer;
-	DispmanxLayer::closeDisplay();
 
 	// destroy cairo fonts
 	for(int i = 0; i < 3; i++)

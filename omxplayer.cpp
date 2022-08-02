@@ -45,6 +45,7 @@
 #include "VideoCore.h"
 #include "DbusCommandSearch.h"
 #include "omxplayer.h"
+#include "DispmanxLayer.h"
 
 #include <string>
 
@@ -99,6 +100,7 @@ std::string       m_replacement_filename;
 bool              m_playlist_enabled    = true;
 float             m_latency             = 0.0f;
 bool              m_dbus_enabled;
+DispmanxLayer     *m_background_layer   = NULL;
 
 float playspeeds[] = {0, 1/16.0, 1/8.0, 1/4.0, 1/2.0, 0.975, 1.0, 1.125, 2.0, 4.0};
 const int playspeed_max = 9, playspeed_normal = 6;
@@ -810,18 +812,28 @@ int startup(int argc, char *argv[])
     return EXIT_FAILURE;
   }
 
-  if(!VideoCore::blank_background(background, m_config_video.layer, m_config_video.display))
+  // Open display
+  DispmanxLayer::openDisplay(m_config_video.display, m_config_video.layer);
+
+  // blank background - exclude fully transparent backgrounds
+  if(background > 0x00FFFFFF)
   {
-    delete m_av_clock;
-    g_OMX.Deinitialize();
-    return EXIT_FAILURE;
+    try
+    {
+      m_background_layer = new DispmanxLayer(4, Rect(0, 0, 0, 0), Dimension(1, 1));
+      m_background_layer->setImageData(&background, false);
+    }
+    catch(const char* msg)
+    {
+      delete m_av_clock;
+      g_OMX.Deinitialize();
+      return EXIT_FAILURE;
+    }
   }
 
   // init subtitle object
   try {
-    m_player_subtitles = new OMXPlayerSubtitles(m_config_video.display,
-                                                m_config_video.layer,
-                                                font_size,
+    m_player_subtitles = new OMXPlayerSubtitles(font_size,
                                                 centered,
                                                 ghost_box,
                                                 subtitle_lines,
@@ -2362,6 +2374,9 @@ int shutdown(bool exit_with_error)
 
   if(m_player_subtitles)
     delete m_player_subtitles;
+
+  if(m_background_layer)
+    delete m_background_layer;
 
   if(m_av_clock)
     delete m_av_clock;

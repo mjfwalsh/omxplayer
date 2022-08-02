@@ -53,9 +53,7 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
     delete m_renderer;
 }
 
-OMXPlayerSubtitles::OMXPlayerSubtitles(int display,
-                                       int layer,
-                                       float font_size,
+OMXPlayerSubtitles::OMXPlayerSubtitles(float font_size,
                                        bool centered,
                                        bool ghost_box,
                                        unsigned int lines,
@@ -63,8 +61,7 @@ OMXPlayerSubtitles::OMXPlayerSubtitles(int display,
 :
 m_av_clock(clock)
 {
-  m_renderer = new SubtitleRenderer(display, layer,
-                                    font_size,
+  m_renderer = new SubtitleRenderer(font_size,
                                     centered,
                                     ghost_box,
                                     lines);

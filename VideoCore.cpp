@@ -236,51 +236,6 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
     delete[] supported_modes;
 }
 
-bool blank_background(uint32_t rgba, int layer, int video_display)
-{
-  // if alpha is fully transparent then background has no effect
-  if (!(rgba & 0xff000000))
-    return true;
-
-  // we create a 1x1 black pixel image that is added to display just behind video
-  DISPMANX_DISPLAY_HANDLE_T   display;
-  DISPMANX_UPDATE_HANDLE_T    update;
-  DISPMANX_RESOURCE_HANDLE_T  resource;
-  DISPMANX_ELEMENT_HANDLE_T   element;
-  int             ret;
-  uint32_t vc_image_ptr;
-  VC_IMAGE_TYPE_T type = VC_IMAGE_ARGB8888;
-  layer--;
-
-  VC_RECT_T dst_rect, src_rect;
-
-  display = vc_dispmanx_display_open(video_display);
-  if(!display) return false;
-
-  resource = vc_dispmanx_resource_create( type, 1 /*width*/, 1 /*height*/, &vc_image_ptr );
-  if(!resource) return false;
-
-  vc_dispmanx_rect_set( &dst_rect, 0, 0, 1, 1);
-
-  ret = vc_dispmanx_resource_write_data( resource, type, sizeof(rgba), &rgba, &dst_rect );
-  if(ret != 0) return false;
-
-  vc_dispmanx_rect_set( &src_rect, 0, 0, 1<<16, 1<<16);
-  vc_dispmanx_rect_set( &dst_rect, 0, 0, 0, 0);
-
-  update = vc_dispmanx_update_start(0);
-  if(!update) return false;
-
-  element = vc_dispmanx_element_add(update, display, layer, &dst_rect, resource, &src_rect,
-                                    DISPMANX_PROTECTION_NONE, NULL, NULL, DISPMANX_STEREOSCOPIC_MONO );
-  if(!element) return false;
-
-  ret = vc_dispmanx_update_submit_sync( update );
-  if(ret != 0) return false;
-
-  return true;
-}
-
 static void restoreTVState()
 {
   if(saved_tv_state && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)

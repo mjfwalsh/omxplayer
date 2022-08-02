@@ -40,9 +40,7 @@ public:
 
   ~OMXPlayerSubtitles();
 
-  OMXPlayerSubtitles(int display,
-                     int layer,
-                     float font_size,
+  OMXPlayerSubtitles(float font_size,
                      bool centered,
                      bool ghost_box,
                      unsigned int lines,

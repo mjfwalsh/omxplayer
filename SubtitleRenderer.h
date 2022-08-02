@@ -34,8 +34,7 @@ class SubtitleRenderer {
 	public:
 		SubtitleRenderer(const SubtitleRenderer&) = delete;
 		SubtitleRenderer& operator=(const SubtitleRenderer&) = delete;
-		SubtitleRenderer(int display, int layer,
-						float r_font_size,
+		SubtitleRenderer(float r_font_size,
 						bool centered,
 						bool box_opacity,
 						unsigned int lines);

@@ -53,6 +53,8 @@ void DispmanxLayer::openDisplay(int display_num, int layer)
 
 	// set layer
 	s_layer = layer;
+
+	atexit(DispmanxLayer::closeDisplay);
 }
 
 Dimension DispmanxLayer::getScreenDimensions()
@@ -96,9 +98,9 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 	// image rectangles
 	VC_RECT_T srcRect;
 	VC_RECT_T dstRect;
-	vc_dispmanx_rect_set(&(m_bmpRect), 0, 0, src_image.width, src_image.height);
-	vc_dispmanx_rect_set(&(srcRect), 0 << 16, 0 << 16, src_image.width << 16, src_image.height << 16);
-	vc_dispmanx_rect_set(&(dstRect), dest_rect.x, dest_rect.y, dest_rect.width, dest_rect.height);
+	vc_dispmanx_rect_set(&m_bmpRect, 0, 0, src_image.width, src_image.height);
+	vc_dispmanx_rect_set(&srcRect, 0, 0, src_image.width << 16, src_image.height << 16);
+	vc_dispmanx_rect_set(&dstRect, dest_rect.x, dest_rect.y, dest_rect.width, dest_rect.height);
 
 	// Image vars
 	m_image_pitch = src_image.width * bytesperpixel;
@@ -143,7 +145,7 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 
 	VC_DISPMANX_ALPHA_T alpha = { DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0 };
 
-	m_element = vc_dispmanx_element_add(m_update, s_display, -30,
+	m_element = vc_dispmanx_element_add(m_update, s_display, s_layer - 1,
 		&(dstRect), m_resource, &(srcRect),
 		DISPMANX_PROTECTION_NONE, &alpha, NULL, DISPMANX_NO_ROTATE);
 
