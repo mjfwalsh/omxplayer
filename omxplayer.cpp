@@ -2178,37 +2178,38 @@ int run_play_loop()
     if(!m_omx_pkt)
     {
       OMXClock::Sleep(10);
+      continue;
     }
-    else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
+
+    switch(m_omx_pkt->codec_type)
     {
-      if(m_player_video && m_omx_pkt->index == 0)
-      {
-        if(m_player_video->AddPacket(m_omx_pkt))
-          m_omx_pkt = NULL;
-        else
-          OMXClock::Sleep(10);
-      }
-    }
-    else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_AUDIO)
-    {
-      if(m_player_audio && playspeed_current == playspeed_normal)
-      {
-        if(m_player_audio->AddPacket(m_omx_pkt))
-          m_omx_pkt = NULL;
-        else
-          OMXClock::Sleep(10);
-      }
-    }
-    else if(m_omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
-    {
-      if(m_has_subtitle && playspeed_current == playspeed_normal)
-      {
-        m_player_subtitles->AddPacket(m_omx_pkt);
+    case AVMEDIA_TYPE_VIDEO:
+      if(!m_player_video || m_omx_pkt->index != 0)
+        goto discard_packet;
+
+      if(m_player_video->AddPacket(m_omx_pkt))
         m_omx_pkt = NULL;
-      }
-    }
-    else
-    {
+      else
+        OMXClock::Sleep(10);
+      break;
+
+    case AVMEDIA_TYPE_AUDIO:
+      if(!m_player_audio || playspeed_current != playspeed_normal)
+        goto discard_packet;
+
+      if(m_player_audio->AddPacket(m_omx_pkt))
+        m_omx_pkt = NULL;
+      else
+        OMXClock::Sleep(10);
+      break;
+
+    case AVMEDIA_TYPE_SUBTITLE:
+      if(m_has_subtitle && playspeed_current == playspeed_normal)
+        m_player_subtitles->AddPacket(m_omx_pkt);
+      // fall through
+
+    discard_packet:
+    default:
       delete m_omx_pkt;
       m_omx_pkt = NULL;
     }

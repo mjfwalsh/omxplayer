@@ -88,6 +88,7 @@ class OMXDvdPlayer
 		int subtitle_count;
 		struct stream_info *subtitle_streams;
 		uint32_t palette[16];
+		int refcount;
 	} title_info;
 
 	int track_count = 0;

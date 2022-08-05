@@ -170,6 +170,7 @@ void SubtitleRenderer::deInitDVDSubs()
 {
 	if(dvdSubLayer)
 		delete dvdSubLayer;
+	dvdSubLayer = NULL;
 }
 
 void SubtitleRenderer::set_font(int *old_font, int new_font)
@@ -306,6 +307,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 
 			// free glyph array
 			cairo_glyph_free(parsed_lines[i][j].glyphs);
+			parsed_lines[i][j].glyphs = NULL;
 		}
 
 		// draw black text outline

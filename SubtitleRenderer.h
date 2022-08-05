@@ -71,6 +71,12 @@ class SubtitleRenderer {
 				{
 				    text.assign(t, l);
 				};
+
+				~SubtitleText()
+				{
+					if(glyphs)
+						cairo_glyph_free(glyphs);
+				}
 		};
 
 		void parse_lines(const char *text, int lines_length);

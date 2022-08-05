@@ -207,6 +207,8 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		for(int i = 0; i < write_track; i++) {
 			if(tracks[i].title->title_num == title_set_num) {
 				tracks[write_track].title = tracks[i].title;
+				tracks[write_track].title->refcount++;
+				break;
 			}
 		}
 		if(tracks[write_track].title != NULL)
@@ -220,8 +222,10 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		}
 
 		tracks[write_track].title->title_num = title_set_num;
+		tracks[write_track].title->refcount = 1;
 
 		// Audio streams
+		tracks[write_track].title->audiostream_count = 0;
 		for (int k = 0; k < 8; k++)
 			if (pgc->audio_control[k] & 0x8000)
 				tracks[write_track].title->audiostream_count++;
@@ -244,6 +248,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		}
 
 		// Subtitles
+		tracks[write_track].title->subtitle_count = 0;
 		for (int k = 0; k < 32; k++)
 			if (pgc->subp_control[k] & 0x80000000)
 				tracks[write_track].title->subtitle_count++;
@@ -473,16 +478,11 @@ OMXDvdPlayer::~OMXDvdPlayer()
 		CloseTrack();
 
 	for(int i = 0; i < track_count; i++) {
-		if(tracks[i].title != NULL) {
+		tracks[i].title->refcount--;
+		if(tracks[i].title->refcount == 0) {
 			free(tracks[i].title->audio_streams);
 			free(tracks[i].title->subtitle_streams);
-
-			for(int h = i + 1; h < track_count; h++)
-				if(tracks[i].title == tracks[h].title)
-					tracks[h].title = NULL;
-
 			free(tracks[i].title);
-			tracks[i].title = NULL;
 		}
 		free(tracks[i].chapters);
 	}
@@ -625,10 +625,17 @@ void OMXDvdPlayer::enableHeuristicTrackSelection()
 	while(r < track_count) {
 		if(tracks[r].enabled) {
 			if(w != r)
-				memcpy(&tracks[w], &tracks[r], sizeof(struct track_info));
+				memmove(&tracks[w], &tracks[r], sizeof(struct track_info));
 			w++;
 			r++;
 		} else {
+			tracks[r].title->refcount--;
+			if(tracks[r].title->refcount == 0) {
+				free(tracks[r].title->audio_streams);
+				free(tracks[r].title->subtitle_streams);
+				free(tracks[r].title);
+			}
+			free(tracks[r].chapters);
 			r++;
 		}
 	}

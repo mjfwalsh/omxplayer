@@ -65,6 +65,7 @@ void AutoPlaylist::readPlaylist(string &filename)
 			playlist.push_back(ent->d_name);
 		}
 	}
+	closedir(dir);
 
 	// In English and most other European langauges, this should sort by lower case without
 	// regard to diacritics

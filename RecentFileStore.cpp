@@ -214,6 +214,7 @@ vector<string> RecentFileStore::getRecentFileList()
 			recents.push_back(recent_dir + ent->d_name);
 		}
 	}
+	closedir(dir);
 
 	return recents;
 }

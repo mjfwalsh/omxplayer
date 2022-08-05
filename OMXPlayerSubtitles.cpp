@@ -141,7 +141,10 @@ void OMXPlayerSubtitles::deInitDVDSubs()
     avcodec_free_context(&m_dvd_codec_context);
 
   if(m_palette)
+  {
     delete[] m_palette;
+    m_palette = NULL;
+  }
 }
 
 void OMXPlayerSubtitles::Close()
@@ -150,6 +153,7 @@ void OMXPlayerSubtitles::Close()
   m_subtitle_buffers.clear();
   m_stream_count = 0;
   m_external_subtitle_stream = -1;
+  deInitDVDSubs();
 }
 
 void OMXPlayerSubtitles::Process()
@@ -352,6 +356,7 @@ void OMXPlayerSubtitles::RenderLoop()
           prev_now = INT_MAX;
           break;
         case Mailbox::EXIT:
+          delete args;
           return;
           break;
       }
@@ -581,19 +586,13 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
 {
   if(pkt->index >= (int)m_subtitle_buffers.size())
-  {
-    delete pkt;
     return;
-  }
 
   if(pkt->hints.codec != AV_CODEC_ID_SUBRIP && 
      pkt->hints.codec != AV_CODEC_ID_SSA &&
      pkt->hints.codec != AV_CODEC_ID_ASS &&
      pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
-  {
-    delete pkt;
     return;
-  }
 
   Subtitle sub(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE);
 
@@ -607,19 +606,12 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
   }
 
   if(!(sub.isImage ? GetImageData(pkt, sub) : GetTextLines(pkt, sub)))
-  {
-    delete pkt;
     return;
-  }
 
   m_subtitle_buffers[pkt->index].push_back(sub);
 
   if(m_visible && pkt->index == m_active_index)
-  {
     SendToRenderer(new Mailbox::Push(sub));
-  }
-
-  delete pkt;
 }
 
 void OMXPlayerSubtitles::DisplayText(const char *text, int duration)

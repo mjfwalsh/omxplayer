@@ -38,8 +38,6 @@ Subtitle::Subtitle(int start, int stop, std::string &text_lines)
 
 void Subtitle::assign_image(unsigned char *srcData, int size, unsigned char *palette)
 {
-  image.data = new unsigned char[size];
-
   if(palette == NULL) {
     image.data.assign(srcData, size);
   } else {

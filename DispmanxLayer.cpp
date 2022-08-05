@@ -189,11 +189,12 @@ void DispmanxLayer::showElement()
 void DispmanxLayer::clearImage()
 {
 	int size = m_image_pitch * m_bmpRect.height;
+
 	void *blank = (void *)malloc(size);
+	if(!blank) return;
+
 	memset(blank, 0, size);
-
 	setImageData(blank, false);
-
 	free(blank);
 }
 

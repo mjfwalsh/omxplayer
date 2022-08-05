@@ -143,21 +143,13 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
     throw "avformat_alloc_context failed";
 
   result = av_set_options_string(m_pFormatContext, s_lavfdopts.c_str(), ":", ",");
-
   if (result < 0)
-  {
-    CLogLog(LOGERROR, "COMXPlayer::OpenFile - invalid lavfdopts %s ", s_lavfdopts.c_str());
     throw "Invalid lavfdopts";
-  }
 
   AVDictionary *d = NULL;
   result = av_dict_parse_string(&d, s_avdict.c_str(), ":", ",", 0);
-
   if (result < 0)
-  {
-    CLogLog(LOGERROR, "COMXPlayer::OpenFile - invalid avdict %s ", s_avdict.c_str());
     throw "Invalid avdict";
-  }
 
   // set the interrupt callback, appeared in libavformat 53.15.0
   m_pFormatContext->interrupt_callback = int_cb;
@@ -170,18 +162,20 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
     CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", filename.c_str());
 
     buffer = (unsigned char*)av_malloc(FFMPEG_FILE_BUFFER_SIZE);
+    if(!buffer)
+      throw "av_malloc failed";
+
     m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
+    if(!m_ioContext)
+      throw "avio_alloc_context failed";
 
     av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
-
     if(!iformat)
-    {
-      CLogLog(LOGERROR, "COMXPlayer::OpenFile - av_probe_input_buffer %s ", filename.c_str());
       throw "av_probe_input_buffer failed";
-    }
 
     m_pFormatContext->pb = m_ioContext;
     result = avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
+    av_dict_free(&d);
     if(result < 0)
       throw "avformat_open_input failed";
   }
@@ -218,13 +212,11 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
     }
 
     CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s", filename.c_str());
+
     result = avformat_open_input(&m_pFormatContext, filename.c_str(), iformat, &d);
     av_dict_free(&d);
     if(result < 0)
-    {
-      CLogLog(LOGERROR, "COMXPlayer::OpenFile - avformat_open_input %s", filename.c_str());
       throw "avformat_open_input failed";
-    }
 
     if(live)
     {
@@ -248,9 +240,7 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
 
   result = avformat_find_stream_info(m_pFormatContext, NULL);
   if(result < 0)
-  {
     throw "avformat_find_stream_info failed";
-  }
 
   // fill in rest of metadata
   if(m_DvdPlayer)

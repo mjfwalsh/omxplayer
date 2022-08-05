@@ -50,6 +50,7 @@ public:
   class Item {
     public:
     explicit Item(const enum Type &t) : type(t), next(NULL) {};
+    virtual ~Item() {};
 
     enum Type type;
     Item *next;
