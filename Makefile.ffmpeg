@@ -241,7 +241,7 @@ download:
 ifeq "$(shell test -d ffmpeg/.git && echo exists)" "exists"
 	@true
 else
-	git clone git://source.ffmpeg.org/ffmpeg ffmpeg --depth=1
+	git clone git://source.ffmpeg.org/ffmpeg ffmpeg -b release/4.1 --depth=1
 endif
 
 .PHONY: install
