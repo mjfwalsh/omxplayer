@@ -146,7 +146,7 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 	VC_DISPMANX_ALPHA_T alpha = { DISPMANX_FLAGS_ALPHA_FROM_SOURCE, 255, 0 };
 
 	m_element = vc_dispmanx_element_add(m_update, s_display, s_layer - 1,
-		&(dstRect), m_resource, &(srcRect),
+		&dstRect, m_resource, &srcRect,
 		DISPMANX_PROTECTION_NONE, &alpha, NULL, DISPMANX_NO_ROTATE);
 
 	if(m_element == 0)
@@ -164,12 +164,11 @@ void DispmanxLayer::changeImageLayer(int new_layer)
 		throw "Dispamnx Error: vc_dispmanx_update_start failed";
 
 	// change layer to new_layer
-	int ret = vc_dispmanx_element_change_attributes(m_update, m_element,
-		ELEMENT_CHANGE_LAYER, new_layer, 255, NULL, NULL, 0, DISPMANX_NO_ROTATE);
+	int ret = vc_dispmanx_element_change_layer(m_update, m_element, new_layer);
 	if( ret != 0 )
 		throw "Dispamnx Error: vc_dispmanx_element_change_attributes failed";
 
-	ret = vc_dispmanx_update_submit_sync( m_update );
+	ret = vc_dispmanx_update_submit_sync(m_update);
 	if( ret != 0 )
 		throw "Dispamnx Error: vc_dispmanx_update_submit_sync failed";
 }
@@ -206,7 +205,7 @@ void DispmanxLayer::setImageData(void *image_data, bool show)
 {
 	// the palette param is ignored
 	int result = vc_dispmanx_resource_write_data(m_resource,
-		VC_IMAGE_MIN, m_image_pitch, image_data, &(m_bmpRect));
+		VC_IMAGE_MIN, m_image_pitch, image_data, &m_bmpRect);
 
 	if(result != 0)
 		throw "Dispamnx Error: vc_dispmanx_resource_write_data failed";

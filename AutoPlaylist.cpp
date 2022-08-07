@@ -40,9 +40,8 @@ void AutoPlaylist::readPlaylist(string &filename)
     dirname = filename.substr(0, pos+1); // including trailing slash
     string basename = filename.substr(pos+1);
 
-	DIR *dir;
-	struct dirent *ent;
-	if ((dir = opendir(dirname.c_str())) == NULL) {
+	DIR *dir = opendir(dirname.c_str());
+	if (!dir) {
 		puts("Failed to open directory for reading");
 		return;
 	}
@@ -58,7 +57,8 @@ void AutoPlaylist::readPlaylist(string &filename)
 		return;
 	}
 
-	while ((ent = readdir(dir)) != NULL) {
+	struct dirent *ent;
+	while ((ent = readdir(dir))) {
 		if(ent->d_type != 4 && ent->d_name[0] != '.' &&
 				fnameext_match.RegFind(ent->d_name, 0) > -1) {
 

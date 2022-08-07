@@ -1,5 +1,5 @@
 /*
- * Author: Torarin Hals Bakke (2012)
+ * Original Author: Torarin Hals Bakke (2012)
  * With changes by Michael Walsh (2022)
  *
  * This program is free software; you can redistribute it and/or modify
@@ -39,7 +39,7 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
 {
   if(Running())
   {
-    SendToRenderer(new Mailbox::Exit());
+    SendToRenderer(Mailbox::EXIT);
     StopThread();
   }
 
@@ -132,7 +132,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
 
 void OMXPlayerSubtitles::deInitDVDSubs()
 {
-  SendToRenderer(new Mailbox::Item(Mailbox::REMOVE_DVD_SUBS));
+  SendToRenderer(Mailbox::REMOVE_DVD_SUBS);
 
   if(m_dvd_codec_context)
     avcodec_free_context(&m_dvd_codec_context);
@@ -147,6 +147,7 @@ void OMXPlayerSubtitles::deInitDVDSubs()
 void OMXPlayerSubtitles::Close()
 {
   m_mailbox.clear();
+  SendToRenderer(Mailbox::CLEAR_RENDERER);
   m_subtitle_buffers.clear();
   m_stream_count = 0;
   m_external_subtitle_stream = -1;
@@ -167,20 +168,22 @@ void OMXPlayerSubtitles::Process()
     // and send quit signal to main thread
     pthread_kill(OMXThread::main_thread, SIGUSR1);
   }
-  m_thread_stopped.store(true, memory_order_relaxed);
+  m_thread_stopped = true;
   m_mailbox.clear();
 }
 
 void OMXPlayerSubtitles::SendToRenderer(Mailbox::Item *msg)
 {
-  if(m_thread_stopped.load(std::memory_order_relaxed))
-  {
-    CLogLog(LOGERROR, "Subtitle rendering thread not running, message discarded");
+  if(m_thread_stopped)
     delete msg;
-    return;
-  }
-  if(msg != NULL)
+  else
     m_mailbox.send(msg);
+}
+
+void OMXPlayerSubtitles::SendToRenderer(Mailbox::Type msg)
+{
+  if(!m_thread_stopped)
+    m_mailbox.send(new Mailbox::Item(msg));
 }
 
 template <typename Iterator>
@@ -202,6 +205,7 @@ void OMXPlayerSubtitles::RenderLoop()
   int current_stop = INT_MIN;
   bool showing = false;
   bool osd = false;
+  bool wait_for_osd = false;
   chrono::time_point<std::chrono::steady_clock> osd_stop;
   int delay = 0;
 
@@ -272,7 +276,6 @@ void OMXPlayerSubtitles::RenderLoop()
     // wait for next message or to timeout
     m_mailbox.wait(chrono::milliseconds(timeout));
 
-
     while(1)
     {
       Mailbox::Item *args = m_mailbox.receive();
@@ -341,6 +344,7 @@ void OMXPlayerSubtitles::RenderLoop()
             m_renderer->show_next();
             showing = true;
             osd = true;
+            wait_for_osd = a->wait;
             osd_stop = chrono::steady_clock::now() +
                        chrono::milliseconds(a->duration);
             prev_now = INT_MAX;
@@ -354,8 +358,15 @@ void OMXPlayerSubtitles::RenderLoop()
           break;
         case Mailbox::EXIT:
           delete args;
+
+          // wait for any active osd to finish up
+          if(osd && wait_for_osd)
+          {
+            int cap = chrono::duration_cast<std::chrono::milliseconds>(
+                                    osd_stop - chrono::steady_clock::now()).count();
+            if (cap > 0) OMXClock::Sleep(cap);
+          }
           return;
-          break;
       }
 
       delete args;
@@ -405,7 +416,7 @@ void OMXPlayerSubtitles::Flush()
   for(auto &q : m_subtitle_buffers)
     q.clear();
 
-  SendToRenderer(new Mailbox::Flush());
+  SendToRenderer(Mailbox::FLUSH);
 }
 
 void OMXPlayerSubtitles::Resume()
@@ -422,11 +433,6 @@ void OMXPlayerSubtitles::SetDelay(int value)
 {
   m_delay = value;
   SendToRenderer(new Mailbox::SetDelay(value));
-}
-
-void OMXPlayerSubtitles::Clear()
-{
-  SendToRenderer(new Mailbox::ClearRenderer());
 }
 
 void OMXPlayerSubtitles::SetVisible(bool visible)
@@ -459,7 +465,7 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index)
     if(m_active_index == m_external_subtitle_stream)
       SendToRenderer(new Mailbox::ToggleExternalSubs(false));
     else
-      SendToRenderer(new Mailbox::Flush());
+      SendToRenderer(Mailbox::FLUSH);
 
     m_visible = false;
     return -1;
@@ -644,7 +650,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
     SendToRenderer(new Mailbox::Push(sub));
 }
 
-void OMXPlayerSubtitles::DisplayText(const char *text, int duration)
+void OMXPlayerSubtitles::DisplayText(const char *text, int duration, bool wait)
 {
-  SendToRenderer(new Mailbox::DisplayText(text, duration));
+  SendToRenderer(new Mailbox::DisplayText(text, duration, wait));
 }

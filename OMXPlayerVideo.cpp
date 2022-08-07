@@ -61,7 +61,7 @@ m_config(config)
   m_decoder = new COMXVideo(av_clock, m_config);
 
   printf("Video codec %s width %d height %d profile %d fps %f\n",
-      m_decoder->GetDecoderName().c_str() , m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
+      m_decoder->GetDecoderName(), m_config.hints.width, m_config.hints.height, m_config.hints.profile, m_fps);
 
   Create();
 }

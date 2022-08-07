@@ -19,10 +19,10 @@
  *
  */
 
-#include <string>
 #include <queue>
 #include <string.h>
 #include <vector>
+#include <pthread.h>
 
 #include <IL/OMX_Core.h>
 #include <IL/OMX_Component.h>
@@ -76,7 +76,7 @@ public:
   OMX_HANDLETYPE    GetComponent() const { return m_handle; }
   unsigned int      GetInputPort() const { return m_input_port; }
   unsigned int      GetOutputPort() const { return m_output_port; }
-  std::string       GetName() const { return m_componentName; }
+  const char        *GetName() const { return m_componentName; }
 
   OMX_ERRORTYPE DisableAllPorts();
   void          RemoveEvent(OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2);
@@ -92,7 +92,7 @@ public:
   OMX_ERRORTYPE EnablePort(unsigned int port, bool wait = true);
   OMX_ERRORTYPE DisablePort(unsigned int port, bool wait = true);
 
-  bool          Initialize( const std::string &component_name, OMX_INDEXTYPE index, OMX_CALLBACKTYPE *callbacks = NULL);
+  bool          Initialize(const char *component_name, OMX_INDEXTYPE index);
   bool          IsInitialized() const { return m_handle != NULL; }
   bool          Deinitialize();
 
@@ -143,7 +143,7 @@ private:
   OMX_HANDLETYPE m_handle = NULL;
   unsigned int   m_input_port = 0;
   unsigned int   m_output_port = 0;
-  std::string    m_componentName;
+  const char     *m_componentName = NULL;
   pthread_mutex_t   m_omx_event_mutex;
   pthread_mutex_t   m_omx_eos_mutex;
   std::vector<omx_event> m_omx_events;

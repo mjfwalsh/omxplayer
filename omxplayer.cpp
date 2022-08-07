@@ -102,6 +102,8 @@ float             m_latency             = 0.0f;
 bool              m_dbus_enabled;
 DispmanxLayer     *m_background_layer   = NULL;
 
+#define safe_delete(object) if(object) { delete object; object = NULL; }
+
 float playspeeds[] = {0, 1/16.0, 1/8.0, 1/4.0, 1/2.0, 0.975, 1.0, 1.125, 2.0, 4.0};
 const int playspeed_max = 9, playspeed_normal = 6;
 int playspeed_current = playspeed_normal;
@@ -149,7 +151,7 @@ void print_version()
 void osd_print(int options, const char *msg)
 {
   if(m_osd)
-    m_player_subtitles->DisplayText(msg, (options & UM_LONG) ? 3000 : 1500);
+    m_player_subtitles->DisplayText(msg, (options & UM_LONG) ? 3000 : 1500, (options & UM_SLEEP));
 
   if(options & UM_STDOUT)
   {
@@ -165,9 +167,6 @@ void osd_print(int options, const char *msg)
       free(s);
     }
   }
-
-  // useful when we want to display some osd before exiting the program
-  if(m_osd && (options & UM_SLEEP)) OMXClock::Sleep((options & UM_LONG) ? 3000 : 1500);
 }
 
 void osd_print(const char *msg)
@@ -236,7 +235,7 @@ static void SetSpeed(float iSpeed)
   m_av_clock->SetSpeed(iSpeed);
 }
 
-static void FlushStreams(int64_t pts)
+static void FlushStreams(int64_t pts = AV_NOPTS_VALUE)
 {
   m_av_clock->Stop();
   m_av_clock->Pause();
@@ -897,40 +896,47 @@ int startup(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-  // control loop
-  int rv = startup(argc, argv);
+  try {
+    // control loop
+    int rv = startup(argc, argv);
 
-  while(1) {
-    switch(rv) {
-    case CHANGE_FILE:
-      rv = change_file();
-      break;
-    case CHANGE_PLAYLIST_ITEM:
-      rv = change_playlist_item();
-      break;
-    case RUN_PLAY_LOOP:
-      rv = run_play_loop();
-      end_of_play_loop();
-      break;
-    case END_PLAY_WITH_ERROR:
-      rv = shutdown(true);
-      break;
-    case ABORT_PLAY:
-      m_stopped = true;
-      rv = playlist_control();
-      break;
-    case END_PLAY:
-      rv = playlist_control();
-      break;
-    case SHUTDOWN:
-      rv = shutdown(false);
-      // fall through
-    case EXIT_SUCCESS:
-    case EXIT_FAILURE:
-    case PLAY_STOPPED:
-    default:
-      return rv;
+    while(1) {
+      switch(rv) {
+      case CHANGE_FILE:
+        rv = change_file();
+        break;
+      case CHANGE_PLAYLIST_ITEM:
+        rv = change_playlist_item();
+        break;
+      case RUN_PLAY_LOOP:
+        rv = run_play_loop();
+        end_of_play_loop();
+        break;
+      case END_PLAY_WITH_ERROR:
+        rv = shutdown(true);
+        break;
+      case ABORT_PLAY:
+        m_stopped = true;
+        rv = playlist_control();
+        break;
+      case END_PLAY:
+        rv = playlist_control();
+        break;
+      case SHUTDOWN:
+        rv = shutdown(false);
+        // fall through
+      case EXIT_SUCCESS:
+      case EXIT_FAILURE:
+      case PLAY_STOPPED:
+      default:
+        return rv;
+      }
     }
+  }
+  catch(const char *msg)
+  {
+    puts(msg);
+    return 1;
   }
 }
 
@@ -948,7 +954,7 @@ int change_file()
   {
     if(!Exists(m_filename))
     {
-      osd_printf(UM_STDOUT, "File \%s not found.\n", getShortFileName().c_str());
+      osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
       return END_PLAY_WITH_ERROR;
     }
 
@@ -971,7 +977,7 @@ int change_file()
 
       if(is_local_file && !Exists(m_filename))
       {
-        osd_printf(UM_STDOUT, "File \%s not found.\n", getShortFileName().c_str());
+        osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
         return END_PLAY_WITH_ERROR;
       }
     }
@@ -1774,7 +1780,7 @@ int run_play_loop()
   }
   catch(const char *msg)
   {
-    printf("OMXReader error: %s\n", msg);
+    osd_printf(UM_ALL, "OMXReader error: %s", msg);
     return END_PLAY_WITH_ERROR;
   }
 
@@ -1942,7 +1948,7 @@ int run_play_loop()
     }
     catch(const char *msg)
     {
-      puts(msg);
+      osd_printf(UM_ALL, msg);
       return END_PLAY_WITH_ERROR;
     }
 
@@ -1960,7 +1966,7 @@ int run_play_loop()
   {
     if(!m_player_subtitles->Open(m_omx_reader->SubtitleStreamCount(), m_external_subtitles_path))
     {
-      puts("Failed to open subtitles");
+      osd_printf(UM_ALL, "Failed to open subtitles");
       return END_PLAY_WITH_ERROR;
     }
 
@@ -1981,7 +1987,7 @@ int run_play_loop()
     {
       if(!m_player_subtitles->initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
       {
-        puts("Failed to initialise DVD subtitles");
+        osd_printf(UM_ALL, "Failed to initialise DVD subtitles");
         return END_PLAY_WITH_ERROR;
       }
     }
@@ -2031,7 +2037,7 @@ int run_play_loop()
     /* player got in an error state */
     if(m_player_audio && m_player_audio->Error())
     {
-      puts("Audio player error");
+      osd_printf(UM_ALL, "Audio player error");
       return END_PLAY_WITH_ERROR;
     }
 
@@ -2234,7 +2240,9 @@ void end_of_play_loop()
   if (m_stats)
     puts("");
 
-  m_player_subtitles->Clear();
+  // close first
+  m_player_subtitles->Close();
+  m_cmd_line_subtitles = false;
 
   int t = (int)(m_av_clock->GetMediaTime()*1e-6);
   int dur = m_omx_reader->GetStreamLengthSeconds();
@@ -2255,25 +2263,11 @@ void end_of_play_loop()
   }
 
   // flush streams
-  FlushStreams(AV_NOPTS_VALUE);
+  FlushStreams();
 
-  if(m_player_video)
-  {
-    delete m_player_video;
-    m_player_video = NULL;
-  }
-
-  if(m_player_audio)
-  {
-    delete m_player_audio;
-    m_player_audio = NULL;
-  }
-
-  delete m_omx_reader;
-  m_omx_reader = NULL;
-
-  m_player_subtitles->Close();
-  m_cmd_line_subtitles = false;
+  safe_delete(m_player_video);
+  safe_delete(m_player_audio);
+  safe_delete(m_omx_reader);
 
   // stop seeking
   m_incr = 0;
@@ -2327,10 +2321,7 @@ int playlist_control()
 
   if(!m_replacement_filename.empty()) {
     // we've received a new file to play via dbus
-    if(m_DvdPlayer) {
-      delete m_DvdPlayer;
-      m_DvdPlayer = NULL;
-    }
+    safe_delete(m_DvdPlayer);
 
     if(m_playlist_enabled) {
       if(m_is_dvd_device) m_dvd_store.saveStore();
@@ -2357,29 +2348,14 @@ int shutdown(bool exit_with_error)
 {
   // We may get here after receiving an error
   // so be conservative and check before deleting objects
-  if(m_omx_pkt)
-    delete m_omx_pkt;
-
-  if(m_player_video)
-    delete m_player_video;
-
-  if(m_player_audio)
-    delete m_player_audio;
-
-  if(m_DvdPlayer)
-    delete m_DvdPlayer;
-
-  if(m_keyboard)
-    delete m_keyboard;
-
-  if(m_player_subtitles)
-    delete m_player_subtitles;
-
-  if(m_background_layer)
-    delete m_background_layer;
-
-  if(m_av_clock)
-    delete m_av_clock;
+  safe_delete(m_omx_pkt);
+  safe_delete(m_player_video);
+  safe_delete(m_player_audio);
+  safe_delete(m_DvdPlayer);
+  safe_delete(m_keyboard);
+  safe_delete(m_player_subtitles);
+  safe_delete(m_background_layer);
+  safe_delete(m_av_clock);
 
   g_OMX.Deinitialize();
 

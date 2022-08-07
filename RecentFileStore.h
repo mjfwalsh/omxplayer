@@ -45,7 +45,7 @@ private:
 	};
 
 	void readlink(fileInfo *f);
-	std::vector<std::string> getRecentFileList();
+	void getRecentFileList(std::vector<std::string> &recents);
 	void clearRecents();
 	void setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
 

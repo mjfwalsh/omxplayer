@@ -351,13 +351,13 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
   bool vflip = false;
 
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
-  std::string decoder_name;
+  const char *decoder_name;
   m_settings_changed = false;
   m_setStartTime = true;
 
   m_config = config;
 
-  m_video_codec_name.clear();
+  m_video_codec_name = NULL;
   m_codingType            = OMX_VIDEO_CodingUnused;
 
   m_submitted_eos = false;

@@ -55,7 +55,6 @@ public:
   void Flush();
   void Resume();
   void Pause();
-  void Clear();
 
   void SetVisible(bool visible);
 
@@ -85,7 +84,7 @@ public:
     return m_delay;
   }
 
-  void DisplayText(const char *text, int duration);
+  void DisplayText(const char *text, int duration, bool wait = false);
 
   void AddPacket(OMXPacket *pkt);
 
@@ -94,6 +93,7 @@ protected:
 
 private:
   void SendToRenderer(Mailbox::Item *msg);
+  void SendToRenderer(Mailbox::Type t);
   void Process() override;
   void RenderLoop();
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);

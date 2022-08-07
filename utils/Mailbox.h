@@ -1,6 +1,6 @@
 #pragma once
 
-// Author: Torarin Hals Bakke (2012)
+// Author: Michael Walsh (2022)
 
 // Boost Software License - Version 1.0 - August 17th, 2003
 
@@ -29,8 +29,6 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "LockBlock.h"
-
 class Mailbox {
 public:
   enum Type {
@@ -49,11 +47,11 @@ public:
 
   class Item {
     public:
-    explicit Item(const enum Type &t) : type(t), next(NULL) {};
+    explicit Item(const enum Type &t) : type(t) {};
     virtual ~Item() {};
 
     enum Type type;
-    Item *next;
+    Item *next = NULL;
   };
   class DVDSubs : public Item
   {
@@ -80,11 +78,6 @@ public:
 
     std::vector<Subtitle> subtitles;
   };
-  class Flush : public Item
-  {
-    public:
-    Flush() : Item(FLUSH) {};
-  };
   class ToggleExternalSubs : public Item
   {
     public:
@@ -109,49 +102,46 @@ public:
   class DisplayText : public Item
   {
     public:
-    DisplayText(const char *tl, int d) : Item(DISPLAY_TEXT), text_lines(tl), duration(d) {};
+    DisplayText(const char *tl, int d, bool w)
+    : Item(DISPLAY_TEXT),
+      text_lines(tl),
+      duration(d),
+      wait(w)
+    {};
 
     std::string text_lines;
     int duration;
-  };
-  class ClearRenderer : public Item
-  {
-    public:
-    ClearRenderer() : Item(CLEAR_RENDERER) {};
-  };
-  class Exit : public Item
-  {
-    public:
-    Exit() : Item(EXIT) {};
+    bool wait;
   };
 
-  void send(Item *elem) {
-    LOCK_BLOCK (messages_lock) {
-      if(tail == NULL) {
-        head = tail = elem;
-      } else {
-        tail->next = elem;
-        tail = elem;
-      }
-      messages_cond.notify_one();
+  void send(Item *elem)
+  {
+    std::lock_guard<std::mutex> look(messages_lock);
+
+    if(tail == NULL) {
+      head = tail = elem;
+    } else {
+      tail->next = elem;
+      tail = elem;
     }
+    messages_cond.notify_one();
   }
 
-  Item *receive() {
-    LOCK_BLOCK (messages_lock) {
-      if(head == NULL) {
-        return NULL;
-      } else {
-        Item *old_head = head;
-        head = head->next;
+  Item *receive()
+  {
+    std::lock_guard<std::mutex> look(messages_lock);
 
-        if(head == NULL)
-          tail = NULL;
+    if(head == NULL) {
+      return NULL;
+    } else {
+      Item *old_head = head;
+      head = head->next;
 
-        return old_head;
-      }
+      if(head == NULL)
+        tail = NULL;
+
+      return old_head;
     }
-    return NULL; // this never happens
   }
 
   void wait(const std::chrono::milliseconds &rel_time)
@@ -162,16 +152,15 @@ public:
 
   void clear()
   {
-    LOCK_BLOCK(messages_lock)
+    std::lock_guard<std::mutex> look(messages_lock);
+
+    while(head != NULL)
     {
-      while(head != NULL)
-      {
-        Item *old_head = head;
-        head = head->next;
-        delete old_head;
-      }
-      tail = NULL;
+      Item *old_head = head;
+      head = head->next;
+      delete old_head;
     }
+    tail = NULL;
   }
 
 private:

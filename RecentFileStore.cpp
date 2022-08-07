@@ -58,7 +58,8 @@ bool RecentFileStore::readStore()
         return false;
     }
 
-	vector<string> recents = getRecentFileList();
+	vector<string> recents;
+	getRecentFileList(recents);
 	sort(recents.begin(), recents.end());
 	uint size = recents.size();
 
@@ -197,26 +198,22 @@ void RecentFileStore::readlink(string &filename, int &track, int &pos, char *aud
 	setDataFromStruct(&f, track, pos, audio, audio_track, subtitle_lang, subtitle_track);
 }
 
-vector<string> RecentFileStore::getRecentFileList()
+void RecentFileStore::getRecentFileList(vector<string> &recents)
 {
-	vector<string> recents;
-
-	DIR *dir;
-	struct dirent *ent;
-	if ((dir = opendir(recent_dir.c_str())) == NULL)
-		return recents;
+	DIR *dir = opendir(recent_dir.c_str());
+	if(!dir)
+		return;
 
 	// re for filename match
 	CRegExp link_file("^[0-9]{2} - ");
 
-	while ((ent = readdir (dir)) != NULL) {
+	struct dirent *ent;
+	while((ent = readdir(dir))) {
 		if(link_file.RegFind(ent->d_name, 0) > -1) {
 			recents.push_back(recent_dir + ent->d_name);
 		}
 	}
 	closedir(dir);
-
-	return recents;
 }
 
 void RecentFileStore::forget(string &key)
@@ -254,7 +251,8 @@ void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audi
 
 void RecentFileStore::clearRecents()
 {
-	vector<string> old_recents = getRecentFileList();
+	vector<string> old_recents;
+	getRecentFileList(old_recents);
 
 	for(uint i=0; i < old_recents.size(); i++)
 		std::remove(old_recents[i].c_str());

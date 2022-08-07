@@ -66,7 +66,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - Error disable port %d on component %s omx_err(0x%08x)",
-          m_src_port, m_src_component->GetName().c_str(), (int)omx_err);
+          m_src_port, m_src_component->GetName(), (int)omx_err);
     }
   }
 
@@ -76,7 +76,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - Error disable port %d on component %s omx_err(0x%08x)",
-          m_dst_port, m_dst_component->GetName().c_str(), (int)omx_err);
+          m_dst_port, m_dst_component->GetName(), (int)omx_err);
     }
   }
 
@@ -86,7 +86,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - Error WaitForCommand port %d on component %s omx_err(0x%08x)",
-          m_dst_port, m_src_component->GetName().c_str(), (int)omx_err);
+          m_dst_port, m_src_component->GetName(), (int)omx_err);
       return omx_err;
     }
   }
@@ -97,7 +97,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - Error WaitForCommand port %d on component %s omx_err(0x%08x)",
-          m_dst_port, m_dst_component->GetName().c_str(), (int)omx_err);
+          m_dst_port, m_dst_component->GetName(), (int)omx_err);
       return omx_err;
     }
   }
@@ -108,7 +108,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - could not unset tunnel on comp src %s port %d omx_err(0x%08x)",
-          m_src_component->GetName().c_str(), m_src_port, (int)omx_err);
+          m_src_component->GetName(), m_src_port, (int)omx_err);
     }
   }
 
@@ -118,7 +118,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Deestablish - could not unset tunnel on comp dst %s port %d omx_err(0x%08x)",
-          m_dst_component->GetName().c_str(), m_dst_port, (int)omx_err);
+          m_dst_component->GetName(), m_dst_port, (int)omx_err);
     }
   }
 
@@ -144,7 +144,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Establish - Error setting state to idle %s omx_err(0x%08x)",
-          m_src_component->GetName().c_str(), (int)omx_err);
+          m_src_component->GetName(), (int)omx_err);
       return omx_err;
     }
   }
@@ -155,7 +155,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
     if(omx_err != OMX_ErrorNone) 
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Establish - could not setup tunnel src %s port %d dst %s port %d omx_err(0x%08x)",
-          m_src_component->GetName().c_str(), m_src_port, m_dst_component->GetName().c_str(), m_dst_port, (int)omx_err);
+          m_src_component->GetName(), m_src_port, m_dst_component->GetName(), m_dst_port, (int)omx_err);
       return omx_err;
     }
   }
@@ -173,7 +173,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Establish - Error enable port %d on component %s omx_err(0x%08x)",
-          m_src_port, m_src_component->GetName().c_str(), (int)omx_err);
+          m_src_port, m_src_component->GetName(), (int)omx_err);
       return omx_err;
     }
   }
@@ -184,7 +184,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Establish - Error enable port %d on component %s omx_err(0x%08x)",
-          m_dst_port, m_dst_component->GetName().c_str(), (int)omx_err);
+          m_dst_port, m_dst_component->GetName(), (int)omx_err);
       return omx_err;
     }
   }
@@ -203,7 +203,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
       if(omx_err != OMX_ErrorNone)
       {
         CLogLog(LOGERROR, "COMXCoreComponent::Establish - Error setting state to idle %s omx_err(0x%08x)",
-            m_src_component->GetName().c_str(), (int)omx_err);
+            m_src_component->GetName(), (int)omx_err);
         return omx_err;
       }
     }
@@ -264,7 +264,7 @@ OMX_ERRORTYPE COMXCoreComponent::EmptyThisBuffer(OMX_BUFFERHEADERTYPE *omx_buffe
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
 
   #if defined(OMX_DEBUG_EVENTHANDLER)
-  CLogLog(LOGDEBUG, "COMXCoreComponent::EmptyThisBuffer component(%s) %p", m_componentName.c_str(), omx_buffer);
+  CLogLog(LOGDEBUG, "COMXCoreComponent::EmptyThisBuffer component(%s) %p", m_componentName, omx_buffer);
   #endif
   if(!m_handle || !omx_buffer)
     return OMX_ErrorUndefined;
@@ -273,7 +273,7 @@ OMX_ERRORTYPE COMXCoreComponent::EmptyThisBuffer(OMX_BUFFERHEADERTYPE *omx_buffe
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::EmptyThisBuffer component(%s) - failed with result(0x%x)",
-        m_componentName.c_str(), omx_err);
+        m_componentName, omx_err);
   }
 
   return omx_err;
@@ -297,13 +297,13 @@ void COMXCoreComponent::FlushInput()
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::FlushInput - Error on component %s omx_err(0x%08x)",
-              m_componentName.c_str(), (int)omx_err);
+              m_componentName, (int)omx_err);
   }
   omx_err = WaitForCommand(OMX_CommandFlush, m_input_port);
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::FlushInput - %s WaitForCommand omx_err(0x%08x)",
-              m_componentName.c_str(), (int)omx_err);
+              m_componentName, (int)omx_err);
   }
 }
 
@@ -319,13 +319,13 @@ void COMXCoreComponent::FlushOutput()
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::FlushOutput - Error on component %s omx_err(0x%08x)",
-              m_componentName.c_str(), (int)omx_err);
+              m_componentName, (int)omx_err);
   }
   omx_err = WaitForCommand(OMX_CommandFlush, m_output_port);
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::FlushOutput - %s WaitForCommand omx_err(0x%08x)",
-              m_componentName.c_str(), (int)omx_err);
+              m_componentName, (int)omx_err);
   }
 }
 
@@ -355,7 +355,7 @@ OMX_BUFFERHEADERTYPE *COMXCoreComponent::GetInputBuffer(long timeout /*=200*/)
     int retcode = pthread_cond_timedwait(&m_input_buffer_cond, &m_omx_input_mutex, &endtime);
     if (retcode != 0) {
       if (timeout != 0)
-        CLogLog(LOGERROR, "COMXCoreComponent::GetInputBuffer %s wait event timeout", m_componentName.c_str());
+        CLogLog(LOGERROR, "COMXCoreComponent::GetInputBuffer %s wait event timeout", m_componentName);
       break;
     }
   }
@@ -379,7 +379,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForInputDone(long timeout /*=200*/)
     int retcode = pthread_cond_timedwait(&m_input_buffer_cond, &m_omx_input_mutex, &endtime);
     if (retcode != 0) {
       if (timeout != 0)
-        CLogLog(LOGERROR, "COMXCoreComponent::WaitForInputDone %s wait event timeout", m_componentName.c_str());
+        CLogLog(LOGERROR, "COMXCoreComponent::WaitForInputDone %s wait event timeout", m_componentName);
       omx_err = OMX_ErrorTimeout;
       break;
     }
@@ -404,7 +404,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForOutputDone(long timeout /*=200*/)
     int retcode = pthread_cond_timedwait(&m_output_buffer_cond, &m_omx_output_mutex, &endtime);
     if (retcode != 0) {
       if (timeout != 0)
-        CLogLog(LOGERROR, "COMXCoreComponent::WaitForOutputDone %s wait event timeout", m_componentName.c_str());
+        CLogLog(LOGERROR, "COMXCoreComponent::WaitForOutputDone %s wait event timeout", m_componentName);
       omx_err = OMX_ErrorTimeout;
       break;
     }
@@ -446,7 +446,7 @@ OMX_ERRORTYPE COMXCoreComponent::AllocInputBuffers()
   m_input_buffer_size   = portFormat.nBufferSize;
 
   CLogLog(LOGDEBUG, "COMXCoreComponent::AllocInputBuffers component(%s) - port(%d), nBufferCountMin(%u), nBufferCountActual(%u), nBufferSize(%u), nBufferAlignmen(%u)",
-            m_componentName.c_str(), GetInputPort(), portFormat.nBufferCountMin,
+            m_componentName, GetInputPort(), portFormat.nBufferCountMin,
             portFormat.nBufferCountActual, portFormat.nBufferSize, portFormat.nBufferAlignment);
 
   for (size_t i = 0; i < portFormat.nBufferCountActual; i++)
@@ -457,7 +457,7 @@ OMX_ERRORTYPE COMXCoreComponent::AllocInputBuffers()
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::AllocInputBuffers component(%s) - OMX_UseBuffer failed with omx_err(0x%x)",
-        m_componentName.c_str(), omx_err);
+        m_componentName, omx_err);
 
       return omx_err;
     }
@@ -472,7 +472,7 @@ OMX_ERRORTYPE COMXCoreComponent::AllocInputBuffers()
   omx_err = WaitForCommand(OMX_CommandPortEnable, m_input_port);
   if(omx_err != OMX_ErrorNone)
   {
-    CLogLog(LOGERROR, "COMXCoreComponent::AllocInputBuffers WaitForCommand:OMX_CommandPortEnable failed on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+    CLogLog(LOGERROR, "COMXCoreComponent::AllocInputBuffers WaitForCommand:OMX_CommandPortEnable failed on %s omx_err(0x%08x)", m_componentName, omx_err);
     return omx_err;
   }
 
@@ -496,7 +496,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeInputBuffers()
   omx_err = DisablePort(m_input_port, false);
   if(omx_err != OMX_ErrorNone)
   {
-    CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName, omx_err);
   }
 
   pthread_mutex_lock(&m_omx_input_mutex);
@@ -508,7 +508,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeInputBuffers()
 
     if(omx_err != OMX_ErrorNone)
     {
-      CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers error deallocate omx input buffer on component %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+      CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers error deallocate omx input buffer on component %s omx_err(0x%08x)", m_componentName, omx_err);
     }
   }
   pthread_mutex_unlock(&m_omx_input_mutex);
@@ -516,7 +516,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeInputBuffers()
   omx_err = WaitForCommand(OMX_CommandPortDisable, m_input_port);
   if(omx_err != OMX_ErrorNone)
   {
-    CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers WaitForCommand:OMX_CommandPortDisable failed on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeInputBuffers WaitForCommand:OMX_CommandPortDisable failed on %s omx_err(0x%08x)", m_componentName, omx_err);
   }
 
   WaitForInputDone(1000);
@@ -553,7 +553,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeOutputBuffers()
   omx_err = DisablePort(m_output_port, false);
   if(omx_err != OMX_ErrorNone)
   {
-    CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers failed to disable port on %s omx_err(0x%08x)", m_componentName, omx_err);
   }
 
   pthread_mutex_lock(&m_omx_output_mutex);
@@ -565,7 +565,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeOutputBuffers()
 
     if(omx_err != OMX_ErrorNone)
     {
-      CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers error deallocate omx output buffer on component %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+      CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers error deallocate omx output buffer on component %s omx_err(0x%08x)", m_componentName, omx_err);
     }
   }
   pthread_mutex_unlock(&m_omx_output_mutex);
@@ -573,7 +573,7 @@ OMX_ERRORTYPE COMXCoreComponent::FreeOutputBuffers()
   omx_err = WaitForCommand(OMX_CommandPortDisable, m_output_port);
   if(omx_err != OMX_ErrorNone)
   {
-    CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers WaitForCommand:OMX_CommandPortDisable failed on %s omx_err(0x%08x)", m_componentName.c_str(), omx_err);
+    CLogLog(LOGERROR, "COMXCoreComponent::FreeOutputBuffers WaitForCommand:OMX_CommandPortDisable failed on %s omx_err(0x%08x)", m_componentName, omx_err);
   }
 
   WaitForOutputDone(1000);
@@ -635,7 +635,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisableAllPorts()
         if(omx_err != OMX_ErrorNone)
         {
           CLogLog(LOGERROR, "COMXCoreComponent::DisableAllPorts - Error disable port %d on component %s omx_err(0x%08x)",
-            (int)(ports.nStartPortNumber) + j, m_componentName.c_str(), (int)omx_err);
+            (int)(ports.nStartPortNumber) + j, m_componentName, (int)omx_err);
         }
         omx_err = WaitForCommand(OMX_CommandPortDisable, ports.nStartPortNumber+j);
         if(omx_err != OMX_ErrorNone && omx_err != OMX_ErrorSameState)
@@ -679,7 +679,7 @@ OMX_ERRORTYPE COMXCoreComponent::AddEvent(OMX_EVENTTYPE eEvent, OMX_U32 nData1, 
 
 #ifdef OMX_DEBUG_EVENTS
   CLogLog(LOGDEBUG, "COMXCoreComponent::AddEvent %s add event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
 
   return OMX_ErrorNone;
@@ -690,7 +690,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
 {
 #ifdef OMX_DEBUG_EVENTS
   CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForEvent %s wait event 0x%08x",
-      m_componentName.c_str(), (int)eventType);
+      m_componentName, (int)eventType);
 #endif
 
   pthread_mutex_lock(&m_omx_event_mutex);
@@ -705,7 +705,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
 
 #ifdef OMX_DEBUG_EVENTS
       CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForEvent %s inlist event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
 
 
@@ -713,7 +713,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
       {
 #ifdef OMX_DEBUG_EVENTS
         CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForEvent %s remove event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
         m_omx_events.erase(it);
         pthread_mutex_unlock(&m_omx_event_mutex);
@@ -729,7 +729,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
       {
 #ifdef OMX_DEBUG_EVENTS
         CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForEvent %s remove event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
 
         m_omx_events.erase(it);
@@ -745,7 +745,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
     {
       if (timeout > 0)
         CLogLog(LOGERROR, "COMXCoreComponent::WaitForEvent %s wait event 0x%08x timeout %ld",
-                          m_componentName.c_str(), (int)eventType, timeout);
+                          m_componentName, (int)eventType, timeout);
       pthread_mutex_unlock(&m_omx_event_mutex);
       return OMX_ErrorTimeout;
     }
@@ -759,7 +759,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
 {
 #ifdef OMX_DEBUG_EVENTS
   CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForCommand %s wait event.eEvent 0x%08x event.command 0x%08x event.nData2 %d",
-      m_componentName.c_str(), (int)OMX_EventCmdComplete, (int)command, (int)nData2);
+      m_componentName, (int)OMX_EventCmdComplete, (int)command, (int)nData2);
 #endif
 
   pthread_mutex_lock(&m_omx_event_mutex);
@@ -774,13 +774,13 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
 
 #ifdef OMX_DEBUG_EVENTS
       CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForCommand %s inlist event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
       if(event.eEvent == OMX_EventError && event.nData1 == (OMX_U32)OMX_ErrorSameState && event.nData2 == 1)
       {
 #ifdef OMX_DEBUG_EVENTS
         CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForCommand %s remove event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
 
         m_omx_events.erase(it);
@@ -798,7 +798,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
 
 #ifdef OMX_DEBUG_EVENTS
         CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForCommand %s remove event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
-          m_componentName.c_str(), (int)event.eEvent, (int)event.nData1, (int)event.nData2);
+          m_componentName, (int)event.eEvent, (int)event.nData1, (int)event.nData2);
 #endif
 
         m_omx_events.erase(it);
@@ -812,7 +812,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
     int retcode = pthread_cond_timedwait(&m_omx_event_cond, &m_omx_event_mutex, &endtime);
     if (retcode != 0) {
       CLogLog(LOGERROR, "COMXCoreComponent::WaitForCommand %s wait timeout event.eEvent 0x%08x event.command 0x%08x event.nData2 %d",
-        m_componentName.c_str(), (int)OMX_EventCmdComplete, (int)command, (int)nData2);
+        m_componentName, (int)OMX_EventCmdComplete, (int)command, (int)nData2);
       
       pthread_mutex_unlock(&m_omx_event_mutex);
       return OMX_ErrorTimeout;
@@ -839,13 +839,13 @@ OMX_ERRORTYPE COMXCoreComponent::SetStateForComponent(OMX_STATETYPE state)
     if(omx_err == OMX_ErrorSameState)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::SetStateForComponent - %s same state",
-        m_componentName.c_str());
+        m_componentName);
       omx_err = OMX_ErrorNone;
     }
     else
     {
       CLogLog(LOGERROR, "COMXCoreComponent::SetStateForComponent - %s failed with omx_err(0x%x)",
-        m_componentName.c_str(), omx_err);
+        m_componentName, omx_err);
     }
   }
   else 
@@ -854,7 +854,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetStateForComponent(OMX_STATETYPE state)
     if (omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::WaitForCommand - %s failed with omx_err(0x%x)",
-        m_componentName.c_str(), omx_err);
+        m_componentName, omx_err);
     }
   }
   return omx_err;
@@ -871,7 +871,7 @@ OMX_STATETYPE COMXCoreComponent::GetState() const
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::GetState - %s failed with omx_err(0x%x)",
-      m_componentName.c_str(), omx_err);
+      m_componentName, omx_err);
   }
   return state;
 }
@@ -887,7 +887,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetParameter(OMX_INDEXTYPE paramIndex, OMX_PTR 
   if(omx_err != OMX_ErrorNone) 
   {
     CLogLog(LOGERROR, "COMXCoreComponent::SetParameter - %s failed with omx_err(0x%x)",
-              m_componentName.c_str(), omx_err);
+              m_componentName, omx_err);
   }
   return omx_err;
 }
@@ -903,7 +903,7 @@ OMX_ERRORTYPE COMXCoreComponent::GetParameter(OMX_INDEXTYPE paramIndex, OMX_PTR 
   if(omx_err != OMX_ErrorNone) 
   {
     CLogLog(LOGERROR, "COMXCoreComponent::GetParameter - %s failed with omx_err(0x%x)",
-              m_componentName.c_str(), omx_err);
+              m_componentName, omx_err);
   }
   return omx_err;
 }
@@ -919,7 +919,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetConfig(OMX_INDEXTYPE configIndex, OMX_PTR co
   if(omx_err != OMX_ErrorNone) 
   {
     CLogLog(LOGERROR, "COMXCoreComponent::SetConfig - %s failed with omx_err(0x%x)",
-              m_componentName.c_str(), omx_err);
+              m_componentName, omx_err);
   }
   return omx_err;
 }
@@ -935,7 +935,7 @@ OMX_ERRORTYPE COMXCoreComponent::GetConfig(OMX_INDEXTYPE configIndex, OMX_PTR co
   if(omx_err != OMX_ErrorNone) 
   {
     CLogLog(LOGERROR, "COMXCoreComponent::GetConfig - %s failed with omx_err(0x%x)",
-              m_componentName.c_str(), omx_err);
+              m_componentName, omx_err);
   }
   return omx_err;
 }
@@ -955,7 +955,7 @@ OMX_ERRORTYPE COMXCoreComponent::EnablePort(unsigned int port,  bool wait)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::EnablePort - Error get port %d status on component %s omx_err(0x%08x)",
-        port, m_componentName.c_str(), (int)omx_err);
+        port, m_componentName, (int)omx_err);
   }
 
   if(portFormat.bEnabled == OMX_FALSE)
@@ -964,7 +964,7 @@ OMX_ERRORTYPE COMXCoreComponent::EnablePort(unsigned int port,  bool wait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::EnablePort - Error enable port %d on component %s omx_err(0x%08x)",
-          port, m_componentName.c_str(), (int)omx_err);
+          port, m_componentName, (int)omx_err);
         return omx_err;
     }
     else
@@ -991,7 +991,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisablePort(unsigned int port, bool wait)
   if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::DisablePort - Error get port %d status on component %s omx_err(0x%08x)",
-        port, m_componentName.c_str(), (int)omx_err);
+        port, m_componentName, (int)omx_err);
   }
 
   if(portFormat.bEnabled == OMX_TRUE)
@@ -1000,7 +1000,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisablePort(unsigned int port, bool wait)
     if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::DIsablePort - Error disable port %d on component %s omx_err(0x%08x)",
-          port, m_componentName.c_str(), (int)omx_err);
+          port, m_componentName, (int)omx_err);
       return omx_err;
     }
     else
@@ -1012,7 +1012,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisablePort(unsigned int port, bool wait)
   return omx_err;
 }
 
-bool COMXCoreComponent::Initialize( const std::string &component_name, OMX_INDEXTYPE index, OMX_CALLBACKTYPE *callbacks)
+bool COMXCoreComponent::Initialize(const char *component_name, OMX_INDEXTYPE index)
 {
   OMX_ERRORTYPE omx_err;
 
@@ -1043,26 +1043,18 @@ bool COMXCoreComponent::Initialize( const std::string &component_name, OMX_INDEX
   m_callbacks.EmptyBufferDone = &COMXCoreComponent::DecoderEmptyBufferDoneCallback;
   m_callbacks.FillBufferDone  = &COMXCoreComponent::DecoderFillBufferDoneCallback;
 
-  if (callbacks && callbacks->EventHandler)
-    m_callbacks.EventHandler    = callbacks->EventHandler;
-  if (callbacks && callbacks->EmptyBufferDone)
-    m_callbacks.EmptyBufferDone = callbacks->EmptyBufferDone;
-  if (callbacks && callbacks->FillBufferDone)
-    m_callbacks.FillBufferDone  = callbacks->FillBufferDone;
-
   // Get video component handle setting up callbacks, component is in loaded state on return.
   if(!m_handle)
   {
-#ifdef TARGET_LINUX
-    if (strncmp("OMX.alsa.", component_name.c_str(), 9) == 0)
-      omx_err = OMXALSA_GetHandle(&m_handle, (char*) component_name.c_str(), this, &m_callbacks);
+    if (strncmp("OMX.alsa.", component_name, 9) == 0)
+      omx_err = OMXALSA_GetHandle(&m_handle, (char*) component_name, this, &m_callbacks);
     else
-#endif
-    omx_err = OMX_GetHandle(&m_handle, (char*)component_name.c_str(), this, &m_callbacks);
+      omx_err = OMX_GetHandle(&m_handle, (char*)component_name, this, &m_callbacks);
+
     if (!m_handle || omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::Initialize - could not get component handle for %s omx_err(0x%08x)",
-          component_name.c_str(), (int)omx_err);
+          component_name, (int)omx_err);
       Deinitialize();
       return false;
     }
@@ -1075,20 +1067,20 @@ bool COMXCoreComponent::Initialize( const std::string &component_name, OMX_INDEX
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::Initialize - could not get port_param for component %s omx_err(0x%08x)",
-        component_name.c_str(), (int)omx_err);
+        component_name, (int)omx_err);
   }
 
   omx_err = DisableAllPorts();
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::Initialize - error disable ports on component %s omx_err(0x%08x)",
-        component_name.c_str(), (int)omx_err);
+        component_name, (int)omx_err);
   }
 
   m_input_port  = port_param.nStartPortNumber;
   m_output_port = m_input_port + 1;
 
-  if(m_componentName == "OMX.broadcom.audio_mixer")
+  if(strcmp(m_componentName, "OMX.broadcom.audio_mixer") == 0)
   {
     m_input_port  = port_param.nStartPortNumber + 1;
     m_output_port = port_param.nStartPortNumber;
@@ -1098,7 +1090,7 @@ bool COMXCoreComponent::Initialize( const std::string &component_name, OMX_INDEX
     m_output_port = port_param.nStartPortNumber+port_param.nPorts-1;
 
   CLogLog(LOGDEBUG, "COMXCoreComponent::Initialize %s input port %d output port %d m_handle %p",
-      m_componentName.c_str(), m_input_port, m_output_port, m_handle);
+      m_componentName, m_input_port, m_output_port, m_handle);
 
   m_exit = false;
   m_flush_input   = false;
@@ -1133,9 +1125,9 @@ bool COMXCoreComponent::Deinitialize()
     TransitionToStateLoaded();
 
     CLogLog(LOGDEBUG, "COMXCoreComponent::Deinitialize : %s handle %p",
-        m_componentName.c_str(), m_handle);
+        m_componentName, m_handle);
 #ifdef TARGET_LINUX
-    if (strncmp("OMX.alsa.", m_componentName.c_str(), 9) == 0)
+    if (strncmp("OMX.alsa.", m_componentName, 9) == 0)
       omx_err = OMXALSA_FreeHandle(m_handle);
     else
 #endif
@@ -1143,13 +1135,13 @@ bool COMXCoreComponent::Deinitialize()
     if (omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreComponent::Deinitialize - failed to free handle for component %s omx_err(0x%08x)",
-          m_componentName.c_str(), omx_err);
+          m_componentName, omx_err);
     }
     m_handle = NULL;
 
     m_input_port      = 0;
     m_output_port     = 0;
-    m_componentName.clear();
+    m_componentName   = NULL;
     m_resource_error  = false;
   }
 
@@ -1205,7 +1197,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEmptyBufferDone(OMX_HANDLETYPE hComponen
     return OMX_ErrorNone;
 
   #if defined(OMX_DEBUG_EVENTHANDLER)
-  CLogLog(LOGDEBUG, "COMXCoreComponent::DecoderEmptyBufferDone component(%s) %p %d/%d", m_componentName.c_str(), pBuffer, m_omx_input_avaliable.size(), m_input_buffer_count);
+  CLogLog(LOGDEBUG, "COMXCoreComponent::DecoderEmptyBufferDone component(%s) %p %d/%d", m_componentName, pBuffer, m_omx_input_avaliable.size(), m_input_buffer_count);
   #endif
   pthread_mutex_lock(&m_omx_input_mutex);
   m_omx_input_avaliable.push(pBuffer);
@@ -1224,7 +1216,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderFillBufferDone(OMX_HANDLETYPE hComponent
     return OMX_ErrorNone;
 
   #if defined(OMX_DEBUG_EVENTHANDLER)
-  CLogLog(LOGDEBUG, "COMXCoreComponent::DecoderFillBufferDone component(%s) %p %d/%d", m_componentName.c_str(), pBuffer, m_omx_output_available.size(), m_output_buffer_count);
+  CLogLog(LOGDEBUG, "COMXCoreComponent::DecoderFillBufferDone component(%s) %p %d/%d", m_componentName, pBuffer, m_omx_output_available.size(), m_output_buffer_count);
   #endif
   pthread_mutex_lock(&m_omx_output_mutex);
   m_omx_output_available.push(pBuffer);
@@ -1250,7 +1242,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
 #ifdef OMX_DEBUG_EVENTS
   CLogLog(LOGDEBUG,
     "COMXCoreComponent::%s - %s eEvent(0x%x), nData1(0x%x), nData2(0x%x), pEventData(0x%p)",
-    __func__, GetName().c_str(), eEvent, nData1, nData2, pEventData);
+    __func__, GetName(), eEvent, nData1, nData2, pEventData);
 #endif
 
   // if the error is expected, then we can skip it
@@ -1258,7 +1250,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
   {
     CLogLog(LOGDEBUG,
       "COMXCoreComponent::%s - %s Ignoring expected event: eEvent(0x%x), nData1(0x%x), nData2(0x%x), pEventData(0x%p)",
-      __func__, GetName().c_str(), eEvent, nData1, nData2, pEventData);
+      __func__, GetName(), eEvent, nData1, nData2, pEventData);
     m_ignore_error = OMX_ErrorNone;
     return OMX_ErrorNone;
   }
@@ -1275,67 +1267,67 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
           {
             case OMX_StateInvalid:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateInvalid", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateInvalid", CLASSNAME, __func__, GetName());
             #endif
             break;
             case OMX_StateLoaded:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateLoaded", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateLoaded", CLASSNAME, __func__, GetName());
             #endif
             break;
             case OMX_StateIdle:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateIdle", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateIdle", CLASSNAME, __func__, GetName());
             #endif
             break;
             case OMX_StateExecuting:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateExecuting", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateExecuting", CLASSNAME, __func__, GetName());
             #endif
             break;
             case OMX_StatePause:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StatePause", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StatePause", CLASSNAME, __func__, GetName());
             #endif
             break;
             case OMX_StateWaitForResources:
             #if defined(OMX_DEBUG_EVENTHANDLER)
-              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateWaitForResources", CLASSNAME, __func__, GetName().c_str());
+              CLogLog(LOGDEBUG, "%s::%s %s - OMX_StateWaitForResources", CLASSNAME, __func__, GetName());
             #endif
             break;
             default:
             #if defined(OMX_DEBUG_EVENTHANDLER)
               CLogLog(LOGDEBUG,
-                "%s::%s %s - Unknown OMX_Statexxxxx, state(%d)", CLASSNAME, __func__, GetName().c_str(), (int)nData2);
+                "%s::%s %s - Unknown OMX_Statexxxxx, state(%d)", CLASSNAME, __func__, GetName(), (int)nData2);
             #endif
             break;
           }
         break;
         case OMX_CommandFlush:
           #if defined(OMX_DEBUG_EVENTHANDLER)
-          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandFlush, port %d", CLASSNAME, __func__, GetName().c_str(), (int)nData2);
+          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandFlush, port %d", CLASSNAME, __func__, GetName(), (int)nData2);
           #endif
         break;
         case OMX_CommandPortDisable:
           #if defined(OMX_DEBUG_EVENTHANDLER)
-          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandPortDisable, nData1(0x%x), port %d", CLASSNAME, __func__, GetName().c_str(), nData1, (int)nData2);
+          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandPortDisable, nData1(0x%x), port %d", CLASSNAME, __func__, GetName(), nData1, (int)nData2);
           #endif
         break;
         case OMX_CommandPortEnable:
           #if defined(OMX_DEBUG_EVENTHANDLER)
-          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandPortEnable, nData1(0x%x), port %d", CLASSNAME, __func__, GetName().c_str(), nData1, (int)nData2);
+          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandPortEnable, nData1(0x%x), port %d", CLASSNAME, __func__, GetName(), nData1, (int)nData2);
           #endif
         break;
         #if defined(OMX_DEBUG_EVENTHANDLER)
         case OMX_CommandMarkBuffer:
-          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandMarkBuffer, nData1(0x%x), port %d", CLASSNAME, __func__, GetName().c_str(), nData1, (int)nData2);
+          CLogLog(LOGDEBUG, "%s::%s %s - OMX_CommandMarkBuffer, nData1(0x%x), port %d", CLASSNAME, __func__, GetName(), nData1, (int)nData2);
         break;
         #endif
       }
     break;
     case OMX_EventBufferFlag:
       #if defined(OMX_DEBUG_EVENTHANDLER)
-      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventBufferFlag(input)", CLASSNAME, __func__, GetName().c_str());
+      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventBufferFlag(input)", CLASSNAME, __func__, GetName());
       #endif
       if(nData2 & OMX_BUFFERFLAG_EOS)
       {
@@ -1346,20 +1338,20 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
     break;
     case OMX_EventPortSettingsChanged:
       #if defined(OMX_DEBUG_EVENTHANDLER)
-      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventPortSettingsChanged(output)", CLASSNAME, __func__, GetName().c_str());
+      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventPortSettingsChanged(output)", CLASSNAME, __func__, GetName());
       #endif
     break;
     case OMX_EventParamOrConfigChanged:
       #if defined(OMX_DEBUG_EVENTHANDLER)
-      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventParamOrConfigChanged(output)", CLASSNAME, __func__, GetName().c_str());
+      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventParamOrConfigChanged(output)", CLASSNAME, __func__, GetName());
       #endif
     break;
     #if defined(OMX_DEBUG_EVENTHANDLER)
     case OMX_EventMark:
-      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventMark", CLASSNAME, __func__, GetName().c_str());
+      CLogLog(LOGDEBUG, "%s::%s %s - OMX_EventMark", CLASSNAME, __func__, GetName());
     break;
     case OMX_EventResourcesAcquired:
-      CLogLog(LOGDEBUG, "%s::%s %s- OMX_EventResourcesAcquired", CLASSNAME, __func__, GetName().c_str());
+      CLogLog(LOGDEBUG, "%s::%s %s- OMX_EventResourcesAcquired", CLASSNAME, __func__, GetName());
     break;
     #endif
     case OMX_EventError:
@@ -1367,28 +1359,28 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
       {
         case OMX_ErrorSameState:
           //#if defined(OMX_DEBUG_EVENTHANDLER)
-          //CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorSameState, same state", CLASSNAME, __func__, GetName().c_str());
+          //CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorSameState, same state", CLASSNAME, __func__, GetName());
           //#endif
         break;
         case OMX_ErrorInsufficientResources:
-          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorInsufficientResources, insufficient resources", CLASSNAME, __func__, GetName().c_str());
+          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorInsufficientResources, insufficient resources", CLASSNAME, __func__, GetName());
           m_resource_error = true;
         break;
         case OMX_ErrorFormatNotDetected:
-          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorFormatNotDetected, cannot parse input stream", CLASSNAME, __func__, GetName().c_str());
+          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorFormatNotDetected, cannot parse input stream", CLASSNAME, __func__, GetName());
         break;
         case OMX_ErrorPortUnpopulated:
-        CLogLog(LOGWARNING, "%s::%s %s - OMX_ErrorPortUnpopulated port %d", CLASSNAME, __func__, GetName().c_str(), (int)nData2);
+        CLogLog(LOGWARNING, "%s::%s %s - OMX_ErrorPortUnpopulated port %d", CLASSNAME, __func__, GetName(), (int)nData2);
         break;
         case OMX_ErrorStreamCorrupt:
-          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorStreamCorrupt, Bitstream corrupt", CLASSNAME, __func__, GetName().c_str());
+          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorStreamCorrupt, Bitstream corrupt", CLASSNAME, __func__, GetName());
           m_resource_error = true;
         break;
         case OMX_ErrorUnsupportedSetting:
-          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorUnsupportedSetting, unsupported setting", CLASSNAME, __func__, GetName().c_str());
+          CLogLog(LOGERROR, "%s::%s %s - OMX_ErrorUnsupportedSetting, unsupported setting", CLASSNAME, __func__, GetName());
         break;
         default:
-          CLogLog(LOGERROR, "%s::%s %s - OMX_EventError detected, nData1(0x%x), port %d",  CLASSNAME, __func__, GetName().c_str(), nData1, (int)nData2);
+          CLogLog(LOGERROR, "%s::%s %s - OMX_EventError detected, nData1(0x%x), port %d",  CLASSNAME, __func__, GetName(), nData1, (int)nData2);
         break;
       }
       // wake things up
@@ -1400,7 +1392,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
       }
     break;
     default:
-      CLogLog(LOGWARNING, "%s::%s %s - Unknown eEvent(0x%x), nData1(0x%x), port %d", CLASSNAME, __func__, GetName().c_str(), eEvent, nData1, (int)nData2);
+      CLogLog(LOGWARNING, "%s::%s %s - Unknown eEvent(0x%x), nData1(0x%x), port %d", CLASSNAME, __func__, GetName(), eEvent, nData1, (int)nData2);
     break;
   }
 

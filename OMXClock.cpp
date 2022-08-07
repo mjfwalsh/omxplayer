@@ -22,6 +22,8 @@
 #include "utils/log.h"
 #include "utils/SingleLock.h"
 
+#include <errno.h>
+
 #define OMX_PRE_ROLL 200
 
 OMXClock::OMXClock()
@@ -372,8 +374,7 @@ bool OMXClock::SetSpeed(float speed)
   omx_err = m_omx_clock.SetConfig(OMX_IndexConfigTimeScale, &scaleType);
   if(omx_err != OMX_ErrorNone)
   {
-    printf("OMXClock::SetSpeed error setting OMX_IndexConfigTimeClockState\n");
-
+    CLogLog(LOGDEBUG, "OMXClock::SetSpeed error setting OMX_IndexConfigTimeClockState");
     return false;
   }
 

@@ -71,7 +71,7 @@ public:
   unsigned int GetFreeSpace();
   bool  Decode(OMXPacket *pkt);
   void Reset(void);
-  std::string GetDecoderName() { return m_video_codec_name; };
+  const char *GetDecoderName() { return m_video_codec_name; };
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
   void SetAlpha(int alpha);
@@ -105,7 +105,7 @@ protected:
 
   bool              m_setStartTime = false;
 
-  std::string       m_video_codec_name;
+  const char        *m_video_codec_name;
 
   bool              m_deinterlace = false;
   OMXVideoConfig    m_config;
