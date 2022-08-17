@@ -26,17 +26,6 @@
 
 using namespace std;
 
-RecentDVDStore::RecentDVDStore()
-{
-	// recent DVD file store
-	char *home = getenv("HOME");
-	if(!home)
-		throw "Failed to get home directory";
-
-	recent_dvd_file.assign(home);
-	recent_dvd_file += "/.omxplayer_dvd_store";
-}
-
 static vector<string> split(string text)
 {
 	int start = 0;
@@ -58,11 +47,20 @@ static vector<string> split(string text)
 
 void RecentDVDStore::readStore()
 {
-	m_init = true;
+	// find recent DVD file store
+	char *home = getenv("HOME");
+	if(!home)
+	{
+		puts("Failed to identify home directory");
+		return;
+	}
 
+	recent_dvd_file.assign(home);
+	recent_dvd_file += "/.omxplayer_dvd_store";
+
+	// open file
 	ifstream s(recent_dvd_file);
-
-	if(!s.is_open()) return;
+	if(!s) return;
 
 	string line;
 	while(getline(s, line)) { 
@@ -85,11 +83,15 @@ void RecentDVDStore::readStore()
 			store.push_back(move(d));
 	}
 	s.close();
+
+	m_init = true;
 }
 
 
 void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle)
 {
+	if(!m_init) return;
+
 	current_dvd = key;
 
 	if(current_dvd.empty()) return;
@@ -117,7 +119,7 @@ void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, cha
 
 void RecentDVDStore::remember(int &track, int &time, char *audio, char *subtitle)
 {
-	if(current_dvd.empty()) return;
+	if(!m_init || current_dvd.empty()) return;
 
 	DVDInfo d;
 	d.key = current_dvd;

@@ -36,7 +36,10 @@ RecentFileStore::RecentFileStore()
 	// recent dir
 	char *home = getenv("HOME");
 	if(!home)
-		throw "Failed to get home directory";
+	{
+		puts("Failed to determine home directory");
+		return;
+	}
 
 	recent_dir.assign(home);
 	recent_dir += "/OMXPlayerRecent/"; // note the trailing slash
@@ -44,6 +47,8 @@ RecentFileStore::RecentFileStore()
 
 bool RecentFileStore::readStore()
 {
+	if(recent_dir.empty()) return false;
+
 	// create recent dir if necessary
     struct stat fileStat;
     if(stat(recent_dir.c_str(), &fileStat) == 0) {
@@ -81,7 +86,7 @@ bool RecentFileStore::checkIfLink(string &filename)
         return true;
     }
 
-    if(filename.length() > recent_dir.length() &&
+    if(!recent_dir.empty() && filename.length() > recent_dir.length() &&
             filename.substr(0, recent_dir.length()) == recent_dir) {
         return true;
     }
@@ -89,7 +94,7 @@ bool RecentFileStore::checkIfLink(string &filename)
     return false;
 }
 
-bool split(string &line, string &key, string &val)
+static bool split(string &line, string &key, string &val)
 {
     string::size_type n = line.find("=");
     if(n == string::npos)
@@ -129,7 +134,7 @@ void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, in
 	}
 }
 
-bool is_valid_link_url(std::string &url)
+static bool is_valid_link_url(std::string &url)
 {
 	if(url[0] == '/')
 		return true;
@@ -200,6 +205,8 @@ void RecentFileStore::readlink(string &filename, int &track, int &pos, char *aud
 
 void RecentFileStore::getRecentFileList(vector<string> &recents)
 {
+	if(recent_dir.empty()) return;
+
 	DIR *dir = opendir(recent_dir.c_str());
 	if(!dir)
 		return;
@@ -228,8 +235,9 @@ void RecentFileStore::forget(string &key)
 
 void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
 {
-	fileInfo newFile;
+	if(!m_init) return;
 
+	fileInfo newFile;
 	newFile.url = url;
 	newFile.time = pos;
 
@@ -251,6 +259,8 @@ void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audi
 
 void RecentFileStore::clearRecents()
 {
+	if(!m_init) return;
+
 	vector<string> old_recents;
 	getRecentFileList(old_recents);
 

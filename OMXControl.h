@@ -53,6 +53,7 @@ public:
   ~OMXControl();
   bool connect(const char *dbus_name);
   enum ControlFlow getEvent();
+  operator bool() const;
 private:
   void dispatch();
   bool dbus_connect(const char *dbus_name);

@@ -19,27 +19,38 @@
 
 extern "C" {
 #include <bcm_host.h>
-};
+}
+
 #include "OMXStreamInfo.h"
 #include "OMXReader.h"
 #include "utils/log.h"
-
 #include "VideoCore.h"
 
 using namespace std;
 
-namespace VideoCore {
-
-bool saved_tv_state = false;
-TV_DISPLAY_STATE_T   tv_state;
-
-void tv_stuff_init()
+VideoCore::VideoCore()
 {
   bcm_host_init();
-  atexit(bcm_host_deinit);
 }
 
-int get_mem_gpu()
+VideoCore::~VideoCore()
+{
+  if(m_native_interlace_active)
+  {
+    char response[80];
+    vc_gencmd(response, sizeof response, "hvs_update_fields %d", 0);
+  }
+
+  if(tv_state && tv_state->display.hdmi.group && tv_state->display.hdmi.mode)
+    vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state->display.hdmi.group, tv_state->display.hdmi.mode);
+
+  if(tv_state)
+    delete tv_state;
+
+  bcm_host_deinit();
+}
+
+int VideoCore::get_mem_gpu()
 {
   char response[80] = "";
   int gpu_mem = 0;
@@ -91,7 +102,7 @@ static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t 
   }
 }
 
-void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace)
+void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace)
 {
   int32_t num_modes = 0;
   HDMI_RES_GROUP_T prefer_group;
@@ -193,7 +204,7 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
       char response[80];
       vc_gencmd(response, sizeof response, "hvs_update_fields %d", 1);
 
-      atexit(turnOffNativeDeinterlace);
+      m_native_interlace_active = true;
     }
 
     // if we are closer to ntsc version of framerate, let gpu know
@@ -236,24 +247,16 @@ void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlac
     delete[] supported_modes;
 }
 
-static void restoreTVState()
+void VideoCore::saveTVState()
 {
-  if(saved_tv_state && tv_state.display.hdmi.group && tv_state.display.hdmi.mode)
-    vc_tv_hdmi_power_on_explicit_new(HDMI_MODE_HDMI, (HDMI_RES_GROUP_T)tv_state.display.hdmi.group, tv_state.display.hdmi.mode);
-}
-
-void saveTVState()
-{
-  if(!saved_tv_state)
+  if(!tv_state)
   {
-    memset(&tv_state, 0, sizeof(TV_DISPLAY_STATE_T));
-    vc_tv_get_display_state(&tv_state);
-    saved_tv_state = true;
-    atexit(restoreTVState);
+    tv_state = new TV_DISPLAY_STATE_T;
+    vc_tv_get_display_state(tv_state);
   }
 }
 
-float getDisplayAspect()
+float VideoCore::getDisplayAspect()
 {
   float display_aspect;
 
@@ -272,7 +275,7 @@ float getDisplayAspect()
   return display_aspect;
 }
 
-const char *getAudioDevice()
+const char *VideoCore::getAudioDevice()
 {
   if (vc_tv_hdmi_audio_supported(EDID_AudioFormat_ePCM, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit ) == 0)
     return "omx:hdmi";
@@ -280,20 +283,13 @@ const char *getAudioDevice()
     return "omx:local";
 }
 
-bool canPassThroughAC3()
+bool VideoCore::canPassThroughAC3()
 {
   return vc_tv_hdmi_audio_supported(EDID_AudioFormat_eAC3, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit) != 0;
 }
 
-bool canPassThroughDTS()
+bool VideoCore::canPassThroughDTS()
 {
   return vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit) != 0;
 }
 
-void turnOffNativeDeinterlace()
-{
-    char response[80];
-    vc_gencmd(response, sizeof response, "hvs_update_fields %d", 0);
-}
-
-} // namespace

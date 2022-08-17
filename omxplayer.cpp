@@ -84,7 +84,6 @@ bool              m_is_dvd_device       = false;
 OMXDvdPlayer      *m_DvdPlayer          = NULL;
 int               m_incr                = -1;
 int               m_loop_from           = 0;
-COMXCore          g_OMX;
 bool              m_stats               = false;
 bool              m_dump_format         = false;
 bool              m_dump_format_exit    = false;
@@ -99,8 +98,7 @@ char              m_subtitle_lang[4]    = "\0";
 std::string       m_replacement_filename;
 bool              m_playlist_enabled    = true;
 float             m_latency             = 0.0f;
-bool              m_dbus_enabled;
-DispmanxLayer     *m_background_layer   = NULL;
+VideoCore         m_video_core;
 
 #define safe_delete(object) if(object) { delete object; object = NULL; }
 
@@ -311,6 +309,12 @@ int startup(int argc, char *argv[])
   signal(SIGTERM, sig_handler);
   signal(SIGUSR1, sig_handler);
 
+  // do we have enough memory to run
+  int gpu_mem = m_video_core.get_mem_gpu();
+  const int min_gpu_mem = 64;
+  if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
+    printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
+
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
   const int no_ghost_box_opt = 0x203;
@@ -431,7 +435,7 @@ int startup(int argc, char *argv[])
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
 
-  while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:cslb::pd3:Myzt:rg", longopts, NULL)) != -1)
+  while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:slb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
     switch (c) 
     {
@@ -760,8 +764,6 @@ int startup(int argc, char *argv[])
       case start_paused_opt:
         m_Pause = true;
         break;
-      case 0:
-        break;
       case 'h':
         print_usage();
         return EXIT_SUCCESS;
@@ -774,13 +776,15 @@ int startup(int argc, char *argv[])
         print_keybindings();
         return EXIT_SUCCESS;
         break;
-      case ':':
-        return EXIT_FAILURE;
-        break;
       default:
         return EXIT_FAILURE;
         break;
     }
+  }
+
+  if (optind >= argc) {
+    print_usage();
+    return EXIT_FAILURE;
   }
 
   // get filename
@@ -789,27 +793,12 @@ int startup(int argc, char *argv[])
   // start logging
   CLogInit(log_level, log_file);
 
-  if (optind >= argc) {
-    print_usage();
-    return EXIT_SUCCESS;
-  }
-
-  VideoCore::tv_stuff_init();
-  if(!g_OMX.Initialize())
-  {
-    return EXIT_FAILURE;
-  }
+  // start omx
+  static COMXCore OMX;
 
   // start the clock
-  try {
-    m_av_clock = new OMXClock();
-  }
-  catch(const char *msg)
-  {
-    puts(msg);
-    g_OMX.Deinitialize();
-    return EXIT_FAILURE;
-  }
+  static OMXClock clock;
+  m_av_clock = &clock;
 
   // Open display
   DispmanxLayer::openDisplay(m_config_video.display, m_config_video.layer);
@@ -817,66 +806,38 @@ int startup(int argc, char *argv[])
   // blank background - exclude fully transparent backgrounds
   if(background > 0x00FFFFFF)
   {
-    try
-    {
-      m_background_layer = new DispmanxLayer(4, Rect(0, 0, 0, 0), Dimension(1, 1));
-      m_background_layer->setImageData(&background, false);
-    }
-    catch(const char* msg)
-    {
-      delete m_av_clock;
-      g_OMX.Deinitialize();
-      return EXIT_FAILURE;
-    }
+    static DispmanxLayer background_layer(4, Rect(0, 0, 0, 0), Dimension(1, 1));
+    background_layer.setImageData(&background, false);
   }
 
   // init subtitle object
-  try {
-    m_player_subtitles = new OMXPlayerSubtitles(font_size,
-                                                centered,
-                                                ghost_box,
-                                                subtitle_lines,
-                                                m_av_clock);
-  }
-  catch(const char *msg)
-  {
-    puts(msg);
-    delete m_av_clock;
-    g_OMX.Deinitialize();
-    return EXIT_FAILURE;
-  }
+  static OMXPlayerSubtitles player_subs(font_size, centered, ghost_box, subtitle_lines, m_av_clock);
+  m_player_subtitles = &player_subs;
 
   osd_print("Loading...");
 
-  int gpu_mem = VideoCore::get_mem_gpu();
-  int min_gpu_mem = 64;
-  if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
-    printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
-
-  m_dbus_enabled = m_omxcontrol.connect(dbus_name);
+  m_omxcontrol.connect(dbus_name);
 
   // 3d modes don't work without switch hdmi mode
   if (m_3d != CONF_FLAGS_FORMAT_NONE || m_NativeDeinterlace)
     m_refresh = true;
 
-  // you really don't want want to match refresh rate without hdmi clock sync
+  // you really don't want to match refresh rate without hdmi clock sync
   if ((m_refresh || m_NativeDeinterlace) && !no_hdmi_clock_sync)
     m_config_video.hdmi_clock_sync = true;
 
   if(m_config_video.hdmi_clock_sync && !m_av_clock->HDMIClockSync())
-  {
-    delete m_av_clock;
-    delete m_player_subtitles;
-    g_OMX.Deinitialize();
     return EXIT_FAILURE;
-  }
 
   // disable keys when using stdin for input
   if(m_filename == "pipe:" || m_filename == "pipe:0")
     use_key_ctrl = false;
 
   if(use_key_ctrl)
-    m_keyboard = new Keyboard(keymap_file);
+  {
+    static Keyboard keys(keymap_file);
+    m_keyboard = &keys;
+  }
 
   // Disable seeking and playlists when reading from a pipe
   if(IsPipe(m_filename))
@@ -890,54 +851,60 @@ int startup(int argc, char *argv[])
   if (m_threshold < 0.0f)
     m_threshold = m_config_audio.is_live ? 0.7f : 0.2f;
 
+  // no audio device name has been set on command line
+  if(m_config_audio.device.empty())
+    m_config_audio.device = m_video_core.getAudioDevice();
+
+  // set defaults
+  if(m_config_audio.device == "omx:alsa" && m_config_audio.subdevice.empty())
+    m_config_audio.subdevice = "default";
+
   return CHANGE_FILE;
 }
 
 
 int main(int argc, char *argv[])
-{
-  try {
-    // control loop
-    int rv = startup(argc, argv);
+try {
+  // control loop
+  int rv = startup(argc, argv);
 
-    while(1) {
-      switch(rv) {
-      case CHANGE_FILE:
-        rv = change_file();
-        break;
-      case CHANGE_PLAYLIST_ITEM:
-        rv = change_playlist_item();
-        break;
-      case RUN_PLAY_LOOP:
-        rv = run_play_loop();
-        end_of_play_loop();
-        break;
-      case END_PLAY_WITH_ERROR:
-        rv = shutdown(true);
-        break;
-      case ABORT_PLAY:
-        m_stopped = true;
-        rv = playlist_control();
-        break;
-      case END_PLAY:
-        rv = playlist_control();
-        break;
-      case SHUTDOWN:
-        rv = shutdown(false);
-        // fall through
-      case EXIT_SUCCESS:
-      case EXIT_FAILURE:
-      case PLAY_STOPPED:
-      default:
-        return rv;
-      }
+  while(1) {
+    switch(rv) {
+    case CHANGE_FILE:
+      rv = change_file();
+      break;
+    case CHANGE_PLAYLIST_ITEM:
+      rv = change_playlist_item();
+      break;
+    case RUN_PLAY_LOOP:
+      rv = run_play_loop();
+      end_of_play_loop();
+      break;
+    case END_PLAY_WITH_ERROR:
+      rv = shutdown(true);
+      break;
+    case ABORT_PLAY:
+      m_stopped = true;
+      rv = playlist_control();
+      break;
+    case END_PLAY:
+      rv = playlist_control();
+      break;
+    case SHUTDOWN:
+      rv = shutdown(false);
+      // fall through
+    case EXIT_SUCCESS:
+    case EXIT_FAILURE:
+    case PLAY_STOPPED:
+    default:
+      return rv;
     }
   }
-  catch(const char *msg)
-  {
-    puts(msg);
-    return 1;
-  }
+}
+catch(const char *msg)
+{
+  puts(msg);
+  return EXIT_FAILURE;
 }
 
 // we jump here when is provided with a new file
@@ -1866,12 +1833,12 @@ int run_play_loop()
 
     if(m_refresh)
     {
-      VideoCore::saveTVState();
-      VideoCore::SetVideoMode(&m_config_video.hints, m_3d, m_NativeDeinterlace);
+      m_video_core.saveTVState();
+      m_video_core.SetVideoMode(&m_config_video.hints, m_3d, m_NativeDeinterlace);
     }
 
     // get display aspect
-    m_config_video.display_aspect = VideoCore::getDisplayAspect();
+    m_config_video.display_aspect = m_video_core.getDisplayAspect();
 
     if(m_orientation >= 0)
       m_config_video.hints.orientation = m_orientation;
@@ -1920,25 +1887,17 @@ int run_play_loop()
     }
     printf("Selecting audio stream: %d\n", m_audio_index + 1);
 
-    // no audio device name has been set on command line
-    if(m_config_audio.device.empty())
-      m_config_audio.device = VideoCore::getAudioDevice();
-
-    // set defaults
-    if(m_config_audio.device == "omx:alsa" && m_config_audio.subdevice.empty())
-      m_config_audio.subdevice = "default";
-
     // get audio hints (ie params, info) from OMXReader
     m_config_audio.hints = m_omx_reader->GetHints(OMXSTREAM_AUDIO, m_audio_index);
 
     if(m_config_audio.hints.codec == AV_CODEC_ID_AC3 || m_config_audio.hints.codec == AV_CODEC_ID_EAC3)
     {
-      if(VideoCore::canPassThroughAC3())
+      if(m_video_core.canPassThroughAC3())
         m_config_audio.passthrough = false;
     }
     else if(m_config_audio.hints.codec == AV_CODEC_ID_DTS)
     {
-      if(VideoCore::canPassThroughDTS())
+      if(m_video_core.canPassThroughDTS())
         m_config_audio.passthrough = false;
     }
 
@@ -2027,7 +1986,7 @@ int run_play_loop()
       enum Action action = m_keyboard ? m_keyboard->getEvent() : INVALID_ACTION;
       if(action != INVALID_ACTION)
         next = handle_event(action, NULL);
-      else if(m_dbus_enabled)
+      else if(m_omxcontrol)
         next = m_omxcontrol.getEvent();
 
       if(next != CONTINUE)
@@ -2352,12 +2311,6 @@ int shutdown(bool exit_with_error)
   safe_delete(m_player_video);
   safe_delete(m_player_audio);
   safe_delete(m_DvdPlayer);
-  safe_delete(m_keyboard);
-  safe_delete(m_player_subtitles);
-  safe_delete(m_background_layer);
-  safe_delete(m_av_clock);
-
-  g_OMX.Deinitialize();
 
   // Exit on failure
   if(exit_with_error)

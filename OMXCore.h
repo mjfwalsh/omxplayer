@@ -181,11 +181,4 @@ class COMXCore
 public:
   COMXCore();
   ~COMXCore();
-
-  // initialize OMXCore and get decoder component
-  bool Initialize();
-  void Deinitialize();
-
-protected:
-  bool              m_is_open;
 };

@@ -1403,34 +1403,19 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
 ////////////////////////////////////////////////////////////////////////////////////////////
 COMXCore::COMXCore()
 {
-  m_is_open = false;
-}
-
-COMXCore::~COMXCore()
-{
-}
-
-bool COMXCore::Initialize()
-{
   OMX_ERRORTYPE omx_err = OMX_Init();
   if (omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCore::Initialize - OMXCore failed to init, omx_err(0x%08x)", omx_err);
-    return false;
+    throw "OMXCore failed to init";
   }
-
-  m_is_open = true;
-  return true;
 }
 
-void COMXCore::Deinitialize()
+COMXCore::~COMXCore()
 {
-  if(m_is_open)
+  OMX_ERRORTYPE omx_err = OMX_Deinit();
+  if (omx_err != OMX_ErrorNone)
   {
-    OMX_ERRORTYPE omx_err = OMX_Deinit();
-    if (omx_err != OMX_ErrorNone)
-    {
-      CLogLog(LOGERROR, "COMXCore::Deinitialize - OMXCore failed to deinit, omx_err(0x%08x)", omx_err);
-    }
+    CLogLog(LOGERROR, "COMXCore::Deinitialize - OMXCore failed to deinit, omx_err(0x%08x)", omx_err);
   }
 }

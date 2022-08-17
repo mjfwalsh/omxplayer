@@ -42,7 +42,7 @@ void AutoPlaylist::readPlaylist(string &filename)
 
 	DIR *dir = opendir(dirname.c_str());
 	if (!dir) {
-		puts("Failed to open directory for reading");
+		puts("Failed to open playlist directory for reading");
 		return;
 	}
 

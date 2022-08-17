@@ -1,6 +1,7 @@
+#pragma once
 /*
  *
- *      Copyright (C) 2012 Edgar Hucek
+ *      Copyright (C) 2022 Michael Walsh
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +18,9 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#pragma once
+extern "C" {
+#include <bcm_host.h>
+}
 
 typedef enum {
   CONF_FLAGS_FORMAT_NONE,
@@ -26,8 +29,11 @@ typedef enum {
   CONF_FLAGS_FORMAT_FP
 } FORMAT_3D_T;
 
-namespace VideoCore {
-  void tv_stuff_init();
+class VideoCore
+{
+public:
+  VideoCore();
+  ~VideoCore();
 
   int get_mem_gpu();
   void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace);
@@ -39,4 +45,8 @@ namespace VideoCore {
   bool canPassThroughAC3();
   bool canPassThroughDTS();
   void turnOffNativeDeinterlace();
-}
+
+private:
+  bool m_native_interlace_active = false;
+  TV_DISPLAY_STATE_T *tv_state = NULL;
+};

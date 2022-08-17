@@ -37,6 +37,12 @@ void OMXControl::dispatch()
     dbus_connection_read_write(bus, 0);
 }
 
+
+OMXControl::operator bool() const
+{
+  return bus;
+}
+
 bool OMXControl::dbus_connect(const char *dbus_name)
 {
   if(bus != NULL)

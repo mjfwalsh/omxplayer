@@ -48,9 +48,6 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
 
   if(m_palette)
     delete[] m_palette;
-
-  if(m_renderer)
-    delete m_renderer;
 }
 
 OMXPlayerSubtitles::OMXPlayerSubtitles(float font_size,
@@ -59,13 +56,9 @@ OMXPlayerSubtitles::OMXPlayerSubtitles(float font_size,
                                        unsigned int lines,
                                        OMXClock* clock)
 :
+m_renderer(font_size, centered, ghost_box, lines),
 m_av_clock(clock)
 {
-  m_renderer = new SubtitleRenderer(font_size,
-                                    centered,
-                                    ghost_box,
-                                    lines);
-
   Create();
 }
 
@@ -220,7 +213,7 @@ void OMXPlayerSubtitles::RenderLoop()
     {
       if(subtitles->at(next_index).stop > time)
       {
-        m_renderer->prepare(subtitles->at(next_index));
+        m_renderer.prepare(subtitles->at(next_index));
         have_next = true;
         break;
       }
@@ -229,7 +222,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
   auto Reset = [&](int time)
   {
-    m_renderer->unprepare();
+    m_renderer.unprepare();
     current_stop = INT_MIN;
 
     auto it = FindSubtitle(subtitles->begin(),
@@ -239,7 +232,7 @@ void OMXPlayerSubtitles::RenderLoop()
 
     if(next_index != subtitles->size())
     {
-      m_renderer->prepare(subtitles->at(next_index));
+      m_renderer.prepare(subtitles->at(next_index));
       have_next = true;
     }
     else
@@ -287,7 +280,7 @@ void OMXPlayerSubtitles::RenderLoop()
           {
             Mailbox::DVDSubs *a = (Mailbox::DVDSubs *)args;
 
-            m_renderer->initDVDSubs(
+            m_renderer.initDVDSubs(
               a->video,
               a->video_aspect,
               a->aspect_mode,
@@ -296,7 +289,7 @@ void OMXPlayerSubtitles::RenderLoop()
           }
           break;
         case Mailbox::REMOVE_DVD_SUBS:
-          m_renderer->deInitDVDSubs();
+          m_renderer.deInitDVDSubs();
           break;
         case Mailbox::PUSH:
           {
@@ -340,8 +333,8 @@ void OMXPlayerSubtitles::RenderLoop()
           {
             Mailbox::DisplayText *a = (Mailbox::DisplayText *)args;
 
-            m_renderer->prepare(a->text_lines);
-            m_renderer->show_next();
+            m_renderer.prepare(a->text_lines);
+            m_renderer.show_next();
             showing = true;
             osd = true;
             wait_for_osd = a->wait;
@@ -351,7 +344,7 @@ void OMXPlayerSubtitles::RenderLoop()
           }
           break;
         case Mailbox::CLEAR_RENDERER:
-          m_renderer->clear();
+          m_renderer.clear();
           internal_subtitles.clear();
           subtitles = &internal_subtitles;
           prev_now = INT_MAX;
@@ -392,7 +385,7 @@ void OMXPlayerSubtitles::RenderLoop()
     {
       if(have_next && subtitles->at(next_index).start <= now)
       {
-        m_renderer->show_next();
+        m_renderer.show_next();
         // printf("show error: %i ms\n", now - subtitles[next_index].start);
         showing = true;
         current_stop = subtitles->at(next_index).stop;
@@ -403,7 +396,7 @@ void OMXPlayerSubtitles::RenderLoop()
       }
       else if(showing)
       {
-        m_renderer->hide();
+        m_renderer.hide();
         // printf("hide error: %i ms\n", now - current_stop);
         showing = false;
       }

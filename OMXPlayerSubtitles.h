@@ -21,7 +21,7 @@
 #include "OMXThread.h"
 #include "Subtitle.h"
 #include "utils/Mailbox.h"
-#include "utils/log.h"
+#include "SubtitleRenderer.h"
 
 #include <boost/circular_buffer.hpp>
 #include <atomic>
@@ -108,7 +108,7 @@ private:
   int                                           m_stream_count = 0;
   int                                           m_delay = 0;
   std::atomic<bool>                             m_thread_stopped{false};
-  SubtitleRenderer                              *m_renderer;
+  SubtitleRenderer                              m_renderer;
   OMXClock*                                     m_av_clock;
   uint32_t                                      *m_palette = NULL;
 };

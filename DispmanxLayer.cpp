@@ -44,8 +44,6 @@ int DispmanxLayer::s_layer;
 
 void DispmanxLayer::openDisplay(int display_num, int layer)
 {
-	bcm_host_init();
-
 	// Open display
 	s_display = vc_dispmanx_display_open(display_num);
 	if(s_display == 0)
