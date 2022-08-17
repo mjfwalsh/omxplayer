@@ -46,6 +46,7 @@
 #include "DbusCommandSearch.h"
 #include "omxplayer.h"
 #include "DispmanxLayer.h"
+#include "CECListener.h"
 
 #include <string>
 
@@ -99,6 +100,7 @@ std::string       m_replacement_filename;
 bool              m_playlist_enabled    = true;
 float             m_latency             = 0.0f;
 VideoCore         m_video_core;
+CECListener       m_cec_listener;
 
 #define safe_delete(object) if(object) { delete object; object = NULL; }
 
@@ -1940,13 +1942,18 @@ int run_play_loop()
     }
 
     if (update) {
-      enum ControlFlow next = CONTINUE;
+      enum Action action;
+      enum ControlFlow next;
 
-      enum Action action = m_keyboard ? m_keyboard->getEvent() : INVALID_ACTION;
+      if(!m_keyboard || (action = m_keyboard->getEvent()) == INVALID_ACTION)
+        action = m_cec_listener.getEvent();
+
       if(action != INVALID_ACTION)
         next = handle_event(action, NULL);
       else if(m_omxcontrol)
         next = m_omxcontrol.getEvent();
+      else
+        next = CONTINUE;
 
       if(next != CONTINUE)
         return next;
