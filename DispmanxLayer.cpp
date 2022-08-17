@@ -66,6 +66,32 @@ Dimension DispmanxLayer::getScreenDimensions()
 	return Dimension(screen_info.width, screen_info.height);
 }
 
+// calculates the output rectangle of the video on the screen
+Rect DispmanxLayer::GetVideoPort(float video_aspect_ratio, int aspect_mode)
+{
+	// Determine screen size
+	Dimension screen = getScreenDimensions();
+
+	// Calculate position of view port
+	Rect view_port(0, 0, screen.width, screen.height);
+	float screen_aspect_ratio = (float)screen.width / screen.height;
+	if(aspect_mode <= 1 && video_aspect_ratio != screen_aspect_ratio) {
+		if(video_aspect_ratio > screen_aspect_ratio) {
+			view_port.height = screen.width * video_aspect_ratio;
+		} else {
+			view_port.width = screen.height * video_aspect_ratio;
+		}
+	}
+
+	// adjust width and height so they are divisible by 16
+	view_port.width = (view_port.width + 8) & ~15;
+	view_port.height = (view_port.height + 8) & ~15;
+	view_port.x = (screen.width - view_port.width) / 2;
+	view_port.y = (screen.height - view_port.height) / 2;
+
+	return view_port;
+}
+
 void DispmanxLayer::closeDisplay()
 {
 	int result = vc_dispmanx_display_close(s_display);

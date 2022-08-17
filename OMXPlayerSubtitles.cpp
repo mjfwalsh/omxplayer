@@ -28,6 +28,7 @@ extern "C" {
 #include "Subtitle.h"
 #include "utils/log.h"
 #include "Srt.h"
+#include "DispmanxLayer.h"
 
 #include <signal.h>
 #include <stdint.h>
@@ -81,8 +82,7 @@ bool OMXPlayerSubtitles::Open(size_t internal_stream_count, string &subtitle_pat
   return true;
 }
 
-bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
-		int aspect_mode, uint32_t *palette)
+bool OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette)
 {
   if(palette) {
     if(!m_palette)
@@ -94,8 +94,6 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
     delete[] m_palette;
     m_palette = NULL;
   }
-
-  SendToRenderer(new Mailbox::DVDSubs(video, video_aspect, aspect_mode, m_palette));
 
   AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
@@ -120,12 +118,29 @@ bool OMXPlayerSubtitles::initDVDSubs(Dimension video, float video_aspect,
       return false;
   }
 
+  DispmanxLayer *layer = new DispmanxLayer(1, view_port, sub_dim, palette);
+  SendToRenderer(new Mailbox::DVDSubs(layer));
+
   return true;
 }
 
-void OMXPlayerSubtitles::deInitDVDSubs()
+void OMXPlayerSubtitles::Close()
 {
-  SendToRenderer(Mailbox::REMOVE_DVD_SUBS);
+  sem_t close_wait;
+  sem_init(&close_wait, 0, 0);
+
+  SendToRenderer(new Mailbox::Close(&close_wait));
+
+  // we use this semaphore to ensure the thread has finished with
+  // m_external_subtitles, m_dvd_codec_context and other variables
+  sem_wait(&close_wait);
+  sem_destroy(&close_wait);
+
+  m_external_subtitles.clear();
+  m_subtitle_buffers.clear();
+  
+  m_stream_count = 0;
+  m_external_subtitle_stream = -1;
 
   if(m_dvd_codec_context)
     avcodec_free_context(&m_dvd_codec_context);
@@ -135,16 +150,6 @@ void OMXPlayerSubtitles::deInitDVDSubs()
     delete[] m_palette;
     m_palette = NULL;
   }
-}
-
-void OMXPlayerSubtitles::Close()
-{
-  m_mailbox.clear();
-  SendToRenderer(Mailbox::CLEAR_RENDERER);
-  m_subtitle_buffers.clear();
-  m_stream_count = 0;
-  m_external_subtitle_stream = -1;
-  deInitDVDSubs();
 }
 
 void OMXPlayerSubtitles::Process()
@@ -161,22 +166,17 @@ void OMXPlayerSubtitles::Process()
     // and send quit signal to main thread
     pthread_kill(OMXThread::main_thread, SIGUSR1);
   }
-  m_thread_stopped = true;
-  m_mailbox.clear();
+  m_mailbox.finish();
 }
 
 void OMXPlayerSubtitles::SendToRenderer(Mailbox::Item *msg)
 {
-  if(m_thread_stopped)
-    delete msg;
-  else
-    m_mailbox.send(msg);
+  m_mailbox.send(msg);
 }
 
 void OMXPlayerSubtitles::SendToRenderer(Mailbox::Type msg)
 {
-  if(!m_thread_stopped)
-    m_mailbox.send(new Mailbox::Item(msg));
+  m_mailbox.send(new Mailbox::Item(msg));
 }
 
 template <typename Iterator>
@@ -280,41 +280,57 @@ void OMXPlayerSubtitles::RenderLoop()
           {
             Mailbox::DVDSubs *a = (Mailbox::DVDSubs *)args;
 
-            m_renderer.initDVDSubs(
-              a->video,
-              a->video_aspect,
-              a->aspect_mode,
-              a->palette
-            );
+            m_renderer.setDVDSubtitleLayer(a->layer);
           }
-          break;
-        case Mailbox::REMOVE_DVD_SUBS:
-          m_renderer.deInitDVDSubs();
           break;
         case Mailbox::PUSH:
           {
             Mailbox::Push *a = (Mailbox::Push *)args;
-            internal_subtitles.push_back(std::move(a->subtitle));
+
+            OMXPacket *pkt = a->pkt;
+
+            Subtitle sub;
+            if(!GetSubData(pkt, sub))
+            {
+              delete pkt;
+              break;
+            }
+
+            // Add to buffer
+            m_subtitle_buffers[pkt->index].push_back(sub);
+
+            // and send to renderer if this subtitle stream is currently showing
+            if(a->currently_showing)
+              internal_subtitles.push_back(sub);
+
+            delete pkt;
           }
           break;
-        case Mailbox::SEND_INTERNAL_SUBS:
+        case Mailbox::USE_INTERNAL_SUBS:
           {
-            Mailbox::SendInternalSubs *a = (Mailbox::SendInternalSubs *)args;
-            internal_subtitles.swap(a->subtitles);
+            Mailbox::UseInternalSubs *a = (Mailbox::UseInternalSubs *)args;
+
+            internal_subtitles.clear();
+            subtitles = &internal_subtitles;
+            for(Subtitle &s : m_subtitle_buffers[a->active_stream])
+              internal_subtitles.push_back(s);
           }
           prev_now = INT_MAX;
           break;
         case Mailbox::FLUSH:
           internal_subtitles.clear();
+          for(auto &q : m_subtitle_buffers)
+            q.clear();
           prev_now = INT_MAX;
           break;
-        case Mailbox::TOGGLE_EXTERNAL_SUBS:
-          {
-            Mailbox::ToggleExternalSubs *a = (Mailbox::ToggleExternalSubs *)args;
-            subtitles = a->visible ? &m_external_subtitles : &internal_subtitles;
-            internal_subtitles.clear();
-            prev_now = INT_MAX;
-          }
+        case Mailbox::USE_EXTERNAL_SUBS:
+          subtitles = &m_external_subtitles;
+          prev_now = INT_MAX;
+          break;
+        case Mailbox::HIDE_SUBS:
+          subtitles = &internal_subtitles;
+          internal_subtitles.clear();
+          prev_now = INT_MAX;
           break;
         case Mailbox::SET_PAUSED:
           {
@@ -343,7 +359,7 @@ void OMXPlayerSubtitles::RenderLoop()
             prev_now = INT_MAX;
           }
           break;
-        case Mailbox::CLEAR_RENDERER:
+        case Mailbox::CLOSE:
           m_renderer.clear();
           internal_subtitles.clear();
           subtitles = &internal_subtitles;
@@ -406,9 +422,6 @@ void OMXPlayerSubtitles::RenderLoop()
 
 void OMXPlayerSubtitles::Flush()
 {
-  for(auto &q : m_subtitle_buffers)
-    q.clear();
-
   SendToRenderer(Mailbox::FLUSH);
 }
 
@@ -441,7 +454,9 @@ int OMXPlayerSubtitles::SetActiveStreamDelta(int delta)
 {
   int index;
 
-  if(m_visible)
+  if(m_stream_count == 0)
+    return -1;
+  else if(m_visible)
     index = m_active_index + delta;
   else if(delta == 1)
     index = 0;
@@ -453,47 +468,47 @@ int OMXPlayerSubtitles::SetActiveStreamDelta(int delta)
 
 int OMXPlayerSubtitles::SetActiveStream(int new_index)
 {
-  // disable whatever subs are there
-  if(new_index < 0 || new_index >= m_stream_count) {
-    if(m_active_index == m_external_subtitle_stream)
-      SendToRenderer(new Mailbox::ToggleExternalSubs(false));
-    else
-      SendToRenderer(Mailbox::FLUSH);
+  if(new_index < 0 || new_index >= m_stream_count) new_index = -1;
 
+  // no subs so nothing to do
+  if(m_stream_count == 0)
+    return -1;
+
+  // this subtitle stream is already active
+  else if(m_visible && new_index == m_active_index)
+    return m_active_index;
+
+  // subtitles are already hidden
+  else if(!m_visible && new_index == -1)
+    return -1;
+
+  // user has selected a sub out of range, so hide the subs
+  else if(new_index == -1) {
+    SendToRenderer(Mailbox::HIDE_SUBS);
     m_visible = false;
     return -1;
   }
 
-  // nothing to do here
-  if(m_visible && new_index == m_active_index)
-    return m_active_index;
-
-  // enable external subs and disable internal subs
-  if(new_index == m_external_subtitle_stream)
+  // we're going from internal subs to external subs
+  else if(new_index == m_external_subtitle_stream)
   {
-    SendToRenderer(new Mailbox::ToggleExternalSubs(true));
+    SendToRenderer(Mailbox::USE_EXTERNAL_SUBS);
     m_active_index = m_external_subtitle_stream;
     m_visible = true;
     return m_active_index;
   }
 
-  // disable external subs
-  if(m_active_index == m_external_subtitle_stream)
+  else
   {
-    SendToRenderer(new Mailbox::ToggleExternalSubs(false));
+    // set new index and set visible to true
+    m_active_index = new_index;
+    m_visible = true;
+
+    // Send internal subtitle buffer to renderer
+    SendToRenderer(new Mailbox::UseInternalSubs(m_active_index));
+
+    return m_active_index;
   }
-
-  // set new index and set visible to true
-  m_active_index = new_index;
-  m_visible = true;
-
-  // Send internal subtitle buffer to renderer
-  Mailbox::SendInternalSubs *subs = new Mailbox::SendInternalSubs;
-  for(auto& s : m_subtitle_buffers[m_active_index])
-    subs->subtitles.push_back(s);
-  SendToRenderer(subs);
-
-  return m_active_index;
 }
 
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
@@ -548,9 +563,9 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   static int64_t fixed_pts = AV_NOPTS_VALUE;
   AVSubtitle s;
   int got_sub_ptr = -1;
-  int r = avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt);
 
-  if(r < 0) return false;
+  if(avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt) < 0)
+    return false;
 
   if(got_sub_ptr == 0)
   {
@@ -558,43 +573,46 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
     return false;
   }
 
+  // DVD Subs only have one rectangle
+  AVSubtitleRect *r = s.rects[0];
+
   // At the moment we only support 4 colour palettes
-  if(s.rects[0]->nb_colors != 4)
+  if(r->nb_colors != 4)
     goto ignore_sub;
 
-  // Fix the timestamps on some packets
+  // Fix timestamps on some packets
   if(pkt->pts == AV_NOPTS_VALUE)
   {
     if(fixed_pts != AV_NOPTS_VALUE)
-      sub.start = static_cast<int>(fixed_pts/1000);
+      pkt->pts = fixed_pts;
     else
       goto ignore_sub;
   }
-  else
-  {
-    sub.start = static_cast<int>(pkt->pts/1000);
-  }
 
-  // end time
+  // set time
+  sub.start = static_cast<int>(pkt->pts/1000);
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
 
-  // calculate palette
-  unsigned char palette[4];
+  // set sub rectangle
+  sub.image.rect = {r->x, r->y, r->w, r->h};
+
+  // calculate palette and copy data
   if(m_palette)
   {
-    uint32_t *p = (uint32_t *)s.rects[0]->data[1];
+    unsigned char palette[4];
+    uint32_t *p = (uint32_t *)r->data[1];
     for(int i = 0; i < 4; i++) {
       // merge the most significant four bits of the alpha channel with
       // the least significant four bits (index from the above dummy palette)
       palette[i] = (*p >> 24 & 0xf0) | (*p & 0xf);
       p++;
     }
+    sub.assign_image(r->data[0], r->linesize[0] * r->h, &palette[0]);
   }
-
-  // assign data
-  sub.assign_image(s.rects[0]->data[0], s.rects[0]->linesize[0] * s.rects[0]->h,
-                   m_palette ? &palette[0] : NULL);
-  sub.image.rect = {s.rects[0]->x, s.rects[0]->y, s.rects[0]->w, s.rects[0]->h};
+  else
+  {
+    sub.assign_image(r->data[0], r->linesize[0] * r->h, NULL);
+  }
 
   // tidy up
   avsubtitle_free(&s);
@@ -607,40 +625,36 @@ ignore_sub:
   return false;
 }
 
-void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
+bool OMXPlayerSubtitles::GetSubData(OMXPacket *pkt, Subtitle &sub)
 {
-  if(pkt->index >= (int)m_subtitle_buffers.size())
-    return;
-
-  if(pkt->hints.codec != AV_CODEC_ID_SUBRIP && 
-     pkt->hints.codec != AV_CODEC_ID_SSA &&
-     pkt->hints.codec != AV_CODEC_ID_ASS &&
-     pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
-    return;
-
-  Subtitle sub(pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE);
+  sub.isImage = pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE;
 
   if(sub.isImage)
   {
     if(!GetImageData(pkt, sub))
-      return;
+      return false;
   }
   else
   {
     if(!GetTextLines(pkt, sub))
-      return;
+      return false;
   }
 
-  if (!m_subtitle_buffers[pkt->index].empty() &&
-    sub.stop < m_subtitle_buffers[pkt->index].back().stop)
+  return true;
+}
+
+void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
+{
+  if(pkt->hints.codec != AV_CODEC_ID_SUBRIP &&
+     pkt->hints.codec != AV_CODEC_ID_SSA &&
+     pkt->hints.codec != AV_CODEC_ID_ASS &&
+     pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
   {
-    sub.stop = m_subtitle_buffers[pkt->index].back().stop;
+    delete pkt;
+    return;
   }
 
-  m_subtitle_buffers[pkt->index].push_back(sub);
-
-  if(m_visible && pkt->index == m_active_index)
-    SendToRenderer(new Mailbox::Push(sub));
+  SendToRenderer(new Mailbox::Push(pkt, m_visible && pkt->index == m_active_index));
 }
 
 void OMXPlayerSubtitles::DisplayText(const char *text, int duration, bool wait)

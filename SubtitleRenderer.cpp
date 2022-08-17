@@ -135,41 +135,13 @@ SubtitleRenderer::SubtitleRenderer(float r_font_size,
 	 *            Set up layer for DVD subtitles            *
 	 *    *    *    *    *    *    *    *    *    *    *    */
 
-void SubtitleRenderer::initDVDSubs(Dimension video, float video_aspect_ratio, int aspect_mode,
-		uint32_t *palette)
+void SubtitleRenderer::setDVDSubtitleLayer(DispmanxLayer *dl)
 {
 	if(dvdSubLayer)
 		delete dvdSubLayer;
 
-	// Determine screen size
-	Dimension screen = DispmanxLayer::getScreenDimensions();
-
-	// Calculate position of view port
-	Rect view_port(0, 0, screen.width, screen.height);
-	float screen_aspect_ratio = (float)screen.width / screen.height;
-	if((aspect_mode == 1 || aspect_mode == 0) && video_aspect_ratio != screen_aspect_ratio) {
-		if(video_aspect_ratio > screen_aspect_ratio) {
-			view_port.height = screen.width * video_aspect_ratio;
-		} else {
-			view_port.width = screen.height * video_aspect_ratio;
-		}
-	}
-
-	// adjust width and height so they are divisible by 16
-	view_port.width = (view_port.width + 8) & ~15;
-	view_port.height = (view_port.height + 8) & ~15;
-	view_port.x = (screen.width - view_port.width) / 2;
-	view_port.y = (screen.height - view_port.height) / 2;
-
-	// create layer
-	dvdSubLayer = new DispmanxLayer(1, view_port, video, palette);
-}
-
-void SubtitleRenderer::deInitDVDSubs()
-{
-	if(dvdSubLayer)
-		delete dvdSubLayer;
-	dvdSubLayer = NULL;
+	// set layer
+	dvdSubLayer = dl;
 }
 
 void SubtitleRenderer::set_font(int *old_font, int new_font)
@@ -383,7 +355,9 @@ void SubtitleRenderer::hide()
 void SubtitleRenderer::clear()
 {
 	subtitleLayer->clearImage();
-	if(dvdSubLayer) dvdSubLayer->clearImage();
+	if(dvdSubLayer)
+		delete dvdSubLayer;
+	dvdSubLayer = NULL;
 }
 
 void SubtitleRenderer::unprepare()

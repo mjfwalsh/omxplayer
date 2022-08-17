@@ -28,20 +28,23 @@
 
 #include <mutex>
 #include <condition_variable>
+#include <semaphore.h>
+
+class DispmanxLayer;
 
 class Mailbox {
 public:
   enum Type {
     ADD_DVD_SUBS,
-    REMOVE_DVD_SUBS,
+    CLOSE,
     PUSH,
-    SEND_INTERNAL_SUBS,
+    USE_INTERNAL_SUBS,
+    USE_EXTERNAL_SUBS,
+    HIDE_SUBS,
     FLUSH,
-    TOGGLE_EXTERNAL_SUBS,
     SET_PAUSED,
     SET_DELAY,
     DISPLAY_TEXT,
-    CLEAR_RENDERER,
     EXIT,
   };
 
@@ -53,37 +56,44 @@ public:
     enum Type type;
     Item *next = NULL;
   };
+  class Close : public Item
+  {
+    public:
+    explicit Close(sem_t *w)
+      :
+      Item(CLOSE),
+      sem(w)
+    {};
+
+    ~Close()
+    {
+      sem_post(sem);
+    };
+
+    sem_t *sem;
+  };
   class DVDSubs : public Item
   {
     public:
-    DVDSubs(Dimension &v, float &va, int &am, uint32_t *p) :
-      Item(ADD_DVD_SUBS), video(v), video_aspect(va), aspect_mode(am), palette(p) {};
+    explicit DVDSubs(DispmanxLayer *dl) :
+      Item(ADD_DVD_SUBS), layer(dl) {};
 
-    Dimension video;
-    float video_aspect;
-    int aspect_mode;
-    uint32_t *palette;
+    DispmanxLayer *layer;
   };
   class Push : public Item
   {
     public:
-    explicit Push(Subtitle &s) : Item(PUSH), subtitle(s) {};
+    Push(OMXPacket *p, bool s) : Item(PUSH), pkt(p), currently_showing(s) {};
 
-    Subtitle subtitle;
+    OMXPacket *pkt;
+    bool currently_showing;
   };
-  class SendInternalSubs : public Item
+  class UseInternalSubs : public Item
   {
     public:
-    SendInternalSubs() : Item(SEND_INTERNAL_SUBS) {};
+    explicit UseInternalSubs(int &as) : Item(USE_INTERNAL_SUBS), active_stream(as)  {};
 
-    std::vector<Subtitle> subtitles;
-  };
-  class ToggleExternalSubs : public Item
-  {
-    public:
-    explicit ToggleExternalSubs(bool v) : Item(TOGGLE_EXTERNAL_SUBS), visible(v) {};
-
-    bool visible;
+    int active_stream;
   };
   class SetPaused : public Item
   {
@@ -118,6 +128,11 @@ public:
   {
     std::lock_guard<std::mutex> look(messages_lock);
 
+    if(finished) {
+      delete elem;
+      return;
+    }
+
     if(tail == NULL) {
       head = tail = elem;
     } else {
@@ -150,7 +165,7 @@ public:
     messages_cond.wait_for(lock, rel_time, [&]{return head != NULL;});
   }
 
-  void clear()
+  void finish()
   {
     std::lock_guard<std::mutex> look(messages_lock);
 
@@ -161,6 +176,7 @@ public:
       delete old_head;
     }
     tail = NULL;
+    finished = true;
   }
 
 private:
@@ -169,4 +185,5 @@ private:
 
   std::mutex messages_lock;
   std::condition_variable messages_cond;
+  bool finished = false;
 };

@@ -24,8 +24,7 @@
 
 using namespace std;
 
-Subtitle::Subtitle(bool is_image)
-: isImage(is_image)
+Subtitle::Subtitle()
 {}
 
 Subtitle::Subtitle(int start, int stop, std::string &text_lines)

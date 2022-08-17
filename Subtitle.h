@@ -24,7 +24,7 @@
 
 class Subtitle {
   public:
-  explicit Subtitle(bool is_image);
+  explicit Subtitle();
 
   Subtitle(int start, int stop, std::string &text_lines);
 

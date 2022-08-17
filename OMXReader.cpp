@@ -954,11 +954,11 @@ void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
   found_palette:
 
   char *next;
-  uint32_t *palette = *palette_c = (uint32_t *)malloc(sizeof(uint32_t) * 16);
+  uint32_t *palette = *palette_c = new uint32_t[16];
   for(int i = 0; i < 16; i++) {
     palette[i] = strtoul(p, &next, 16);
     if(p == next) {
-      free(palette);
+      delete palette;
       *palette_c = NULL;
       return;
     } else {

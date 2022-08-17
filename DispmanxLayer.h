@@ -48,6 +48,7 @@ public:
 
 	static void openDisplay(int display_num, int layer);
 	static Dimension getScreenDimensions();
+	static Rect GetVideoPort(float video_aspect_ratio, int aspect_mode);
 	static void closeDisplay();
 
 private:

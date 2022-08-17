@@ -1905,7 +1905,9 @@ int run_play_loop()
 
     if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
-      if(!m_player_subtitles->initDVDSubs(sub_dim, sub_aspect, m_config_video.aspectMode, palette))
+      Rect view_port = DispmanxLayer::GetVideoPort(sub_aspect, m_config_video.aspectMode);
+
+      if(!m_player_subtitles->initDVDSubs(view_port, sub_dim, palette))
       {
         osd_printf(UM_ALL, "Failed to initialise DVD subtitles");
         return END_PLAY_WITH_ERROR;
@@ -1913,7 +1915,7 @@ int run_play_loop()
     }
 
     if(!m_DvdPlayer && palette != NULL)
-      free(palette);
+      delete palette;
   }
 
   PrintSubtitleInfo();
@@ -2149,7 +2151,8 @@ int run_play_loop()
     case AVMEDIA_TYPE_SUBTITLE:
       if(m_has_subtitle && playspeed_current == playspeed_normal)
         m_player_subtitles->AddPacket(m_omx_pkt);
-      // fall through
+      m_omx_pkt = NULL;
+      break;
 
     discard_packet:
     default:

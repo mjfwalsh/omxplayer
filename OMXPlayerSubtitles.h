@@ -19,18 +19,17 @@
  */
 
 #include "OMXThread.h"
-#include "Subtitle.h"
 #include "utils/Mailbox.h"
 #include "SubtitleRenderer.h"
 
 #include <boost/circular_buffer.hpp>
-#include <atomic>
 #include <string>
 #include <vector>
 
 class OMXClock;
 class OMXPacket;
 class SubtitleRenderer;
+class Subtitle;
 
 class OMXPlayerSubtitles : public OMXThread
 {
@@ -48,8 +47,7 @@ public:
 
   bool Open(size_t stream_count, std::string &external_subtitle_path);
 
-  bool initDVDSubs(Dimension video, float video_aspect, int aspect_mode, uint32_t *palette);
-  void deInitDVDSubs();
+  bool initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
 
   void Close();
   void Flush();
@@ -69,7 +67,7 @@ public:
 
   int GetActiveStream()
   {
-    return m_active_index;
+    return m_visible ? m_active_index : -1;
   }
 
   int GetStreamCount()
@@ -96,6 +94,7 @@ private:
   void SendToRenderer(Mailbox::Type t);
   void Process() override;
   void RenderLoop();
+  bool GetSubData(OMXPacket *pkt, Subtitle &sub);
   bool GetTextLines(OMXPacket *pkt, Subtitle &sub);
   bool GetImageData(OMXPacket *pkt, Subtitle &sub);
 
@@ -107,7 +106,6 @@ private:
   int                                           m_active_index = 0;
   int                                           m_stream_count = 0;
   int                                           m_delay = 0;
-  std::atomic<bool>                             m_thread_stopped{false};
   SubtitleRenderer                              m_renderer;
   OMXClock*                                     m_av_clock;
   uint32_t                                      *m_palette = NULL;

@@ -69,7 +69,7 @@ class OMXDvdPlayer
 	DVD *dvdread;
 
 	dvd_reader_t *dvd_device;
-	dvd_file_t *dvd_track;
+	dvd_file_t *dvd_track = NULL;
 
 	int current_track = -1;
 	int total_blocks = 0;

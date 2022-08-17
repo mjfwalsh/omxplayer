@@ -28,7 +28,6 @@
 class CRegExp;
 class DispmanxLayer;
 class Subtitle;
-class Dimension;
 
 class SubtitleRenderer {
 	public:
@@ -39,8 +38,7 @@ class SubtitleRenderer {
 						bool box_opacity,
 						unsigned int lines);
 
-		void initDVDSubs(Dimension video, float video_aspect_ratio, int aspect_mode, uint32_t *palette);
-		void deInitDVDSubs();
+		void setDVDSubtitleLayer(DispmanxLayer *dl);
 
 		~SubtitleRenderer();
 
