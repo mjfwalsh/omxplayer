@@ -30,6 +30,7 @@ extern "C" {
 #include "utils/simple_geometry.h"
 
 #include <stdint.h>
+#include <vector>
 #include <string>
 #include <unordered_map>
 
@@ -136,7 +137,7 @@ public:
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);
   std::string GetCodecName(OMXStreamType type, unsigned int index);
-  std::string GetStreamMetaData(OMXStreamType type, unsigned int index);
+  void GetMetaData(OMXStreamType type, std::vector<std::string> &list);
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
   bool CanSeek();

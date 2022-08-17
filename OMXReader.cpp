@@ -27,6 +27,8 @@
 
 #include <stdio.h>
 #include <unordered_map>
+#include <vector>
+#include <string>
 #include <stdexcept>
 
 extern "C" {
@@ -857,11 +859,9 @@ std::string OMXReader::GetCodecName(OMXStreamType type, unsigned int index)
     return m_video_streams[index].codec_name;
   case OMXSTREAM_SUBTITLE:
     return m_subtitle_streams[index].codec_name;
-  case OMXSTREAM_NONE:
-	break;
+  default:
+	return "";
   }
-
-  return "";
 }
 
 std::string OMXReader::GetStreamLanguage(OMXStreamType type, unsigned int index)
@@ -870,18 +870,35 @@ std::string OMXReader::GetStreamLanguage(OMXStreamType type, unsigned int index)
   {
   case OMXSTREAM_AUDIO:
     return m_audio_streams[index].language;
-  case OMXSTREAM_VIDEO:
-    return m_video_streams[index].language;
   case OMXSTREAM_SUBTITLE:
     return m_subtitle_streams[index].language;
-  case OMXSTREAM_NONE:
-	break;
+  default:
+	return "";
   }
-
-  return "";
 }
 
 int OMXReader::GetStreamByLanguage(OMXStreamType type, const char *lang)
+{
+  switch(type)
+  {
+  case OMXSTREAM_AUDIO:
+    for(int i = 0; i < m_audio_count; i++)
+      if(m_audio_streams[i].language == lang)
+        return i;
+    break;
+  case OMXSTREAM_SUBTITLE:
+    for(int i = 0; i < m_subtitle_count; i++)
+      if(m_subtitle_streams[i].language == lang)
+        return i;
+    break;
+  default:
+	break;
+  }
+
+  return -1;
+}
+
+void OMXReader::GetMetaData(OMXStreamType type, vector<string> &list)
 {
   int count;
   OMXStream *st;
@@ -890,7 +907,7 @@ int OMXReader::GetStreamByLanguage(OMXStreamType type, const char *lang)
   {
   case OMXSTREAM_AUDIO:
     st = m_audio_streams;
-    count = m_subtitle_count;
+    count = m_audio_count;
     break;
   case OMXSTREAM_VIDEO:
     st = m_video_streams;
@@ -901,37 +918,12 @@ int OMXReader::GetStreamByLanguage(OMXStreamType type, const char *lang)
     count = m_subtitle_count;
     break;
   case OMXSTREAM_NONE:
-	return -1;
+	return;
   }
 
+  list.resize(count);
   for(int i = 0; i < count; i++)
-    if(st[i].language == lang)
-      return i;
-
-  return -1;
-}
-
-std::string OMXReader::GetStreamMetaData(OMXStreamType type, unsigned int index)
-{
-  switch(type)
-  {
-  case OMXSTREAM_AUDIO:
-    return m_audio_streams[index].language + ":" +
-      m_audio_streams[index].name + ":" +
-      m_audio_streams[index].codec_name;
-  case OMXSTREAM_VIDEO:
-    return m_video_streams[index].language + ":" +
-      m_video_streams[index].name + ":" +
-      m_video_streams[index].codec_name;
-  case OMXSTREAM_SUBTITLE:
-    return m_subtitle_streams[index].language + ":" +
-      m_subtitle_streams[index].name + ":" +
-      m_subtitle_streams[index].codec_name;
-  case OMXSTREAM_NONE:
-	break;
-  }
-
-  return "";
+    list[i] = to_string(i) + ":" + st[i].language + ":" + st[i].name + ":" + st[i].codec_name + ":";
 }
 
 bool OMXReader::CanSeek()

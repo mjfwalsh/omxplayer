@@ -4,6 +4,8 @@
 #include "omxplayer.h"
 
 #include <stdint.h>
+#include <vector>
+#include <string>
 
 struct DBusMessage;
 struct DBusMessageIter;
@@ -36,6 +38,7 @@ public:
   void respond_bool(bool value);
   void respond_string(const char *value);
 
+  void respond_array(std::vector<std::string> &list);
   void respond_array(const char *array[], int size);
   bool needs_response = true;
 

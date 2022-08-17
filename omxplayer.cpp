@@ -1609,83 +1609,42 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
   case LIST_SUBTITLES:
     {
-      int total_count = m_player_subtitles->GetStreamCount();
-      const char **values = new const char*[total_count];
-      char *data = new char[30 * total_count];
-      char *p = &data[0];
-      char *end = &data[(30 * total_count) - 1];
+      std::vector<std::string> sub_list;
+      m_omx_reader->GetMetaData(OMXSTREAM_SUBTITLE, sub_list);
 
-      int internal_count = m_omx_reader->SubtitleStreamCount();
-      int i = 0;
-      for (i = 0; i < internal_count && p < end; i++)
-      {
-         values[i] = p;
-         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
-                           m_omx_reader->GetStreamMetaData(OMXSTREAM_SUBTITLE, i).c_str(),
-                           m_player_subtitles->GetActiveStream() == i ? "active" : "");
-      }
-      if(i < total_count && p < end)
-      {
-         values[i] = p;
-         p += 1 + snprintf(p, end - p, "%d:und:external:srt:%s", i,
-                           m_player_subtitles->GetActiveStream() == i ? "active" : "");
-      }
+      if(!m_external_subtitles_path.empty())
+        sub_list.push_back(std::to_string(sub_list.size()) + ":und:external:srt:");
 
-      m->respond_array(values, total_count);
+      // mark one as active
+      int active_stream = m_player_subtitles->GetActiveStream();
+      if(active_stream > -1)
+        sub_list[active_stream] += "active";
 
-      delete[] values;
-      delete[] data;
-
+      m->respond_array(sub_list);
       break;
     }
 
   case LIST_AUDIO:
     {
-      int count = m_omx_reader->AudioStreamCount();
-      const char **values = new const char*[count];
-      char *data = new char[30 * count];
-      char *p = &data[0];
-      char *end = &data[(30 * count) - 1];
+      std::vector<std::string> audio_list;
+      m_omx_reader->GetMetaData(OMXSTREAM_AUDIO, audio_list);
 
-      int active_stream = m_player_audio ? m_player_audio->GetActiveStream() : -1;
+      if(m_player_audio && !m_player_audio->GetMute())
+        audio_list[m_player_audio->GetActiveStream()] += "active";
 
-      for (int i = 0; i < count && p < end; i++)
-      {
-         values[i] = p;
-         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
-                           m_omx_reader->GetStreamMetaData(OMXSTREAM_AUDIO, i).c_str(),
-                           i == active_stream ? "active" : "");
-      }
-
-      m->respond_array(values, count);
-
-      delete[] values;
-      delete[] data;
-
+      m->respond_array(audio_list);
       break;
     }
 
   case LIST_VIDEO:
     {
-      int count = m_omx_reader->VideoStreamCount();
-      const char **values = new const char*[count];
-      char *data = new char[30 * count];
-      char *p = &data[0];
-      char *end = &data[(30 * count) - 1];
+      std::vector<std::string> video_list;
+      m_omx_reader->GetMetaData(OMXSTREAM_VIDEO, video_list);
 
-      for (int i = 0; i < count && p < end; i++)
-      {
-         values[i] = p;
-         p += 1 + snprintf(p, end - p, "%d:%s:%s", i,
-                           m_omx_reader->GetStreamMetaData(OMXSTREAM_VIDEO, i).c_str(),
-                           i == 0 ? "active" : "");
-      }
+      if(m_player_video)
+        video_list[0] += "active";
 
-      m->respond_array(values, count);
-
-      delete[] values;
-      delete[] data;
-
+      m->respond_array(video_list);
       break;
     }
 
