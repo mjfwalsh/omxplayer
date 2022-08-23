@@ -56,7 +56,7 @@ keys.h: README.md
 omxplayer.1: README.md
 	sed -e '/This fork/,/sudo make install/ d; /DBUS/,$$ d' $< | \
 	sed -r 's/\[(.*?)\]\(http[^\)]*\)/\1/g' > MAN
-	curl -F page=@MAN http://mantastic.herokuapp.com 2>/dev/null >$@
+	ronn < MAN > $@
 
 .PHONY: clean
 clean:
