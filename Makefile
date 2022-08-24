@@ -40,28 +40,17 @@ endif
 version.h:
 	perl gen_version.pl
 
-omxplayer.o: version.h keys.h help.h
+omxplayer.o: version.h
 
 omxplayer.bin: $(OBJS)
 	$(CXX) -o omxplayer.bin $(OBJS) $(LDFLAGS) $(LDLIBS)
 
-help.h: README.md
-	awk '/SYNOPSIS/{p=1;print;next} p&&/KEY BINDINGS/{p=0};p' $< \
-	| sed -e '1,3 d' -e 's/^/"/' -e 's/$$/\\n"/' > $@
-
-keys.h: README.md
-	awk '/KEY BINDINGS/{p=1;print;next} p&&/KEY CONFIG/{p=0};p' $< \
-	| sed -e '1,3 d' -e 's/^/"/' -e 's/$$/\\n"/' > $@
-
-omxplayer.1: README.md
-	sed -e '/This fork/,/sudo make install/ d; /DBUS/,$$ d' $< | \
-	sed -r 's/\[(.*?)\]\(http[^\)]*\)/\1/g' > MAN
-	ronn < MAN > $@
+omxplayer.1: omxplayer.pod
+	pod2man -c 'multimedia' -r '' $< > $@
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) deps.mak help.h keys.h omxplayer.bin $(DIST).tgz version.h MAN omxplayer.1
-
+	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST).tgz version.h omxplayer.1
 
 .PHONY: ffmpeg
 ffmpeg:

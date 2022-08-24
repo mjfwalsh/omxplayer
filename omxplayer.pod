@@ -1,0 +1,379 @@
+=head1 NAME
+
+omxplayer - Raspberry Pi command line OMX player
+
+=head1 SYNOPSIS
+
+B<omxplayer> [I<OPTIONS>] [B<FILE>]
+
+=head1 DESCRIPTION
+
+B<OMXPlayer> is a command-line hardware accelerated video player for the B<Raspberry Pi>. It plays
+video directly from the command line and plays outside your desktop environment. OMXPlayer uses the
+OpenMAX API to access the hardware video decoder in the GPU. Hardware acceleration along with
+command-line use allows ultra low overhead, low power video playback. It was originally developed
+as a testbed for B<Kodi>.
+
+=head1 OPTIONS
+
+I<FILE> can be a path to a local media file, any protocol supported by B<ffmpeg> or a path to a dvd
+device. You can also play a stream on the standard input by specifying I<pipe:0>.
+
+=over
+
+=item B<-3>,  B<--3d> I<mode>
+
+Switch tv into 3d mode (TB, FP, or SBS)
+
+=item B<-a>,  B<--no-playlist>
+
+Disable playlist and remember position functionality
+
+=item B<--advanced>[=0]
+
+Enable/disable advanced deinterlace for HD videos (default enabled)
+
+=item B<--align> I<left/center>
+
+Subtitle alignment (default: left)
+
+=item B<--alpha> I<n>
+
+Set video transparency (0..255)
+
+=item B<--amp> I<n>
+
+set initial amplification in millibels (default 0)
+
+=item B<--anaglyph> I<type>
+
+convert 3d to anaglyph
+
+=item B<--aspect-mode> I<type>
+
+Letterbox, fill, stretch (default: letterbox)
+
+=item B<--audio_fifo>  I<n>
+
+Size of audio output fifo in seconds
+
+=item B<--audio_queue> I<n>
+
+Size of audio input queue in MB
+
+=item B<--avdict> I<opts>
+
+Options passed to demuxer, e.g., 'rtsp_transport:tcp,...'
+
+=item B<-b>,  B<--blank>[I<=0xAARRGGBB>]
+
+Set the video background color to black (or optional ARGB value)
+
+=item B<--cookie> I<cookie>
+
+Send specified cookie as part of HTTP requests
+
+=item B<-d>,  B<--deinterlace>
+
+Force deinterlacing
+
+=item B<--dbus_name> I<name>
+
+default: org.mpris.MediaPlayer2.omxplayer
+
+=item B<--display> I<n>
+
+Set display to output to
+
+=item B<--ffmpeg-log> I<level>
+
+Set ffmpeg logging level (quiet, panic, fatal, error, warning, info, verbose, debug, or trace)
+
+=item B<--font-size> I<size>
+
+Font size in 1/1000 screen height (default: 55)
+
+=item B<--fps> I<n>
+
+Set fps of video where timestamps are not present
+
+=item B<-g>,  B<--genlog>I<=logfile>
+
+Generate log file
+
+=item B<-h>,  B<--help>
+
+Print a simple usage message
+
+=item B<-i>,  B<--info>
+
+Dump stream format and exit
+
+=item B<-I>,  B<--with-info>
+
+dump stream format before playback
+
+=item B<--key-config> I<file>
+
+Uses key bindings in I<file> instead of the default. See L</"KEY CONFIG SYNTAX"> below for more.
+
+=item B<-l>,  B<--pos> I<n>
+
+Start position (hh:mm:ss)
+
+=item B<--log> I<level>
+
+Set the omxplayer log level (none, fatal, severe, error, warning, notice, info, or debug)
+
+=item B<--lavfdopts> I<opts>
+
+Options passed to libavformat, e.g. 'probesize:250000,...'
+
+=item B<--layer> I<n>
+
+Set video render layer number (higher numbers are on top)
+
+=item B<--layout>
+
+Set output speaker layout (e.g. 5.1)
+
+=item B<--lines> I<n>
+
+Number of lines in the subtitle buffer (default: 3)
+
+=item B<--live>
+
+Set for live tv or vod type stream
+
+=item B<--loop>
+
+Loop file. Ignored if file not seekable
+
+=item B<-M>,  B<--allow-mvc>
+
+Allow decoding of both views of MVC stereo stream
+
+=item B<-n>,  B<--aidx>  I<index>
+
+Audio stream index, index can be language code or index number
+
+=item B<--nativedeinterlace>
+
+let display handle interlace
+
+=item B<--no-boost-on-downmix>
+
+Don't boost volume when downmixing
+
+=item B<--no-ghost-box>
+
+No semitransparent boxes behind subtitles
+
+=item B<--no-keys>
+
+Disable keyboard input (prevents hangs for certain TTYs)
+
+=item B<--no-osd>
+
+Do not display status information on screen
+
+=item B<--nodeinterlace>
+
+Force no deinterlacing
+
+=item B<-o>,  B<--adev>  I<device>
+
+Audio out device: e.g. hdmi/local/both/alsa[:device]
+
+=item B<--orientation> I<n>
+
+Set orientation of video (0, 90, 180 or 270)
+
+=item B<-p>,  B<--passthrough>
+
+Audio passthrough
+
+=item B<-r>,  B<--refresh>
+
+Adjust framerate/resolution to video
+
+=item B<-s>,  B<--stats>
+
+Pts and buffer stats
+
+=item B<--subtitles> I<path>
+
+External subtitles in UTF-8 srt format
+
+=item B<-t>,  B<--sid> I<index>
+
+Show subtitle with index, index can be a three letter language code or index number
+
+=item B<--threshold> I<n>
+
+Amount of buffered data required to finish buffering [s]
+
+=item B<--timeout> I<n>
+
+Timeout for stalled file/network operations (default 10s)
+
+=item B<--track> I<n>
+
+Play a DVD track (natural number, default 1)
+
+OMXPlayer ignores short and overlapping DVD tracks
+
+=item B<--user-agent> I<ua>
+
+Send specified User-Agent as part of HTTP requests
+
+=item B<-v>,  B<--version>
+
+Print version info
+
+=item B<--video_fifo>  I<n>
+
+Size of video output fifo in MB
+
+=item B<--video_queue> I<n>
+
+Size of video input queue in MB
+
+=item B<--vol> I<n>
+
+set initial volume in millibels (default 0)
+
+=item B<-w>,  B<--hw>
+
+Hw audio decoding
+
+=item B<-y>,  B<--hdmiclocksync>
+
+Display refresh rate to match video (default)
+
+=item B<-z>,  B<--nohdmiclocksync>
+
+Do not adjust display refresh rate to match video
+
+=back
+
+=head1 KEY BINDINGS
+
+Key bindings to control OMXPlayer while playing:
+
+    1           decrease speed
+    2           increase speed
+    <           rewind
+    >           fast forward
+    z           show info
+    j           previous audio stream
+    k           next audio stream
+    i           previous chapter
+    o           next chapter
+    9           previous file/track
+    0           next file/track
+    n           previous subtitle stream
+    m           next subtitle stream
+    s           toggle subtitles
+    w           show subtitles
+    x           hide subtitles
+    d           decrease subtitle delay (- 250 ms)
+    f           increase subtitle delay (+ 250 ms)
+    q           exit omxplayer
+    p / space   pause/resume
+    -           decrease volume
+    + / =       increase volume
+    left arrow  seek -30 seconds
+    right arrow seek +30 seconds
+    down arrow  seek -10 minutes
+    up arrow    seek +10 minutes
+
+=head1 KEY CONFIG SYNTAX
+
+A key config file is a series of rules of the form I<action>:I<key>. Multiple keys can be bound
+to the same action, and comments are supported by adding a # in front of the line.
+
+The list of valid actions roughly corresponds to the list of default key bindings above and are:
+
+    DECREASE_SPEED
+    INCREASE_SPEED
+    REWIND
+    FAST_FORWARD
+    SHOW_INFO
+    PREVIOUS_AUDIO
+    NEXT_AUDIO
+    PREVIOUS_CHAPTER
+    NEXT_CHAPTER
+    PREVIOUS_FILE
+    NEXT_FILE
+    PREVIOUS_SUBTITLE
+    NEXT_SUBTITLE
+    TOGGLE_SUBTITLE
+    DECREASE_SUBTITLE_DELAY
+    INCREASE_SUBTITLE_DELAY
+    EXIT
+    PAUSE
+    DECREASE_VOLUME
+    INCREASE_VOLUME
+    SEEK_BACK_SMALL
+    SEEK_FORWARD_SMALL
+    SEEK_BACK_LARGE
+    SEEK_FORWARD_LARGE
+    STEP
+
+Valid keys include all utf8 characters, and terminal escape codes. The following are also supported:
+
+    left
+    right
+    up
+    down
+    esc
+    space
+    num [decimal or hex keycode]
+
+For example:
+
+    EXIT:esc
+    PAUSE:p
+    PAUSE:space
+    REWIND:left
+    SEEK_FORWARD_SMALL:num 0x4f43
+    NEXT_FILE:num 63
+    EXIT:q
+
+=head1 EXIT CODES
+
+=over
+
+=item B<0>
+
+File played successfully to the end
+
+=item B<1>
+
+An error has occurred
+
+=item B<2>
+
+Playback has stopped before the file finished playing
+
+=back
+
+=head1 LIMITATIONS
+
+OMXPlayer does not support software video decoding. HEVC is not supported, and DVD video
+will only play on systems with mpeg2 hardware decoding. This can be purchased on rp3 but
+isn't available on the rpi4.
+
+DVD menus are not supported.
+
+=head1 BUGS AND ISSUES
+
+Please report any bug or other issues to L<https://github.com/mjfwalsh/omxplayer/issues>
+
+=head1 LICENCE
+
+OMXPlayer is free and open source software licences under the GNU General Public
+License version 2, or higher.
+
+=cut

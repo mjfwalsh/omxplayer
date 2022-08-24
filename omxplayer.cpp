@@ -122,16 +122,7 @@ void sig_handler(int s)
 
 void print_usage()
 {
-  printf(
-#include "help.h"
-  );
-}
-
-void print_keybindings()
-{
-  printf(
-#include "keys.h"
-  );
+  puts("usage: omxplayer [file|url]");
 }
 
 void print_version()
@@ -363,7 +354,6 @@ int startup(int argc, char *argv[])
     { "with-info",    no_argument,        NULL,          'I' },
     { "help",         no_argument,        NULL,          'h' },
     { "version",      no_argument,        NULL,          'v' },
-    { "keys",         no_argument,        NULL,          'k' },
     { "aidx",         required_argument,  NULL,          'n' },
     { "adev",         required_argument,  NULL,          'o' },
     { "stats",        no_argument,        NULL,          's' },
@@ -437,7 +427,7 @@ int startup(int argc, char *argv[])
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
 
-  while ((c = getopt_long(argc, argv, "awiIhvkn:l:o:slb::pd3:Myzt:rg", longopts, NULL)) != -1)
+  while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
     switch (c) 
     {
@@ -516,7 +506,7 @@ int startup(int argc, char *argv[])
           m_3d = CONF_FLAGS_FORMAT_SBS;
         else
         {
-          print_usage();
+          puts("Valid options for 3d mode are TB, FP, or SBS");
           return EXIT_FAILURE;
         }
         m_config_video.allow_mvc = true;
@@ -709,17 +699,21 @@ int startup(int argc, char *argv[])
       case layout_opt:
       {
         const char *layouts[] = {"2.0", "2.1", "3.0", "3.1", "4.0", "4.1", "5.0", "5.1", "7.0", "7.1"};
-        unsigned i;
-        for (i=0; i<sizeof layouts/sizeof *layouts; i++)
+        const int size = sizeof(layouts) / sizeof(*layouts);
+        int i;
+
+        for(i=0; i < size; i++)
+        {
           if (strcmp(optarg, layouts[i]) == 0)
           {
             m_config_audio.layout = (enum PCMLayout)i;
             break;
           }
-        if (i == sizeof layouts/sizeof *layouts)
+        }
+        if (i == size)
         {
-          printf("Wrong layout specified: %s\n", optarg);
-          print_usage();
+          printf("Invalid layout specified: %s\n", optarg);
+          puts("Valid options are: 2.0, 2.1, 3.0, 3.1, 4.0, 4.1, 5.0, 5.1, 7.0, and 7.1");
           return EXIT_FAILURE;
         }
         break;
@@ -774,10 +768,8 @@ int startup(int argc, char *argv[])
         print_version();
         return EXIT_SUCCESS;
         break;
-      case 'k':
-        print_keybindings();
-        return EXIT_SUCCESS;
-        break;
+      case ':':
+      case '?':
       default:
         return EXIT_FAILURE;
         break;
