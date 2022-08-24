@@ -7,7 +7,7 @@ CFLAGS+=-U_FORTIFY_SOURCE -Wall -DOMX_SKIP64BIT -ftree-vectorize
 LDFLAGS+=-L/opt/vc/lib -L./ $(addprefix -L,$(wildcard ffmpeg/lib[as]*))
 
 LDLIBS+=-lasound -lavcodec -lavformat -lavutil -lbcm_host -lbrcmEGL -lbrcmGLESv2 -lc -lcairo
-LDLIBS+=-ldbus-1 -ldl -lopenmaxil -lpcre2-8 -lpthread -lrt -lswresample -lswscale -lvchiq_arm
+LDLIBS+=-ldbus-1 -ldl -lopenmaxil -lpcre2-8 -lpthread -lrt -lswresample -lvchiq_arm
 LDLIBS+=-lvchostif -lvcos -lz -lfreetype
 
 INCLUDES+=-I./ -isystem ffmpeg -isystem/usr/include/dbus-1.0

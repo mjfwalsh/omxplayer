@@ -21,7 +21,7 @@ MISSING_FFMPEG_PKGS=""
 # packages
 REQUIRED_OMX_PKGS="git perl gcc g++ pkg-config binutils libasound2-dev libpcre2-dev libboost-dev libfreetype6-dev libcairo2-dev libdvdread-dev libdbus-1-dev"
 REQUIRED_DEV_HEADERS="libraspberrypi-dev libraspberrypi0 libraspberrypi-bin"
-FFMPEG_PKGS="libavutil-dev libswresample-dev libavcodec-dev libavformat-dev libswscale-dev"
+FFMPEG_PKGS="libavutil-dev libswresample-dev libavcodec-dev libavformat-dev"
 
 echo -n "Running checks for native build on Raspberry PI OS"
 
