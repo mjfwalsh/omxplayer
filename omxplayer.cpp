@@ -289,13 +289,6 @@ int get_approx_speed(double &new_speed)
   return arr_len - 1;
 }
 
-int change_file();
-int change_playlist_item();
-int run_play_loop();
-void end_of_play_loop();
-int playlist_control();
-int shutdown(bool exit_with_error = false);
-
 int startup(int argc, char *argv[])
 {
   signal(SIGINT, sig_handler);
@@ -854,51 +847,6 @@ int startup(int argc, char *argv[])
     m_config_audio.subdevice = "default";
 
   return CHANGE_FILE;
-}
-
-
-int main(int argc, char *argv[])
-try {
-  // control loop
-  int rv = startup(argc, argv);
-
-  while(1) {
-    switch(rv) {
-    case CHANGE_FILE:
-      rv = change_file();
-      break;
-    case CHANGE_PLAYLIST_ITEM:
-      rv = change_playlist_item();
-      break;
-    case RUN_PLAY_LOOP:
-      rv = run_play_loop();
-      end_of_play_loop();
-      break;
-    case END_PLAY_WITH_ERROR:
-      rv = shutdown(true);
-      break;
-    case ABORT_PLAY:
-      m_stopped = true;
-      rv = playlist_control();
-      break;
-    case END_PLAY:
-      rv = playlist_control();
-      break;
-    case SHUTDOWN:
-      rv = shutdown(false);
-      // fall through
-    case EXIT_SUCCESS:
-    case EXIT_FAILURE:
-    case PLAY_STOPPED:
-    default:
-      return rv;
-    }
-  }
-}
-catch(const char *msg)
-{
-  puts(msg);
-  return EXIT_FAILURE;
 }
 
 // we jump here when is provided with a new file
@@ -2303,5 +2251,49 @@ int shutdown(bool exit_with_error)
   }
 
   // exit status failure on other cases
+  return EXIT_FAILURE;
+}
+
+int main(int argc, char *argv[])
+try {
+  // control loop
+  int rv = startup(argc, argv);
+
+  while(1) {
+    switch(rv) {
+    case CHANGE_FILE:
+      rv = change_file();
+      break;
+    case CHANGE_PLAYLIST_ITEM:
+      rv = change_playlist_item();
+      break;
+    case RUN_PLAY_LOOP:
+      rv = run_play_loop();
+      end_of_play_loop();
+      break;
+    case END_PLAY_WITH_ERROR:
+      rv = shutdown(true);
+      break;
+    case ABORT_PLAY:
+      m_stopped = true;
+      rv = playlist_control();
+      break;
+    case END_PLAY:
+      rv = playlist_control();
+      break;
+    case SHUTDOWN:
+      rv = shutdown(false);
+      // fall through
+    case EXIT_SUCCESS:
+    case EXIT_FAILURE:
+    case PLAY_STOPPED:
+    default:
+      return rv;
+    }
+  }
+}
+catch(const char *msg)
+{
+  puts(msg);
   return EXIT_FAILURE;
 }
