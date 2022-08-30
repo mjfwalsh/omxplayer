@@ -23,20 +23,21 @@
 #include <dlfcn.h>
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
+#include <memory>
 
 #include "OMXDvdPlayer.h"
 
 class DVD
 {
 private:
-    typedef decltype(::DVDOpen)* DVDOpen_t;
-    typedef decltype(::DVDClose)* DVDClose_t;
-    typedef decltype(::DVDOpenFile)* DVDOpenFile_t;
-    typedef decltype(::DVDCloseFile)* DVDCloseFile_t;
-    typedef decltype(::DVDReadBlocks)* DVDReadBlocks_t;
-    typedef decltype(::DVDDiscID)* DVDDiscID_t;
-    typedef decltype(::ifoOpen)* ifoOpen_t;
-    typedef decltype(::ifoClose)* ifoClose_t;
+	typedef decltype(::DVDOpen)* DVDOpen_t;
+	typedef decltype(::DVDClose)* DVDClose_t;
+	typedef decltype(::DVDOpenFile)* DVDOpenFile_t;
+	typedef decltype(::DVDCloseFile)* DVDCloseFile_t;
+	typedef decltype(::DVDReadBlocks)* DVDReadBlocks_t;
+	typedef decltype(::DVDDiscID)* DVDDiscID_t;
+	typedef decltype(::ifoOpen)* ifoOpen_t;
+	typedef decltype(::ifoClose)* ifoClose_t;
 
 	void *load_function(const char *func_name)
 	{
@@ -50,14 +51,14 @@ private:
 	void *dll_handle;
 
 public:
-	DVDOpen_t       DVDOpen;
-	DVDClose_t      DVDClose;
+	DVDOpen_t	   DVDOpen;
+	DVDClose_t	  DVDClose;
 	DVDOpenFile_t   DVDOpenFile;
 	DVDCloseFile_t  DVDCloseFile;
 	DVDReadBlocks_t DVDReadBlocks;
-	DVDDiscID_t     DVDDiscID;
-	ifoOpen_t       ifoOpen;
-	ifoClose_t      ifoClose;
+	DVDDiscID_t	 DVDDiscID;
+	ifoOpen_t	   ifoOpen;
+	ifoClose_t	  ifoClose;
 
 	DVD()
 	{
@@ -66,14 +67,14 @@ public:
 			throw "Failed to load libdvdread\n";
 		}
 
-		DVDOpen        = (DVDOpen_t)load_function("DVDOpen");
-		DVDClose       = (DVDClose_t)load_function("DVDClose");
-		DVDOpenFile    = (DVDOpenFile_t)load_function("DVDOpenFile");
+		DVDOpen		= (DVDOpen_t)load_function("DVDOpen");
+		DVDClose	   = (DVDClose_t)load_function("DVDClose");
+		DVDOpenFile	= (DVDOpenFile_t)load_function("DVDOpenFile");
 		DVDCloseFile   = (DVDCloseFile_t)load_function("DVDCloseFile");
 		DVDReadBlocks  = (DVDReadBlocks_t)load_function("DVDReadBlocks");
-		DVDDiscID      = (DVDDiscID_t)load_function("DVDDiscID");
-		ifoOpen        = (ifoOpen_t)load_function("ifoOpen");
-		ifoClose       = (ifoClose_t)load_function("ifoClose");
+		DVDDiscID	  = (DVDDiscID_t)load_function("DVDDiscID");
+		ifoOpen		= (ifoOpen_t)load_function("ifoOpen");
+		ifoClose	   = (ifoClose_t)load_function("ifoClose");
 	}
 
 	~DVD()
@@ -84,8 +85,8 @@ public:
 
 OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 {
-    // let's see if we have libdvdread installed
-    dvdread = new DVD();
+	// let's see if we have libdvdread installed
+	dvdread = new DVD();
 
 	const int audio_id[7] = {0x80, 0, 0xC0, 0xC0, 0xA0, 0, 0x88};
 
@@ -107,11 +108,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		throw "Failed to open DVD";
 	}
 
-	ifo_handle_t **ifo = (ifo_handle_t **)calloc(ifo_zero->vts_atrt->nr_of_vtss + 1, sizeof(ifo_handle_t*));
-	if(!ifo) {
-		fputs("Memory error\n", stderr);
-		throw "Failed to open DVD";
-	}
+	ifo_handle_t **ifo = new ifo_handle_t*[ifo_zero->vts_atrt->nr_of_vtss + 1];
 
 	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) {
 		ifo[i] = dvdread->ifoOpen(dvd_device, i);
@@ -122,41 +119,37 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 	}
 
 	// alloc space for tracks
-	int read_track_count = track_count = ifo_zero->tt_srpt->nr_of_srpts;
-	tracks = static_cast<track_info *>(calloc(read_track_count, sizeof(track_info)));
-	if(!tracks) {
-		fputs("Memory error\n", stderr);
-		throw "Failed to open DVD";
-	}
+	int track_count = ifo_zero->tt_srpt->nr_of_srpts;
+	tracks.reserve(track_count);
 
-	int write_track = -1;
-	for(int read_track = 0; read_track < read_track_count; read_track++) {
-		int title_set_num = ifo_zero->tt_srpt->title[read_track].title_set_nr;
-		int vts_ttn = ifo_zero->tt_srpt->title[read_track].vts_ttn;
+	for(int track = 0; track < track_count; track++) {
+		int title_set_num = ifo_zero->tt_srpt->title[track].title_set_nr;
+		int vts_ttn = ifo_zero->tt_srpt->title[track].vts_ttn;
 
-		if (!ifo[title_set_num]->vtsi_mat) {
-			track_count--;
+		if (!ifo[title_set_num]->vtsi_mat)
 			continue;
-		}
 
-		pgcit_t    *vts_pgcit  = ifo[title_set_num]->vts_pgcit;
-		vtsi_mat_t *vtsi_mat   = ifo[title_set_num]->vtsi_mat;
-		pgc_t      *pgc        = vts_pgcit->pgci_srp[ifo[title_set_num]->vts_ptt_srpt->title[vts_ttn - 1].ptt[0].pgcn - 1].pgc;
+		pgcit_t	   *vts_pgcit = ifo[title_set_num]->vts_pgcit;
+		vtsi_mat_t *vtsi_mat  = ifo[title_set_num]->vtsi_mat;
+		pgc_t	   *pgc		  = vts_pgcit->pgci_srp[ifo[title_set_num]->vts_ptt_srpt->title[vts_ttn - 1].ptt[0].pgcn - 1].pgc;
 
-		if(pgc->cell_playback == NULL || pgc->program_map == NULL) {
-			track_count--;
+		if(pgc->cell_playback == NULL || pgc->program_map == NULL)
 			continue;
-		}
 
-		write_track++;
-		tracks[write_track].enabled = true;
-		tracks[write_track].length = dvdtime2msec(&pgc->playback_time);
-		tracks[write_track].chapter_count = pgc->nr_of_programs;
+		// Ignore tracks which are shorter than two minutes
+		int track_length = dvdtime2msec(&pgc->playback_time);
+		if(track_length < 120000)
+			continue;
+
+		// start a new track
+		tracks.emplace_back();
+		auto &this_track = tracks.back();
+		this_track.length = track_length;
 		int cell_count = pgc->nr_of_cells;
 
 		// Tracks
 		// ignore non-contiguous ends of tracks
-		tracks[write_track].first_sector = pgc->cell_playback[0].first_sector;
+		this_track.first_sector = pgc->cell_playback[0].first_sector;
 		int last_sector = -1;
 
 		for (int i = 0; i < cell_count - 1; i++) {
@@ -168,118 +161,84 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 				for (i++; i < cell_count; i++){
 					missing_time += dvdtime2msec(&pgc->cell_playback[i].playback_time);
 				}
-				tracks[write_track].length -= missing_time;
+				this_track.length -= missing_time;
 				break;
 			}
 		}
 		if(last_sector == -1)
 			last_sector = pgc->cell_playback[cell_count - 1].last_sector;
 
-		tracks[write_track].last_sector = last_sector;
+		this_track.last_sector = last_sector;
 
 		// Chapters
-		tracks[write_track].chapters = (track_info::chapter_info *)calloc(tracks[write_track].chapter_count, sizeof(track_info::chapter_info));
-		if(!tracks[write_track].chapters) {
-			fputs("Memory error\n", stderr);
-			throw "Failed to open DVD";
-		}
+		this_track.chapters.reserve(pgc->nr_of_programs);
 
 		int acc_chapter = 0;
 		int cell_i = 0;
-		for (int i=0; i<tracks[write_track].chapter_count; i++) {
+		for (int i = 0; i < pgc->nr_of_programs; i++) {
 			int idx = pgc->program_map[i] - 1;
 			int cell_start = pgc->cell_playback[idx].first_sector;
-			if(cell_start > last_sector) {
-				tracks[write_track].chapter_count = i;
+			if(cell_start > last_sector)
 				break;
-			}
-			tracks[write_track].chapters[i].time = acc_chapter;
-			tracks[write_track].chapters[i].cell = cell_start;
 
-            for(; cell_i <= idx; cell_i++) {
-                acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
-            }
+			this_track.chapters.push_back({
+				.cell = cell_start,
+				.time = acc_chapter
+			});
+
+			for(; cell_i <= idx; cell_i++) {
+				acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
+			}
 		}
 
-		// streams data is the same for each title set
+		// stream data is the same for each title set
 		// check if we've already seen this title set
-		tracks[write_track].title = NULL;
-		for(int i = 0; i < write_track; i++) {
+		for(int i = (int)tracks.size() - 2; i > -1; i--) {
 			if(tracks[i].title->title_num == title_set_num) {
-				tracks[write_track].title = tracks[i].title;
-				tracks[write_track].title->refcount++;
+				this_track.title = tracks[i].title;
 				break;
 			}
 		}
-		if(tracks[write_track].title != NULL)
+		if(this_track.title)
 			continue;
 
-		// allocate new title set
-		tracks[write_track].title = (title_info *)calloc(1, sizeof(title_info));
-		if(!tracks[write_track].title) {
-			fputs("Memory error\n", stderr);
-			throw "Failed to open DVD";
-		}
-
-		tracks[write_track].title->title_num = title_set_num;
-		tracks[write_track].title->refcount = 1;
+		// allocate a new title
+		this_track.title.reset(new title_info);
+		this_track.title->title_num = title_set_num;
 
 		// Audio streams
-		tracks[write_track].title->audiostream_count = 0;
-		for (int k = 0; k < 8; k++)
-			if (pgc->audio_control[k] & 0x8000)
-				tracks[write_track].title->audiostream_count++;
-
-		tracks[write_track].title->audio_streams = (title_info::stream_info *)calloc(tracks[write_track].title->audiostream_count, sizeof(title_info::stream_info));
-		if(!tracks[write_track].title->audio_streams) {
-			fputs("Memory error\n", stderr);
-			throw "Failed to open DVD";
-		}
-
-		for (int i = 0, stream_index = 0; i < 8; i++) {
+		for (int i = 0; i < 8; i++) {
 			if ((pgc->audio_control[i] & 0x8000) == 0) continue;
 
 			audio_attr_t *audio_attr = &vtsi_mat->vts_audio_attr[i];
 
-			tracks[write_track].title->audio_streams[stream_index++] = {
+			this_track.title->audio_streams.push_back({
 				.id = audio_id[audio_attr->audio_format] + (pgc->audio_control[i] >> 8 & 7),
 				.lang = audio_attr->lang_code,
-			};
+			});
 		}
 
 		// Subtitles
-		tracks[write_track].title->subtitle_count = 0;
-		for (int k = 0; k < 32; k++)
-			if (pgc->subp_control[k] & 0x80000000)
-				tracks[write_track].title->subtitle_count++;
-
-		tracks[write_track].title->subtitle_streams = (title_info::stream_info *)calloc(tracks[write_track].title->subtitle_count, sizeof(title_info::stream_info));
-		if(!tracks[write_track].title->subtitle_streams) {
-			fputs("Memory error\n", stderr);
-			throw "Failed to open DVD";
-		}
-
 		int x = vtsi_mat->vts_video_attr.display_aspect_ratio == 0 ? 24 : 8;
-		for (int i = 0, stream_index = 0; i < 32; i++) {
+		for (int i = 0; i < 32; i++) {
 			if ((pgc->subp_control[i] & 0x80000000) == 0) continue;
 
 			subp_attr_t *subp_attr = &vtsi_mat->vts_subp_attr[i];
 
-			tracks[write_track].title->subtitle_streams[stream_index++] = {
+			this_track.title->subtitle_streams.push_back({
 				.id = (int)((pgc->subp_control[i] >> x) & 0x1f) + 0x20,
 				.lang = subp_attr->lang_code,
-			};
+			});
 		}
 
 		// Palette
-		tracks[write_track].title->palette[0] = 0;
-		for (int i = 1; i < 16; i++)
-			tracks[write_track].title->palette[i] = yvu2rgb(pgc->palette[i]);
+		for (int i = 0; i < 16; i++)
+			this_track.title->palette[i] = yvu2rgb(pgc->palette[i]);
 	}
 
 	// close dvd meta data filehandles
-	for (int i=1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) dvdread->ifoClose(ifo[i]);
-	free(ifo);
+	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) dvdread->ifoClose(ifo[i]);
+	delete ifo;
 	dvdread->ifoClose(ifo_zero);
 	puts("Finished parsing DVD meta data");
 }
@@ -295,7 +254,7 @@ bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
 
 bool OMXDvdPlayer::OpenTrack(int ct)
 {
-	if(ct < 0 || ct > track_count - 1)
+	if(ct < 0 || ct > (int)tracks.size() - 1)
 		return false;
 
 	if(m_open && tracks[ct].title->title_num != tracks[current_track].title->title_num)
@@ -386,7 +345,7 @@ int OMXDvdPlayer::getChapter(int64_t timestamp)
 {
 	int needle = timestamp / 1000;
 	int l = 0;
-	int r = tracks[current_track].chapter_count - 1;
+	int r = (int)tracks[current_track].chapters.size() - 1;
 
 	if(needle >= tracks[current_track].chapters[r].time)
 		return r;
@@ -406,8 +365,8 @@ int OMXDvdPlayer::getChapter(int64_t timestamp)
 
 int OMXDvdPlayer::GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos)
 {
-    int seek_ch = getChapter(seek_ts);
-    seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
+	int seek_ch = getChapter(seek_ts);
+	seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
 	byte_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
 
 	return seek_ch;
@@ -433,7 +392,7 @@ bool OMXDvdPlayer::IsEOF()
 
 int OMXDvdPlayer::TotalChapters()
 {
-	return tracks[current_track].chapter_count;
+	return tracks[current_track].chapters.size();
 }
 
 void OMXDvdPlayer::CloseTrack()
@@ -444,12 +403,12 @@ void OMXDvdPlayer::CloseTrack()
 
 int OMXDvdPlayer::GetAudioStreamCount()
 {
-	return tracks[current_track].title->audiostream_count;
+	return tracks[current_track].title->audio_streams.size();
 }
 
 int OMXDvdPlayer::GetSubtitleStreamCount()
 {
-	return tracks[current_track].title->subtitle_count;
+	return tracks[current_track].title->subtitle_streams.size();
 }
 
 int OMXDvdPlayer::GetAudioStreamId(int i)
@@ -477,32 +436,24 @@ OMXDvdPlayer::~OMXDvdPlayer()
 	if(m_open)
 		CloseTrack();
 
-	for(int i = 0; i < track_count; i++) {
-		tracks[i].title->refcount--;
-		if(tracks[i].title->refcount == 0) {
-			free(tracks[i].title->audio_streams);
-			free(tracks[i].title->subtitle_streams);
-			free(tracks[i].title);
-		}
-		free(tracks[i].chapters);
-	}
-	free(tracks);
-
 	dvdread->DVDClose(dvd_device);
-
 	delete dvdread;
 }
 
 int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)
 {
-	float fps = frames_per_s[(dt->frame_u & 0xc0) >> 6];
+	int ms  = ((dt->hour   >> 4) * 10 + (dt->hour   & 0x0f)) * 3600000;
+	ms     += ((dt->minute >> 4) * 10 + (dt->minute & 0x0f)) * 60000;
+	ms     += ((dt->second >> 4) * 10 + (dt->second & 0x0f)) * 1000;
 
-	int ms  = (((dt->hour &   0xf0) >> 3) * 5 + (dt->hour   & 0x0f)) * 3600000;
-	ms     += (((dt->minute & 0xf0) >> 3) * 5 + (dt->minute & 0x0f)) * 60000;
-	ms     += (((dt->second & 0xf0) >> 3) * 5 + (dt->second & 0x0f)) * 1000;
+	int frames = ((dt->frame_u & 0x30) >> 4) * 10 + (dt->frame_u & 0x0f);
 
-	if(fps > 0)
-		ms += (((dt->frame_u & 0x30) >> 3) * 5 + (dt->frame_u & 0x0f)) * 1000.0 / fps;
+	if((dt->frame_u >> 6) == 1)
+		// 25fps equals 40 millisecs per frame
+		ms += frames * 40;
+	else
+		// 29.97fps equals 33.3667 millisecs per frame
+		ms += (int)((frames * 33.3667) + 0.5);
 
 	return ms;
 }
@@ -568,7 +519,7 @@ void OMXDvdPlayer::read_disc_checksum()
 void OMXDvdPlayer::read_disc_serial_number()
 {
 	char serial_no[9];
-    char buffer[DVD_VIDEO_LB_LEN];
+	char buffer[DVD_VIDEO_LB_LEN];
 
 	FILE *fh = fopen(device_path.c_str(), "r");
 	if(!fh) {
@@ -597,62 +548,29 @@ void OMXDvdPlayer::read_disc_serial_number()
 //enable heuristic track skip
 void OMXDvdPlayer::enableHeuristicTrackSelection()
 {
-	// Disable tracks which are shorter than two minutes
-	for(int i = 0; i < track_count; i++) {
-		if(tracks[i].length < 120000) {
-			tracks[i].enabled = false;
-		}
-	}
+	int track_count = tracks.size();
+	std::vector<bool> enabled(track_count, true);
 
 	// Search for and disable composite tracks
 	for(int i = 0; i < track_count - 1; i++) {
 		for(int j = i + 1; j < track_count; j++) {
 			if(tracks[i].title->title_num == tracks[j].title->title_num
-					&& tracks[i].first_sector == tracks[j].first_sector
-					&& tracks[i].enabled && tracks[j].enabled) {
+					&& tracks[i].first_sector == tracks[j].first_sector) {
 
 				if(tracks[i].length > tracks[j].length)
-					tracks[i].enabled = false;
+					enabled[i] = false;
 				else
-					tracks[j].enabled = false;
+					enabled[j] = false;
 			}
 		}
 	}
 
 	// remove disabled tracks
-	int r = 0;
-	int w = 0;
-	while(r < track_count) {
-		if(tracks[r].enabled) {
-			if(w != r)
-				memmove(&tracks[w], &tracks[r], sizeof(struct track_info));
-			w++;
-			r++;
-		} else {
-			tracks[r].title->refcount--;
-			if(tracks[r].title->refcount == 0) {
-				free(tracks[r].title->audio_streams);
-				free(tracks[r].title->subtitle_streams);
-				free(tracks[r].title);
-			}
-			free(tracks[r].chapters);
-			r++;
-		}
-	}
+	for(int i = track_count - 1; i > -1; i--)
+		if(!enabled[i])
+			tracks.erase(tracks.begin() + i);
 
-	// change track count
-	int old_track_count = track_count;
-	track_count = w;
-
-	// free unused space, if possible
-	if(old_track_count != track_count) {
-		struct track_info *tmp = (struct track_info *)reallocarray(tracks, track_count, sizeof(struct track_info));
-		if(tmp) {
-			tracks = tmp;
-		} else {
-			fputs("Memory error\n", stderr);
-		}
-	}
+	tracks.shrink_to_fit();
 }
 
 int clamp(float val)
@@ -669,7 +587,7 @@ int OMXDvdPlayer::yvu2rgb(int color)
 	int u = color >> 8 & 0xff;
 	int v = color & 0xff;
 
-	float r = -222.9215f + 1.1643f * y +                 1.5960f * v;
+	float r = -222.9215f + 1.1643f * y +				 1.5960f * v;
 	float g =  135.5752f + 1.1643f * y + -0.3917f * u + -0.8129f * v;
 	float b = -276.8358f + 1.1643f * y +  2.0172f * u;
 

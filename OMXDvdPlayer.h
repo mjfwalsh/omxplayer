@@ -19,7 +19,9 @@
 
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_types.h>
+#include <vector>
 #include <string>
+#include <memory>
 
 class DVD;
 
@@ -78,34 +80,32 @@ class OMXDvdPlayer
 	std::string disc_title;
 	std::string disc_checksum;
 
-	typedef struct title_info {
+	typedef struct {
+		int id; // as in the hex number in "Stream #0:2[0x85]:"
+		uint16_t lang; // lang code
+	} stream_info;
+
+	typedef struct {
 		int title_num;
-		int audiostream_count;
-		struct stream_info {
-			int id; // as in the hex number in "Stream #0:2[0x85]:"
-			uint16_t lang; // lang code
-		} *audio_streams;
-		int subtitle_count;
-		struct stream_info *subtitle_streams;
+		std::vector<stream_info> audio_streams;
+		std::vector<stream_info> subtitle_streams;
 		uint32_t palette[16];
-		int refcount;
 	} title_info;
 
-	int track_count = 0;
-	struct track_info {
-		bool enabled;
-		title_info *title;
+	typedef struct {
+		int cell;
+		int time;
+	} chapter_info;
+
+	typedef struct {
+		std::shared_ptr<title_info> title;
 		int length;
-		int chapter_count;
-		struct chapter_info {
-			int cell;
-			int time;
-		} *chapters;
+		std::vector<chapter_info> chapters;
 		int first_sector;
 		int last_sector;
-	} *tracks;
+	} track_info;
 
-	float frames_per_s[4] = {-1.0, 25.00, -1.0, 29.97};
+	std::vector<track_info> tracks;
 
 	int yvu2rgb(int c);
 };
