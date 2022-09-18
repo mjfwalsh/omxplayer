@@ -476,8 +476,8 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
       m_video_codec_name = "omx-vc1";
       break;    
     default:
-      printf("Vcodec id unknown: %x\n", m_config.hints.codec);
-      throw "Unknown video codec";
+      printf("Unsupported video codec: %s\n", avcodec_get_name(m_config.hints.codec));
+      throw "Unsupported video codec";
     break;
   }
 
