@@ -950,9 +950,6 @@ int change_playlist_item()
         return END_PLAY_WITH_ERROR;
     }
 
-    // deletes small and some overlapping tracks
-    m_DvdPlayer->enableHeuristicTrackSelection();
-
     // Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_playlist_enabled)
     {

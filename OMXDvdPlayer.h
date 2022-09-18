@@ -55,7 +55,7 @@ class OMXDvdPlayer
 	const char *GetSubtitleStreamLanguage(int i);
 	std::string GetID() const { return disc_checksum; }
 	std::string GetTitle() const { return disc_title; }
-	void enableHeuristicTrackSelection();
+	void removeCompositeTracks();
 	uint32_t *getPalette();
 
   private:
@@ -74,11 +74,16 @@ class OMXDvdPlayer
 	dvd_file_t *dvd_track = NULL;
 
 	int current_track = -1;
-	int total_blocks = 0;
+	int current_part = -1;
 
 	std::string device_path;
 	std::string disc_title;
 	std::string disc_checksum;
+
+	typedef struct {
+		unsigned int first_sector;
+		int blocks;
+	} part_info;
 
 	typedef struct {
 		int id; // as in the hex number in "Stream #0:2[0x85]:"
@@ -101,8 +106,7 @@ class OMXDvdPlayer
 		std::shared_ptr<title_info> title;
 		int length;
 		std::vector<chapter_info> chapters;
-		int first_sector;
-		int last_sector;
+		std::vector<part_info> parts;
 	} track_info;
 
 	std::vector<track_info> tracks;

@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <limits.h>
 #include <dlfcn.h>
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
@@ -103,10 +104,8 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 	// Open dvd meta data header
 	ifo_handle_t *ifo_zero = dvdread->ifoOpen(dvd_device, 0);
-	if(!ifo_zero) {
-		fprintf( stderr, "Can't open main ifo!\n");
-		throw "Failed to open DVD";
-	}
+	if(!ifo_zero)
+		throw "Failed to open DVD: Can't open main ifo!";
 
 	ifo_handle_t **ifo = new ifo_handle_t*[ifo_zero->vts_atrt->nr_of_vtss + 1];
 
@@ -141,60 +140,77 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		if(track_length < 120000)
 			continue;
 
-		// start a new track
+		// allocate new track
 		tracks.emplace_back();
 		auto &this_track = tracks.back();
 		this_track.length = track_length;
-		int cell_count = pgc->nr_of_cells;
 
-		// Tracks
-		// ignore non-contiguous ends of tracks
-		this_track.first_sector = pgc->cell_playback[0].first_sector;
-		int last_sector = -1;
+		// some DVD tracks have dummy cells at the end, ignore them
+		uint cell_count = pgc->nr_of_cells;
+		int length_of_last_cell = dvdtime2msec(&pgc->cell_playback[cell_count - 1].playback_time);
+		if(length_of_last_cell <= 1000)
+		{
+			this_track.length -= length_of_last_cell;
+			cell_count--;
+		}
 
-		for (int i = 0; i < cell_count - 1; i++) {
-			int end = pgc->cell_playback[i].last_sector;
-			int next = pgc->cell_playback[i+1].first_sector - 1;
-			if(end != next) {
-				last_sector = end;
-				int missing_time = 0;
-				for (i++; i < cell_count; i++){
-					missing_time += dvdtime2msec(&pgc->cell_playback[i].playback_time);
-				}
-				this_track.length -= missing_time;
-				break;
+		// scan for discontinuities (ie non-adjacent blocks of cells)
+		for(uint i = 0, start_of_this_block = UINT_MAX; i < cell_count; i++)
+		{
+			// skips angle cell
+			if(pgc->cell_playback[i].block_type == BLOCK_TYPE_ANGLE_BLOCK)
+				continue;
+
+			if(start_of_this_block == UINT_MAX)
+				start_of_this_block = pgc->cell_playback[i].first_sector;
+
+			// search for discontinuity or end
+			if(i == cell_count - 1 || pgc->cell_playback[i].last_sector + 1 != pgc->cell_playback[i+1].first_sector)
+			{
+				this_track.parts.push_back({
+					.first_sector = start_of_this_block,
+					.blocks = (int)(pgc->cell_playback[i].last_sector - start_of_this_block + 1),
+				});
+				start_of_this_block = UINT_MAX;
 			}
 		}
-		if(last_sector == -1)
-			last_sector = pgc->cell_playback[cell_count - 1].last_sector;
-
-		this_track.last_sector = last_sector;
+		if(this_track.parts.size() == 0)
+		{
+			tracks.resize(tracks.size() - 1);
+			continue;
+		}
 
 		// Chapters
-		this_track.chapters.reserve(pgc->nr_of_programs);
-
-		int acc_chapter = 0;
+		int acc_time = 0;
+		int acc_cells = 0;
 		int cell_i = 0;
 		for (int i = 0; i < pgc->nr_of_programs; i++) {
-			int idx = pgc->program_map[i] - 1;
-			int cell_start = pgc->cell_playback[idx].first_sector;
-			if(cell_start > last_sector)
-				break;
+			int cell_no = pgc->program_map[i] - 1;
+			if(pgc->cell_playback[cell_no].block_type == BLOCK_TYPE_ANGLE_BLOCK)
+				continue;
 
 			this_track.chapters.push_back({
-				.cell = cell_start,
-				.time = acc_chapter
+				.cell = acc_cells,
+				.time = acc_time
 			});
 
-			for(; cell_i <= idx; cell_i++) {
-				acc_chapter += dvdtime2msec(&pgc->cell_playback[idx].playback_time);
+			for(; cell_i < cell_no; cell_i++)
+			{
+				// skip angle cells
+				if(pgc->cell_playback[cell_i].block_type == BLOCK_TYPE_ANGLE_BLOCK)
+					continue;
+
+				acc_time += dvdtime2msec(&pgc->cell_playback[cell_i].playback_time);
+				acc_cells += pgc->cell_playback[cell_i].last_sector - pgc->cell_playback[cell_i].first_sector + 1;
 			}
 		}
 
 		// stream data is the same for each title set
 		// check if we've already seen this title set
-		for(int i = (int)tracks.size() - 2; i > -1; i--) {
-			if(tracks[i].title->title_num == title_set_num) {
+		for(int i = (int)tracks.size() - 2; i > -1; i--)
+		{
+			if(tracks[i].title->title_num == title_set_num)
+			{
 				this_track.title = tracks[i].title;
 				break;
 			}
@@ -207,7 +223,8 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		this_track.title->title_num = title_set_num;
 
 		// Audio streams
-		for (int i = 0; i < 8; i++) {
+		for (int i = 0; i < 8; i++)
+		{
 			if ((pgc->audio_control[i] & 0x8000) == 0) continue;
 
 			audio_attr_t *audio_attr = &vtsi_mat->vts_audio_attr[i];
@@ -220,7 +237,8 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 		// Subtitles
 		int x = vtsi_mat->vts_video_attr.display_aspect_ratio == 0 ? 24 : 8;
-		for (int i = 0; i < 32; i++) {
+		for (int i = 0; i < 32; i++)
+		{
 			if ((pgc->subp_control[i] & 0x80000000) == 0) continue;
 
 			subp_attr_t *subp_attr = &vtsi_mat->vts_subp_attr[i];
@@ -238,8 +256,12 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 
 	// close dvd meta data filehandles
 	for (int i = 1; i <= ifo_zero->vts_atrt->nr_of_vtss; i++) dvdread->ifoClose(ifo[i]);
-	delete ifo;
+	delete [] ifo;
 	dvdread->ifoClose(ifo_zero);
+
+	removeCompositeTracks();
+
+	tracks.shrink_to_fit();
 	puts("Finished parsing DVD meta data");
 }
 
@@ -263,12 +285,10 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 	// select track
 	current_track = ct;
 
-	// seek to beginning to track
+	// seek to beginning to track/part
 	pos = 0;
 	pos_byte_offset = 0;
-
-	// blocks for this track
-	total_blocks = tracks[current_track].last_sector - tracks[current_track].first_sector + 1;
+	current_part = 0;
 
 	// open dvd track
 	if(!m_open) {
@@ -286,36 +306,42 @@ bool OMXDvdPlayer::OpenTrack(int ct)
 
 int OMXDvdPlayer::Read(unsigned char *lpBuf, int64_t uiBufSize)
 {
-	if(!m_open)
-		return 0;
-
 	// read in block in whole numbers
 	int blocks_to_read = uiBufSize / DVD_VIDEO_LB_LEN;
 
-	if(pos + blocks_to_read > total_blocks) {
-		blocks_to_read = total_blocks - pos;
+	if(pos + blocks_to_read > tracks[current_track].parts[current_part].blocks) {
+		blocks_to_read = tracks[current_track].parts[current_part].blocks - pos;
 
 		if(blocks_to_read < 1)
 			return 0;
 	}
 
-	int read_blocks = dvdread->DVDReadBlocks(dvd_track, tracks[current_track].first_sector + pos, blocks_to_read, lpBuf);
+    int read_start = tracks[current_track].parts[current_part].first_sector + pos;
+	int read_blocks = dvdread->DVDReadBlocks(dvd_track, read_start, blocks_to_read, lpBuf);
 
-	if(read_blocks <= 0) {
+	// return any error
+	if(read_blocks <= 0)
 		return read_blocks;
-	} else if(pos_byte_offset > 0) {
-		int bytes_read = read_blocks * DVD_VIDEO_LB_LEN - pos_byte_offset;
 
+	// move internal pointers forward
+	pos += read_blocks;
+	if(pos == tracks[current_track].parts[current_part].blocks
+			&& current_part < (int)tracks[current_track].parts.size() - 1)
+	{
+		current_part++;
+		pos = 0;
+	}
+
+	int bytes_read = read_blocks * DVD_VIDEO_LB_LEN - pos_byte_offset;
+
+	if(pos_byte_offset > 0) {
 		// shift the contents of the buffer to the left
 		memmove(lpBuf, lpBuf + pos_byte_offset, bytes_read);
 
 		pos_byte_offset = 0;
-		pos += read_blocks;
-		return bytes_read;
-	} else {
-		pos += read_blocks;
-		return read_blocks * DVD_VIDEO_LB_LEN;
 	}
+
+	return bytes_read;
 }
 
 int OMXDvdPlayer::getCurrentTrackLength()
@@ -334,8 +360,18 @@ int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
 		return -1;
 
 	// seek in blocks
-	pos = iFilePosition / DVD_VIDEO_LB_LEN;
 	pos_byte_offset = iFilePosition % DVD_VIDEO_LB_LEN;
+
+	pos = iFilePosition / DVD_VIDEO_LB_LEN;
+	current_part = 0;
+
+	// loop through blocks (except the last)
+	while(current_part + 1 < (int)tracks[current_track].parts.size()
+			&& pos >= tracks[current_track].parts[current_part].blocks)
+	{
+		pos -= tracks[current_track].parts[current_part].blocks;
+		current_part++;
+	}
 
 	return 0;
 }
@@ -379,6 +415,10 @@ int64_t OMXDvdPlayer::GetChapterBytePos(int seek_ch)
 
 int64_t OMXDvdPlayer::GetSizeInBytes()
 {
+	int total_blocks = 0;
+	for(uint i = 0; i < tracks[current_track].parts.size(); i++)
+		total_blocks += tracks[current_track].parts[i].blocks;
+
 	return (int64_t)total_blocks * DVD_VIDEO_LB_LEN;
 }
 
@@ -387,7 +427,13 @@ bool OMXDvdPlayer::IsEOF()
 	if(!m_open)
 		return true;
 
-	return pos >= total_blocks;
+	if(current_part > (int)tracks[current_track].parts.size() - 1)
+		return true;
+
+	if(current_part < (int)tracks[current_track].parts.size() - 1)
+		return false;
+
+	return pos >= tracks[current_track].parts[current_part].blocks;
 }
 
 int OMXDvdPlayer::TotalChapters()
@@ -545,32 +591,60 @@ void OMXDvdPlayer::read_disc_serial_number()
 	disc_checksum = serial_no;
 }
 
-//enable heuristic track skip
-void OMXDvdPlayer::enableHeuristicTrackSelection()
+// Search for and disable composite tracks
+// Example layouts:
+
+//  |-                  Track 1                 -|
+//  |-        Track 2     -||-     Track 3      -|
+
+//  |-        Track 1     -||-     Track 2      -|
+//  |-                  Track 3                 -|
+
+void OMXDvdPlayer::removeCompositeTracks()
 {
-	int track_count = tracks.size();
-	std::vector<bool> enabled(track_count, true);
+	// build a subset of tracks longer than 17.5 minutes
+	std::vector<uint> lt;
+	for(uint i = 0; i < tracks.size(); i++)
+		if(tracks[i].length > 1050000)
+			lt.push_back(i);
 
-	// Search for and disable composite tracks
-	for(int i = 0; i < track_count - 1; i++) {
-		for(int j = i + 1; j < track_count; j++) {
-			if(tracks[i].title->title_num == tracks[j].title->title_num
-					&& tracks[i].first_sector == tracks[j].first_sector) {
+	// we need at least three of these tracks
+	if(lt.size() < 3)
+		return;
 
-				if(tracks[i].length > tracks[j].length)
-					enabled[i] = false;
-				else
-					enabled[j] = false;
-			}
-		}
-	}
+	// all the tracks should be in the same title set (VOB file)
+	int title_set = tracks[lt[0]].title->title_num;
+	for(uint i = 1; i < lt.size(); i++)
+		if(tracks[lt[i]].title->title_num != title_set)
+			return;
 
-	// remove disabled tracks
-	for(int i = track_count - 1; i > -1; i--)
-		if(!enabled[i])
-			tracks.erase(tracks.begin() + i);
+	// find the longer of the first and last tracks
+	int longest_track_of_subset;
+	if(tracks[lt[0]].length > tracks[lt.back()].length)
+		longest_track_of_subset = 0;
+	else
+		longest_track_of_subset = lt.size() - 1;
 
-	tracks.shrink_to_fit();
+	// extract it
+	int longest_track = lt[longest_track_of_subset];
+	lt.erase(lt.begin() + longest_track_of_subset);
+
+	// compare begin point
+	if(tracks[longest_track].parts[0].first_sector != tracks[lt[0]].parts[0].first_sector)
+		return;
+
+	// get the length of the remaining tracks within the subset
+	int length_of_other_tracks = 0;
+	for(uint &i : lt)
+		length_of_other_tracks += tracks[i].length;
+
+	// compare lengths - allow a margin of two seconds
+	int diff = tracks[longest_track].length - length_of_other_tracks;
+	if(diff < -2000 || diff > 2000)
+		return;
+
+	// now delete the composite track
+	tracks.erase(tracks.begin() + longest_track);
 }
 
 int clamp(float val)
