@@ -1646,6 +1646,7 @@ int run_play_loop()
   catch(const char *msg)
   {
     osd_printf(UM_ALL, "OMXReader error: %s", msg);
+    m_omx_reader = NULL;
     return END_PLAY_WITH_ERROR;
   }
 
@@ -1747,6 +1748,7 @@ int run_play_loop()
     catch(const char *msg)
     {
       puts(msg);
+      m_player_video = NULL;
       return END_PLAY_WITH_ERROR;
     }
   }
@@ -1806,6 +1808,7 @@ int run_play_loop()
     catch(const char *msg)
     {
       osd_printf(UM_ALL, msg);
+      m_player_audio = NULL;
       return END_PLAY_WITH_ERROR;
     }
 
@@ -2110,7 +2113,7 @@ void end_of_play_loop()
   m_cmd_line_subtitles = false;
 
   int t = (int)(m_av_clock->GetMediaTime()*1e-6);
-  int dur = m_omx_reader->GetStreamLengthSeconds();
+  int dur = m_omx_reader ? m_omx_reader->GetStreamLengthSeconds() : 0;
   printf("Stopped at: %02d:%02d:%02d\n", (t/3600), (t/60)%60, t%60);
   printf("  Duration: %02d:%02d:%02d\n", (dur/3600), (dur/60)%60, dur%60);
 
