@@ -213,9 +213,6 @@ void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool Nativ
 
     /* inform TV of ntsc setting */
     HDMI_PROPERTY_PARAM_T property;
-    property.property = HDMI_PROPERTY_PIXEL_CLOCK_TYPE;
-    property.param1 = ntsc_freq ? HDMI_PIXEL_CLOCK_TYPE_NTSC : HDMI_PIXEL_CLOCK_TYPE_PAL;
-    property.param2 = 0;
 
     /* inform TV of any 3D settings. Note this property just applies to next hdmi mode change, so no need to call for 2D modes */
     property.property = HDMI_PROPERTY_3D_STRUCTURE;

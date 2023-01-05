@@ -59,7 +59,7 @@ void AutoPlaylist::readPlaylist(string &filename)
 
 	struct dirent *ent;
 	while ((ent = readdir(dir))) {
-		if(ent->d_type != 4 && ent->d_name[0] != '.' &&
+		if(ent->d_type != DT_DIR && ent->d_name[0] != '.' &&
 				fnameext_match.RegFind(ent->d_name, 0) > -1) {
 
 			playlist.push_back(ent->d_name);

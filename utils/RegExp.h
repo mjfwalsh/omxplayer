@@ -30,7 +30,7 @@ namespace PCRE {
 class CRegExp
 {
 public:
-  CRegExp(const char *re, bool casesensitive = false);
+  explicit CRegExp(const char *re, bool casesensitive = false);
 
   ~CRegExp();
 

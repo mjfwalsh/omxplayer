@@ -31,7 +31,7 @@ static int uri_unescape_helper(const char *r, char *w)
         return 2;
     }
 
-    int out[2];
+    unsigned int out[2];
     for(int i = 0; i < 2; i++) {
         switch(*r) {
         case 'A' ... 'F':
@@ -50,7 +50,7 @@ static int uri_unescape_helper(const char *r, char *w)
         r++;
     }
 
-    int result = (out[0] << 4) | out[1];
+    unsigned int result = (out[0] << 4) | out[1];
     if(result < 32 || result == 127) {
         // ignore control chars
         *w = ' ';

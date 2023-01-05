@@ -91,7 +91,7 @@ public:
   class UseInternalSubs : public Item
   {
     public:
-    explicit UseInternalSubs(int &as) : Item(USE_INTERNAL_SUBS), active_stream(as)  {};
+    explicit UseInternalSubs(const int &as) : Item(USE_INTERNAL_SUBS), active_stream(as)  {};
 
     int active_stream;
   };

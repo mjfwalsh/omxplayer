@@ -58,6 +58,9 @@ void RecentDVDStore::readStore()
 	recent_dvd_file.assign(home);
 	recent_dvd_file += "/.omxplayer_dvd_store";
 
+    // mark as initialised even if the recent file doesn't exist
+	m_init = true;
+
 	// open file
 	ifstream s(recent_dvd_file);
 	if(!s) return;
@@ -83,8 +86,6 @@ void RecentDVDStore::readStore()
 			store.push_back(move(d));
 	}
 	s.close();
-
-	m_init = true;
 }
 
 
@@ -117,7 +118,7 @@ void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, cha
 }
 
 
-void RecentDVDStore::remember(int &track, int &time, char *audio, char *subtitle)
+void RecentDVDStore::remember(const int &track, const int &time, char *audio, char *subtitle)
 {
 	if(!m_init || current_dvd.empty()) return;
 

@@ -26,12 +26,12 @@ class RecentFileStore
 public:
 	RecentFileStore();
 	bool readStore();
-	void forget(std::string &key);
-	void remember(std::string &url, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
+	void forget(const std::string &key);
+	void remember(const std::string &url, const int &dvd_track, const int &pos, char *audio, const int &audio_track, char *subtitle, const int &subtitle_track);
 	void saveStore();
 	bool checkIfLink(std::string &filename);
 	void readlink(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &subtitle_track);
-	void retrieveRecentInfo(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track);
+	void retrieveRecentInfo(const std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track);
 
 private:
 	struct fileInfo {

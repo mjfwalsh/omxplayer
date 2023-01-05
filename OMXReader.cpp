@@ -618,9 +618,6 @@ bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
 
   if(stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
   {
-    hints->fpsrate       = stream->r_frame_rate.num;
-    hints->fpsscale      = stream->r_frame_rate.den;
-
     if(m_bMatroska && stream->avg_frame_rate.den && stream->avg_frame_rate.num)
     {
       hints->fpsrate      = stream->avg_frame_rate.num;

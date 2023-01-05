@@ -105,7 +105,7 @@ static bool split(string &line, string &key, string &val)
     return true;
 }
 
-void RecentFileStore::retrieveRecentInfo(string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track)
+void RecentFileStore::retrieveRecentInfo(const string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track)
 {
 	for(unsigned i = 0; i < store.size(); i++) {
 		if(store[i].url == filename) {
@@ -223,7 +223,7 @@ void RecentFileStore::getRecentFileList(vector<string> &recents)
 	closedir(dir);
 }
 
-void RecentFileStore::forget(string &key)
+void RecentFileStore::forget(const string &key)
 {
 	for(auto i = store.begin(); i != store.end(); i++) {
 		if(i->url == key) {
@@ -233,7 +233,7 @@ void RecentFileStore::forget(string &key)
 	}
 }
 
-void RecentFileStore::remember(string &url, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
+void RecentFileStore::remember(const string &url, const int &dvd_track, const int &pos, char *audio, const int &audio_track, char *subtitle, const int &subtitle_track)
 {
 	if(!m_init) return;
 

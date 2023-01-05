@@ -58,7 +58,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
   if(!m_src_component || !m_dst_component || !IsInitialized())
     return OMX_ErrorUndefined;
 
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
+  OMX_ERRORTYPE omx_err;
 
   if(m_src_component->GetComponent())
   {
@@ -129,7 +129,7 @@ OMX_ERRORTYPE COMXCoreTunel::Deestablish(bool noWait)
 
 OMX_ERRORTYPE COMXCoreTunel::Establish()
 {
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
+  OMX_ERRORTYPE omx_err;
   OMX_PARAM_U32TYPE param;
   OMX_INIT_STRUCTURE(param);
 
@@ -599,7 +599,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisableAllPorts()
   if(!m_handle)
     return OMX_ErrorUndefined;
 
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
+  OMX_ERRORTYPE omx_err;
 
   OMX_INDEXTYPE idxTypes[] = {
     OMX_IndexParamAudioInit,

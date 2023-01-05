@@ -75,7 +75,6 @@ bool OMXClock::SetReferenceClock(bool has_audio)
   CSingleLock lock(m_lock);
 
   bool ret = true;
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_TIME_CONFIG_ACTIVEREFCLOCKTYPE refClock;
   OMX_INIT_STRUCTURE(refClock);
 
@@ -88,8 +87,7 @@ bool OMXClock::SetReferenceClock(bool has_audio)
   {
     CLogLog(LOGNOTICE, "OMXClock using %s as reference", refClock.eClock == OMX_TIME_RefClockVideo ? "video" : "audio");
 
-    omx_err = m_omx_clock.SetConfig(OMX_IndexConfigTimeActiveRefClock, &refClock);
-    if(omx_err != OMX_ErrorNone)
+    if(m_omx_clock.SetConfig(OMX_IndexConfigTimeActiveRefClock, &refClock) != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "OMXClock::SetReferenceClock error setting OMX_IndexConfigTimeActiveRefClock");
       ret = false;
@@ -108,14 +106,11 @@ bool OMXClock::StateExecute()
 
   CSingleLock lock(m_lock);
 
-  OMX_ERRORTYPE omx_err = OMX_ErrorNone;
-
   if(m_omx_clock.GetState() != OMX_StateExecuting)
   {
     StateIdle();
 
-    omx_err = m_omx_clock.SetStateForComponent(OMX_StateExecuting);
-    if (omx_err != OMX_ErrorNone)
+    if (m_omx_clock.SetStateForComponent(OMX_StateExecuting) != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "OMXClock::StateExecute m_omx_clock.SetStateForComponent");
       return false;
