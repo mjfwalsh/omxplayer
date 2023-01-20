@@ -1085,7 +1085,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
 
     strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, m_audio_index).c_str());
-    osd_printf(UM_NORM, "Audio stream: %d %s", m_audio_index + 1, m_audio_lang);
+    if(m_audio_lang[0] == '\0')
+      osd_printf(UM_NORM, "Audio stream: %d", m_audio_index + 1);
+    else
+      osd_printf(UM_NORM, "Audio stream: %d (%s)", m_audio_index + 1, m_audio_lang);
     break;
 
   case ACTION_PREVIOUS_CHAPTER:
@@ -1155,7 +1158,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       } else {
         strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
             m_subtitle_index).c_str());
-        osd_printf(UM_NORM, "Subtitle stream: %d %s", m_subtitle_index + 1, m_subtitle_lang);
+        if(m_subtitle_lang[0] == '\0')
+          osd_printf(UM_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
+        else
+          osd_printf(UM_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
       }
       PrintSubtitleInfo();
     }
