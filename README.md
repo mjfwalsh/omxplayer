@@ -34,10 +34,6 @@ DVD menus are not supported.
 
 OMXPlayer will not work on 64bit systems.
 
-## DOWNLOAD
-
-    git clone https://github.com/mjfwalsh/omxplayer.git
-
 ## COMPILING
 
 To compile OMXPlayer natively on you Raspberry PI you will need around 230 MBs of RAM. You will
@@ -60,26 +56,28 @@ Once you have these installed you should be able to compile OMXPlayer with a `ma
 
 ## RUNNING
 
-To run OMXPlayer need to enable the fake kms driver by replacing 'dtoverlay=vc4-kms-v3d'
-with 'dtoverlay=vc4-fkms-v3d' (note the f before kms) in your system's /boot/config.txt
+To run OMXPlayer need to enable the fake kms driver by replacing `dtoverlay=vc4-kms-v3d`
+with `dtoverlay=vc4-fkms-v3d` (note the f before kms) in your system's `/boot/config.txt`
 file.
+
+You will also need the following static libraries:
+
+    libbcm_host.so libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so libvchiq_arm.so libvcos.so
+
+which should be in the `/opt/vc/lib` directory.
 
 You will also need the following packages:
 
-### General
-
     libc6 libdbus-1-3 libasound2 libfreetype6 libgcc1 libpcre3
     libstdc++6 zlib1g ca-certificates dbus libcairo2
-
-(As far as I know all of these come pre-installed with Raspberry Pi OS)
-
-### FFmpeg
-
     libavcodec58 libavformat58 libavutil56 libswresample3
 
-(These come pre-installed on the full version of Raspberry Pi OS)
-
 ### DVDs
+
+Playing DVDs is experimental and not guaranteed to work.
+
+To play DVDs you will need to purchase a [MPEG-2 licence](https://codecs.raspberrypi.com/mpeg-2-license-key/)
+(only available for the Raspberry PI 3). You will also need the following packages:
 
     libdvdread4 libdvdcss2
 
