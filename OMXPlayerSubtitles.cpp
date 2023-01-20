@@ -290,18 +290,15 @@ void OMXPlayerSubtitles::RenderLoop()
             OMXPacket *pkt = a->pkt;
 
             Subtitle sub;
-            if(!GetSubData(pkt, sub))
+            if(GetSubData(pkt, sub))
             {
-              delete pkt;
-              break;
+              // Add to buffer
+              m_subtitle_buffers[pkt->index].push_back(sub);
+
+              // and send to renderer if this subtitle stream is currently showing
+              if(a->currently_showing)
+                internal_subtitles.push_back(sub);
             }
-
-            // Add to buffer
-            m_subtitle_buffers[pkt->index].push_back(sub);
-
-            // and send to renderer if this subtitle stream is currently showing
-            if(a->currently_showing)
-              internal_subtitles.push_back(sub);
 
             delete pkt;
           }
@@ -311,6 +308,7 @@ void OMXPlayerSubtitles::RenderLoop()
             Mailbox::UseInternalSubs *a = (Mailbox::UseInternalSubs *)args;
 
             internal_subtitles.clear();
+            m_prev_pts = -1;
             subtitles = &internal_subtitles;
             for(Subtitle &s : m_subtitle_buffers[a->active_stream])
               internal_subtitles.push_back(s);
@@ -322,6 +320,7 @@ void OMXPlayerSubtitles::RenderLoop()
           for(auto &q : m_subtitle_buffers)
             q.clear();
           prev_now = INT_MAX;
+          m_prev_pts = -1;
           break;
         case Mailbox::USE_EXTERNAL_SUBS:
           subtitles = &m_external_subtitles;
@@ -364,6 +363,7 @@ void OMXPlayerSubtitles::RenderLoop()
           internal_subtitles.clear();
           subtitles = &internal_subtitles;
           prev_now = INT_MAX;
+          m_prev_pts = -1;
           break;
         case Mailbox::EXIT:
           delete args;
@@ -560,16 +560,17 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
 
 bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 {
-  static int64_t fixed_pts = AV_NOPTS_VALUE;
   AVSubtitle s;
-  int got_sub_ptr = -1;
+  int got_sub_ptr;
 
   if(avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt) < 0)
     return false;
 
+  // partial packet with timestamp but no content
   if(got_sub_ptr == 0)
   {
-    fixed_pts = pkt->pts;
+    if(pkt->pts != AV_NOPTS_VALUE)
+      m_prev_pts = static_cast<int>(pkt->pts/1000);
     return false;
   }
 
@@ -580,17 +581,14 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   if(r->nb_colors != 4)
     goto ignore_sub;
 
-  // Fix timestamps on some packets
-  if(pkt->pts == AV_NOPTS_VALUE)
-  {
-    if(fixed_pts != AV_NOPTS_VALUE)
-      pkt->pts = fixed_pts;
-    else
-      goto ignore_sub;
-  }
-
   // set time
-  sub.start = static_cast<int>(pkt->pts/1000);
+  if(pkt->pts != AV_NOPTS_VALUE)
+    sub.start = static_cast<int>(pkt->pts/1000);
+  else if(m_prev_pts != -1)
+    sub.start = m_prev_pts;
+  else
+    goto ignore_sub;
+
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
 
   // set sub rectangle
@@ -598,30 +596,18 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 
   // calculate palette and copy data
   if(m_palette)
-  {
-    unsigned char palette[4];
-    uint32_t *p = (uint32_t *)r->data[1];
-    for(int i = 0; i < 4; i++) {
-      // merge the most significant four bits of the alpha channel with
-      // the least significant four bits (index from the above dummy palette)
-      palette[i] = (*p >> 24 & 0xf0) | (*p & 0xf);
-      p++;
-    }
-    sub.assign_image(r->data[0], r->linesize[0] * r->h, &palette[0]);
-  }
+    sub.assign_image(r->data[0], r->linesize[0] * r->h, (uint32_t *)r->data[1]);
   else
-  {
     sub.assign_image(r->data[0], r->linesize[0] * r->h, NULL);
-  }
 
   // tidy up
   avsubtitle_free(&s);
-  fixed_pts = AV_NOPTS_VALUE;
+  m_prev_pts = sub.stop;
   return true;
 
 ignore_sub:
   avsubtitle_free(&s);
-  fixed_pts = AV_NOPTS_VALUE;
+  m_prev_pts = -1;
   return false;
 }
 

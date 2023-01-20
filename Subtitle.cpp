@@ -35,15 +35,22 @@ Subtitle::Subtitle(int start, int stop, std::string &text_lines)
   isImage = false;
 }
 
-void Subtitle::assign_image(unsigned char *srcData, int size, unsigned char *palette)
+void Subtitle::assign_image(unsigned char *srcData, int size, uint32_t *p)
 {
-  if(palette == NULL) {
-    image.data.assign(srcData, size);
-  } else {
+  if(p) {
+    unsigned char palette[4];
+    for(int i = 0; i < 4; i++, p++) {
+      // merge the most significant four bits of the alpha channel with
+      // the least significant four bits (index from the dummy palette in
+      //  OMXPlayerSubtitles.cpp)
+      palette[i] = (*p >> 24 & 0xf0) | (*p & 0xf);
+    }
+
     image.data.resize(size);
     for(int i = 0; i < size; i++) {
       image.data[i] = palette[(int)srcData[i]];
     }
+  } else {
+    image.data.assign(srcData, size);
   }
 }
-

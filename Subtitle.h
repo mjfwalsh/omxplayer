@@ -32,7 +32,7 @@ class Subtitle {
   int stop;
   bool isImage = false;
 
-  void assign_image(unsigned char *data, int size, unsigned char *palette);
+  void assign_image(unsigned char *data, int size, uint32_t *p);
   void alloc_text(int size);
 
   struct {

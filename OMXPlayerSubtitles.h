@@ -109,4 +109,5 @@ private:
   SubtitleRenderer                              m_renderer;
   OMXClock*                                     m_av_clock;
   uint32_t                                      *m_palette = NULL;
+  int                                           m_prev_pts = -1;
 };
