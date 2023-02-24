@@ -57,6 +57,7 @@ class OMXDvdPlayer
 	std::string GetTitle() const { return disc_title; }
 	void removeCompositeTracks();
 	uint32_t *getPalette();
+	void info_dump();
 
   private:
 	int dvdtime2msec(dvd_time_t *dt);

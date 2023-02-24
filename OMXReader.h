@@ -157,6 +157,7 @@ private:
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
   void AddMissingSubtitleStream(int id);
+  void info_dump(const std::string &filename);
 };
 
 #endif

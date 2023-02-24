@@ -874,3 +874,16 @@ const char* OMXDvdPlayer::convertLangCode(uint16_t lang)
 	sprintf(two_letter_code, "%c%c", lang >> 8, lang & 0xff);
 	return two_letter_code;
 }
+
+void OMXDvdPlayer::info_dump()
+{
+    printf("DVD Tracks: %u\n", tracks.size());
+    for(uint i = 0; i < tracks.size(); i++)
+    {
+        printf("    %2u. %02d:%02d:%02d\n",
+            i + 1,
+            tracks[i].length / 3600000,
+            (tracks[i].length / 60000) % 60,
+            (tracks[i].length / 1000) % 60);
+    }
+}

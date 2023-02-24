@@ -259,7 +259,7 @@ OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdP
 
   // print chapter info
   if(dump_format)
-    av_dump_format(m_pFormatContext, 0, filename.c_str(), 0);
+    info_dump(filename);
 }
 
 
@@ -1004,4 +1004,43 @@ void OMXReader::AddMissingSubtitleStream(int id)
   st->id = id;
   st->codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
   st->codecpar->codec_id = AV_CODEC_ID_DVD_SUBTITLE;
+}
+
+void OMXReader::info_dump(const std::string &filename)
+{
+    printf("File: %s\n", filename.c_str());
+    printf("Video Streams: %d\n", m_video_count);
+    for(int i = 0; i < m_video_count; i++)
+    {
+        printf("    %2d. 0x%x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
+            i + 1,
+            m_video_streams[i].stream->id,
+            m_video_streams[i].codec_name.c_str(),
+            (float)m_video_streams[i].hints.fpsrate / (float)m_video_streams[i].hints.fpsscale,
+            m_video_streams[i].hints.width, m_video_streams[i].hints.height,
+            m_video_streams[i].hints.aspect);
+    }
+    printf("Audio Streams: %d\n", m_audio_count);
+    for(int i = 0; i < m_audio_count; i++)
+    {
+        printf("    %2d. 0x%x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
+            i + 1,
+            m_audio_streams[i].stream->id,
+            m_audio_streams[i].codec_name.c_str(),
+            m_audio_streams[i].language.c_str(),
+            m_audio_streams[i].hints.channels,
+            m_audio_streams[i].hints.samplerate,
+            m_audio_streams[i].hints.bitspersample);
+    }
+    printf("Subtitle Streams: %d\n", m_subtitle_count);
+    for(int i = 0; i < m_subtitle_count; i++)
+    {
+        printf("    %2d. 0x%x: subtitle: %s (lang %s)\n",
+            i + 1,
+            m_subtitle_streams[i].stream->id,
+            m_subtitle_streams[i].codec_name.c_str(),
+            m_audio_streams[i].language.c_str());
+    }
+    if(m_DvdPlayer)
+        m_DvdPlayer->info_dump();
 }
