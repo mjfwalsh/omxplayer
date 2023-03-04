@@ -142,7 +142,7 @@ public:
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
   bool CanSeek();
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
-  static void SetCookie(const char *c)     { s_cookie.assign(c); }
+  static void SetCookie(const char *c);
   static void SetUserAgent(const char *ua) { s_user_agent.assign(ua); }
   static void SetLavDopts(const char *lo)  { s_lavfdopts.assign(lo); }
   static void SetAvDict(const char *ad)    { s_avdict.assign(ad); }

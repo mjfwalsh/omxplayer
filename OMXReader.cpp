@@ -124,6 +124,19 @@ void OMXReader::SetDefaultTimeout(float timeout)
   timeout_default_duration = (int64_t) (timeout * 1e9);
 }
 
+void OMXReader::SetCookie(const char *cookie)
+{
+    if(s_cookie.empty())
+    {
+        s_cookie.assign(cookie);
+    }
+    else
+    {
+        s_cookie.push_back('\n');
+        s_cookie.append(cookie);
+    }
+}
+
 OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd)
 {
   m_speed       = DVD_PLAYSPEED_NORMAL;

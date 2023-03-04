@@ -71,7 +71,9 @@ Set the video background color to black (or optional ARGB value)
 
 =item B<--cookie> I<cookie>
 
-Send specified cookie as part of HTTP requests
+Send specified cookie as part of HTTP requests. May be specified more than once for multiple cookies
+
+(eg --cookie "name=value; path=/")
 
 =item B<-d>,  B<--deinterlace>
 
