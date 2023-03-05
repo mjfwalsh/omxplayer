@@ -23,8 +23,6 @@
 #include <string>
 #include <memory>
 
-class DVD;
-
 class OMXDvdPlayer
 {
   public:
@@ -69,7 +67,6 @@ class OMXDvdPlayer
 	bool m_open = false;
 	int pos = 0;
 	int pos_byte_offset = 0;
-	DVD *dvdread;
 
 	dvd_reader_t *dvd_device;
 	dvd_file_t *dvd_track = NULL;
