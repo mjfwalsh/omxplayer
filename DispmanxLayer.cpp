@@ -47,7 +47,8 @@ void DispmanxLayer::openDisplay(int display_num, int layer)
 	// Open display
 	s_display = vc_dispmanx_display_open(display_num);
 	if(s_display == 0)
-		throw "Dispamnx Error: Failed to open display layer";
+		throw "Dispamnx Error: Failed to open display layer\n"
+		"(Note: omxplayer will not run if the kms driver is enabled)";
 
 	// set layer
 	s_layer = layer;
