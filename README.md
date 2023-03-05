@@ -39,53 +39,75 @@ OMXPlayer will not work on 64bit systems.
 To compile OMXPlayer natively on you Raspberry PI you will need around 230 MBs of RAM. You will
 also need the following packages:
 
-### Firmware packages
-
-    libraspberrypi-dev libraspberrypi0 libraspberrypi-bin
-
-(Bullseye no longer comes with the required firmware packages but it should still be possible to
-get the required files by updating your firmware using `sudo rpi-update`.)
-
 ### Development packages
 
-    git perl gcc g++ pkg-config binutils libc6-dev libstdc++-8-dev libasound2-dev
-    libpcre2-dev libboost-dev libfreetype6-dev libcairo2-dev libdvdread-dev
+Bullseye no longer comes with the required firmware files but it should still be possible to
+get the required files by updating your firmware using `sudo rpi-update`.
+
+To compile omxplayer you will also need the following packages<sup>[*](#required-packages)</sup>:
+
+    git libasound2-dev libpcre2-dev libboost-dev libcairo2-dev libdvdread-dev
     libdbus-1-dev libavutil-dev libswresample-dev libavcodec-dev libavformat-dev
 
 Once you have these installed you should be able to compile OMXPlayer with a `make`
 
 ## RUNNING
 
-To run OMXPlayer need to enable the fake kms driver by replacing `dtoverlay=vc4-kms-v3d`
-with `dtoverlay=vc4-fkms-v3d` (note the f before kms) in your system's `/boot/config.txt`
-file.
+To run OMXPlayer need to disable the kms driver. You can do this by replacing it with the fake
+kms driver or by disabling it completely. You can do this by changing the `dtoverlay` setting in
+your system's `/boot/config.txt` file.
+
+    # kms is enabled so omxplayer can't run
+    dtoverlay=vc4-kms-v3d
+
+    # the fake kms driver is enabled (note the f before kms)
+    dtoverlay=vc4-fkms-v3d
+
+    # the kms driver is completely disabled
+    #dtoverlay=vc4-kms-v3d
 
 You will also need the following static libraries:
 
-    libbcm_host.so libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so libvchiq_arm.so libvcos.so
+    libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so
 
 which should be in the `/opt/vc/lib` directory.
 
-You will also need the following packages:
+You will also need the following packages<sup>[*](#required-packages)</sup>:
 
-    libc6 libdbus-1-3 libasound2 libfreetype6 libgcc1 libpcre3
-    libstdc++6 zlib1g ca-certificates dbus libcairo2
-    libavcodec58 libavformat58 libavutil56 libswresample3
+    libavcodec58 libavformat58 libavutil56 libswresample3 libcairo2
+
+(These packages are included in the full version of Raspberry PI OS.)
 
 ### DVDs
 
-Playing DVDs is experimental and not guaranteed to work.
+Playing DVDs is experimental and not guaranteed to work. DVD menus are not supported.
 
 To play DVDs you will need to purchase a [MPEG-2 licence](https://codecs.raspberrypi.com/mpeg-2-license-key/)
-(only available for the Raspberry PI 3). You will also need the following packages:
+(only available for the Raspberry PI 3).
 
-    libdvdread4 libdvdcss2
-
-(These are optional and only loaded when trying to play a DVD. See
-https://www.videolan.org/developers/libdvdcss.html on how to obtain libdvdcss2).
+While `libdvdread8` comes installed with most version of Raspberry PI OS, to play most DVDs you
+will need `libdvdcss2`. See [Videolan's install instructions](https://www.videolan.org/developers/libdvdcss.html)
+on how to get it.
 
 ## COMMAND LINE OPTIONS AND DBUS
 
 Please see the [manpage](omxplayer.pod) for command line options.
 
 Please see [dbus.md](dbus.md) for details on OMXPlayer's dbus interface.
+
+## Required packages
+
+The above package lists assume you have all the packages that come preinstalled with
+Raspberry PI OS (lite) still installed.
+
+If you don't you will also need:
+
+### To compile
+
+    libraspberrypi-dev libraspberrypi0 libraspberrypi-bin gcc g++ libstdc++-10-dev pkg-config
+    binutils libc6-dev libfreetype6-dev  perl
+
+### To run
+
+    libc6 libdbus-1-3 libasound2 libfreetype6 libgcc1 libpcre3
+    libstdc++6 zlib1g ca-certificates dbus libdvdread8

@@ -23,9 +23,6 @@ SRC=$(wildcard *.cpp linux/*.cpp utils/*.cpp)
 OBJS=$(SRC:.cpp=.o)
 DEPS=$(SRC:.cpp=.d)
 
-# sets up ffmpeg-install requirement when ffmpeg source code dir is present
-NEED_FFMPEG_INSTALL=$(shell test -d ffmpeg && echo ffmpeg-install)
-
 .PHONY: all
 all: omxplayer.bin omxplayer.1
 
@@ -52,45 +49,34 @@ omxplayer.1: omxplayer.pod
 clean:
 	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST).tgz version.h omxplayer.1
 
-.PHONY: ffmpeg
-ffmpeg:
-	$(MAKE) -f Makefile.ffmpeg
-
-.PHONY: ffmpeg-%
-ffmpeg-%:
-	$(MAKE) -f Makefile.ffmpeg $(patsubst ffmpeg-%,%,$@)
-
 .PHONY: dist
-dist: $(NEED_FFMPEG_INSTALL)
+dist:
 	$(STRIP) omxplayer.bin
 	tar -cPf $(DIST).tgz \
-	--transform 's,^omxplayer$$,/usr/bin/omxplayer,S' \
-	--transform 's,^omxplayer.bin$$,/usr/bin/omxplayer.bin,S' \
-	--transform 's,^COPYING$$,/usr/share/doc/omxplayer/COPYING,S' \
-	--transform 's,^README.md$$,/usr/share/doc/omxplayer/README,S' \
-	--transform 's,^omxplayer.1$$,/usr/share/man/man1/omxplayer.1,S' \
-	--transform 's,^ffmpeg_compiled/usr/local/lib/,/usr/lib/omxplayer/,S' \
+	--transform 's,^omxplayer$$,/usr/local/bin/omxplayer,S' \
+	--transform 's,^omxplayer.bin$$,/usr/local/bin/omxplayer.bin,S' \
+	--transform 's,^COPYING$$,/usr/local/share/doc/omxplayer/COPYING,S' \
+	--transform 's,^README.md$$,/usr/local/share/doc/omxplayer/README,S' \
+	--transform 's,^omxplayer.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
+	--transform 's,^omxplayer.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
 	omxplayer omxplayer.bin COPYING README.md omxplayer.1 \
-	`if [ -e ffmpeg_compiled ]; then echo ffmpeg_compiled/usr/local/lib/*.so*; fi`
+	/opt/vc/lib/libbrcmEGL.so /opt/vc/lib/libbrcmGLESv2.so /opt/vc/lib/libopenmaxil.so
 
 .PHONY: install
-install: $(NEED_FFMPEG_INSTALL)
+install:
 	$(STRIP) omxplayer.bin
-	cp omxplayer omxplayer.bin /usr/bin/
-	mkdir -p /usr/share/doc/omxplayer
-	cp COPYING /usr/share/doc/omxplayer/COPYING
-	cp README.md /usr/share/doc/omxplayer/README
-	cp omxplayer.1 /usr/share/man/man1
-	if [ -e ffmpeg_compiled ]; then mkdir /usr/lib/omxplayer && \
-	cp -P ffmpeg_compiled/usr/local/lib/*.so* /usr/lib/omxplayer/; fi
+	cp omxplayer omxplayer.bin /usr/local/bin/
+	mkdir -p /usr/local/share/doc/omxplayer
+	cp COPYING /usr/local/share/doc/omxplayer/COPYING
+	cp README.md /usr/local/share/doc/omxplayer/README
+	cp omxplayer.1 /usr/local/share/man/man1
 
 .PHONY: uninstall
 uninstall:
-	rm -f /usr/bin/omxplayer
-	rm -f /usr/bin/omxplayer.bin
-	rm -fR /usr/lib/omxplayer
-	rm -fR /usr/share/doc/omxplayer
-	rm -f /usr/share/man/man1/omxplayer.1
+	rm -f /usr/local/bin/omxplayer
+	rm -f /usr/local/bin/omxplayer.bin
+	rm -fR /usr/local/share/doc/omxplayer
+	rm -f /usr/local/share/man/man1/omxplayer.1
 
 .PHONY: rm-dep-mak
 rm-dep-mak:
