@@ -46,8 +46,8 @@ public:
 	const int& getSourceWidth();
 	const int& getSourceHeight();
 
-	static void openDisplay(int display_num, int layer);
-	static Dimension getScreenDimensions();
+	static void openDisplay(int display_num, int layer, Rect rect);
+	static Rect getScreenDimensions();
 	static Rect GetVideoPort(float video_aspect_ratio, int aspect_mode);
 	static void closeDisplay();
 
@@ -65,4 +65,6 @@ private:
 
 	static int s_layer;
 	static DISPMANX_DISPLAY_HANDLE_T s_display;
+	static Rect s_screen_rect;
+	static bool s_is_fullscreen;
 };

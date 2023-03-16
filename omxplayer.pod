@@ -75,6 +75,10 @@ Send specified cookie as part of HTTP requests. May be specified more than once 
 
 (eg --cookie "name=value; path=/")
 
+=item B<--crop> I<x1,y1,x2,y2>
+
+Set a crop area for the video input
+
 =item B<-d>,  B<--deinterlace>
 
 Force deinterlacing
@@ -248,6 +252,10 @@ set initial volume in millibels (default 0)
 =item B<-w>,  B<--hw>
 
 Hw audio decoding
+
+=item B<--win> I<x1,y1,x2,y2>
+
+Set coordinates for the video window
 
 =item B<-y>,  B<--hdmiclocksync>
 

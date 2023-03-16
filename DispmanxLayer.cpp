@@ -41,8 +41,10 @@
 
 DISPMANX_DISPLAY_HANDLE_T DispmanxLayer::s_display;
 int DispmanxLayer::s_layer;
+Rect DispmanxLayer::s_screen_rect;
+bool DispmanxLayer::s_is_fullscreen;
 
-void DispmanxLayer::openDisplay(int display_num, int layer)
+void DispmanxLayer::openDisplay(int display_num, int layer, Rect rect)
 {
 	// Open display
 	s_display = vc_dispmanx_display_open(display_num);
@@ -53,42 +55,54 @@ void DispmanxLayer::openDisplay(int display_num, int layer)
 	// set layer
 	s_layer = layer;
 
+	// set s_screen_rect rectangle
+	if(rect.width > 0 && rect.height > 0)
+	{
+		s_screen_rect.set(rect);
+		s_is_fullscreen = false;
+	}
+	else
+	{
+		// Get s_screen_rect info
+		DISPMANX_MODEINFO_T screen_info;
+		int result = vc_dispmanx_display_get_info(s_display, &screen_info);
+		if(result != 0)
+			throw "Dispamnx Error: Failed to get s_screen_rect dimensions";
+
+		s_screen_rect.set(0, 0, screen_info.width, screen_info.height);
+		s_is_fullscreen = true;
+	}
+
 	atexit(DispmanxLayer::closeDisplay);
 }
 
-Dimension DispmanxLayer::getScreenDimensions()
+Rect DispmanxLayer::getScreenDimensions()
 {
-	// Get screen info
-	DISPMANX_MODEINFO_T screen_info;
-	int result = vc_dispmanx_display_get_info(s_display, &screen_info);
-	if(result != 0)
-		throw "Dispamnx Error: Failed to get screen dimensions";
-
-	return Dimension(screen_info.width, screen_info.height);
+	return s_screen_rect;
 }
 
 // calculates the output rectangle of the video on the screen
 Rect DispmanxLayer::GetVideoPort(float video_aspect_ratio, int aspect_mode)
 {
-	// Determine screen size
-	Dimension screen = getScreenDimensions();
-
 	// Calculate position of view port
-	Rect view_port(0, 0, screen.width, screen.height);
-	float screen_aspect_ratio = (float)screen.width / screen.height;
-	if(aspect_mode <= 1 && video_aspect_ratio != screen_aspect_ratio) {
-		if(video_aspect_ratio > screen_aspect_ratio) {
-			view_port.height = screen.width * video_aspect_ratio;
-		} else {
-			view_port.width = screen.height * video_aspect_ratio;
+	Rect view_port = s_screen_rect;
+	if(s_is_fullscreen)
+	{
+		float screen_aspect_ratio = (float)s_screen_rect.width / s_screen_rect.height;
+		if(aspect_mode <= 1 && video_aspect_ratio != screen_aspect_ratio) {
+			if(video_aspect_ratio > screen_aspect_ratio) {
+				view_port.height = s_screen_rect.width * video_aspect_ratio;
+			} else {
+				view_port.width = s_screen_rect.height * video_aspect_ratio;
+			}
 		}
 	}
 
 	// adjust width and height so they are divisible by 16
 	view_port.width = (view_port.width + 8) & ~15;
 	view_port.height = (view_port.height + 8) & ~15;
-	view_port.x = (screen.width - view_port.width) / 2;
-	view_port.y = (screen.height - view_port.height) / 2;
+	view_port.x += (s_screen_rect.width - view_port.width) / 2;
+	view_port.y += (s_screen_rect.height - view_port.height) / 2;
 
 	return view_port;
 }
@@ -163,7 +177,7 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 		vc_dispmanx_resource_set_palette( m_resource, new_palette, 0, sizeof new_palette );
 	}
 
-	// Position currently empty image on screen
+	// Position currently empty image on s_screen_rect
 	m_update = vc_dispmanx_update_start(0);
 	if(m_update == 0)
 		throw "Dispamnx Error: vc_dispmanx_update_start failed";
@@ -225,7 +239,7 @@ void DispmanxLayer::clearImage()
 }
 
 
-// copy image data to screen and make the element visible
+// copy image data to s_screen_rect and make the element visible
 void DispmanxLayer::setImageData(void *image_data, bool show)
 {
 	// the palette param is ignored

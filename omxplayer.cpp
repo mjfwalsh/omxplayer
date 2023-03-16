@@ -306,6 +306,7 @@ int startup(int argc, char *argv[])
   const int no_ghost_box_opt = 0x203;
   const int subtitles_opt   = 0x103;
   const int lines_opt       = 0x104;
+  const int pos_opt         = 0x105;
   const int vol_opt         = 0x106;
   const int audio_fifo_opt  = 0x107;
   const int video_fifo_opt  = 0x108;
@@ -333,6 +334,7 @@ int startup(int argc, char *argv[])
   const int alpha_opt       = 0x210;
   const int advanced_opt    = 0x211;
   const int aspect_mode_opt = 0x212;
+  const int crop_opt        = 0x213;
   const int http_cookie_opt = 0x300;
   const int http_user_agent_opt = 0x301;
   const int lavfdopts_opt   = 0x400;
@@ -374,6 +376,8 @@ int startup(int argc, char *argv[])
     { "no-ghost-box", no_argument,        NULL,          no_ghost_box_opt },
     { "subtitles",    required_argument,  NULL,          subtitles_opt },
     { "lines",        required_argument,  NULL,          lines_opt },
+    { "win",          required_argument,  NULL,          pos_opt },
+    { "crop",         required_argument,  NULL,          crop_opt },
     { "aspect-mode",  required_argument,  NULL,          aspect_mode_opt },
     { "audio_fifo",   required_argument,  NULL,          audio_fifo_opt },
     { "video_fifo",   required_argument,  NULL,          video_fifo_opt },
@@ -638,6 +642,32 @@ int startup(int argc, char *argv[])
       case lines_opt:
         subtitle_lines = std::max(atoi(optarg), 1);
         break;
+      case pos_opt:
+        {
+          int x1, x2, y1, y2;
+          if(sscanf(optarg, "%d %d %d %d", &x1, &y1, &x2, &y2) == 4 ||
+             sscanf(optarg, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4)
+          {
+            m_config_video.dst_rect.x = x1;
+            m_config_video.dst_rect.y = y1;
+            m_config_video.dst_rect.width = x2 - x1;
+            m_config_video.dst_rect.height = y2 - y1;
+          }
+        }
+        break;
+      case crop_opt:
+        {
+          int x1, x2, y1, y2;
+          if(sscanf(optarg, "%d %d %d %d", &x1, &y1, &x2, &y2) == 4 ||
+             sscanf(optarg, "%d,%d,%d,%d", &x1, &y1, &x2, &y2) == 4)
+          {
+            m_config_video.src_rect.x = x1;
+            m_config_video.src_rect.y = y1;
+            m_config_video.src_rect.width = x2 - x1;
+            m_config_video.src_rect.height = y2 - y1;
+          }
+        }
+        break;
       case aspect_mode_opt:
         if (optarg) {
           if (!strcasecmp(optarg, "letterbox"))
@@ -788,7 +818,7 @@ int startup(int argc, char *argv[])
   m_av_clock = &clock;
 
   // Open display
-  DispmanxLayer::openDisplay(m_config_video.display, m_config_video.layer);
+  DispmanxLayer::openDisplay(m_config_video.display, m_config_video.layer, m_config_video.dst_rect);
 
   // blank background - exclude fully transparent backgrounds
   if(background > 0x00FFFFFF)

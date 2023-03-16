@@ -52,7 +52,7 @@ SubtitleRenderer::SubtitleRenderer(float r_font_size,
 	m_font_color_curly = new CRegExp("^\\{\\\\c&h([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})&\\}$");
 
 	// Determine screen size
-	Dimension screen = DispmanxLayer::getScreenDimensions();
+	Rect screen = DispmanxLayer::getScreenDimensions();
 
 	/*    *    *    *     *    *    *    *    *    *    *    *
 	 * Set up layer for text subtitles and on screen display *
@@ -70,18 +70,18 @@ SubtitleRenderer::SubtitleRenderer(float r_font_size,
 	// Calculate image dimensions - must be evenly divisible by 16
 	Rect text_subtitle_rect;
 	text_subtitle_rect.height = (m_max_lines * line_height + 20) & ~15; // grow to fit
-	text_subtitle_rect.y = screen.height - text_subtitle_rect.height - (line_height / 2);
+	text_subtitle_rect.y = screen.y + screen.height - text_subtitle_rect.height - (line_height / 2);
 
 	if(m_centered) {
 		text_subtitle_rect.width = (screen.width - 100) & ~15; // shrink to fit
-		text_subtitle_rect.x = (screen.width - text_subtitle_rect.width) / 2; // centered on screen
+		text_subtitle_rect.x = screen.x + (screen.width - text_subtitle_rect.width) / 2; // centered on screen
 	} else {
 		if(screen.width > MAX_SUBTITLE_LINE_WIDTH) {
-			text_subtitle_rect.x = (screen.width - MAX_SUBTITLE_LINE_WIDTH) / 2;
+			text_subtitle_rect.x = screen.x + (screen.width - MAX_SUBTITLE_LINE_WIDTH) / 2;
 		} else if(screen.width > screen.height) {
-			text_subtitle_rect.x = (screen.width - screen.height) / 2;
+			text_subtitle_rect.x = screen.x + (screen.width - screen.height) / 2;
 		} else {
-			text_subtitle_rect.x = 100;
+			text_subtitle_rect.x = screen.x + 100;
 		}
 
 		text_subtitle_rect.width = (screen.width - 100 - text_subtitle_rect.x) & ~15; // shrink to fit
