@@ -28,6 +28,7 @@
 
 #include "utils/RegExp.h"
 #include "SubtitleRenderer.h"
+#include "OMXPlayerSubtitles.h"
 #include "DispmanxLayer.h"
 #include "Subtitle.h"
 
@@ -38,13 +39,10 @@ using namespace std;
 // in East Asian scripts) would result in shorter not longer subtitles.
 #define MAX_SUBTITLE_LINE_WIDTH 1300
 
-SubtitleRenderer::SubtitleRenderer(float r_font_size,
-									bool centered,
-									bool box_opacity,
-									unsigned int lines)
-: m_centered(centered),
-  m_ghost_box(box_opacity),
-  m_max_lines(lines)
+SubtitleRenderer::SubtitleRenderer(OMXSubConfig *config)
+: m_centered(config->centered),
+  m_ghost_box(config->ghost_box),
+  m_max_lines(config->subtitle_lines)
 {
 	// Subtitle tag parser regexes
 	m_tags = new CRegExp("(\\n|<[^>]*>|\\{\\\\[^\\}]*\\})");
@@ -59,7 +57,7 @@ SubtitleRenderer::SubtitleRenderer(float r_font_size,
 	 *    *    *    *     *    *    *    *    *    *    *    */
 
 	//Calculate font as thousands of screen height
-	m_font_size = screen.height * r_font_size;
+	m_font_size = screen.height * config->font_size;
 
 	// Calculate padding as 1/4 of the font size
 	m_padding = m_font_size / 4;
@@ -97,13 +95,13 @@ SubtitleRenderer::SubtitleRenderer(float r_font_size,
 	if(FT_Init_FreeType(&m_ft_library) != 0)
 		throw "Failed to initiate FreeType";
 
-	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSans.ttf", 0, &m_ft_face_normal) != 0)
+	if(FT_New_Face(m_ft_library, config->reg_font, 0, &m_ft_face_normal) != 0)
 		throw "Failed to load font";
 
-	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf", 0, &m_ft_face_italic) != 0)
+	if(FT_New_Face(m_ft_library, config->italic_font, 0, &m_ft_face_italic) != 0)
 		throw "Failed to load font";
 
-	if(FT_New_Face(m_ft_library, "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf", 0, &m_ft_face_bold) != 0)
+	if(FT_New_Face(m_ft_library, config->bold_font, 0, &m_ft_face_bold) != 0)
 		throw "Failed to load font";
 
 	cairo_font_face_t *normal_font = cairo_ft_font_face_create_for_ft_face(m_ft_face_normal, 0);

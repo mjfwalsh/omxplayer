@@ -51,13 +51,10 @@ OMXPlayerSubtitles::~OMXPlayerSubtitles()
     delete[] m_palette;
 }
 
-OMXPlayerSubtitles::OMXPlayerSubtitles(float font_size,
-                                       bool centered,
-                                       bool ghost_box,
-                                       unsigned int lines,
+OMXPlayerSubtitles::OMXPlayerSubtitles(OMXSubConfig *config,
                                        OMXClock* clock)
 :
-m_renderer(font_size, centered, ghost_box, lines),
+m_renderer(config),
 m_av_clock(clock)
 {
   Create();

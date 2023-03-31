@@ -31,6 +31,7 @@
 #include <semaphore.h>
 
 class DispmanxLayer;
+class OMXPacket;
 
 class Mailbox {
 public:

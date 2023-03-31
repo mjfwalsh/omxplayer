@@ -30,6 +30,21 @@ class OMXClock;
 class OMXPacket;
 class SubtitleRenderer;
 class Subtitle;
+class Rect;
+class Dimension;
+struct AVCodecContext;
+
+class OMXSubConfig
+{
+public:
+  bool              centered            = false;
+  bool              ghost_box           = true;
+  unsigned int      subtitle_lines      = 3;
+  float             font_size           = 0.055f;
+  const char        *reg_font           = "/usr/share/fonts/truetype/freefont/FreeSans.ttf";
+  const char        *italic_font        = "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf";
+  const char        *bold_font          = "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf";
+};
 
 class OMXPlayerSubtitles : public OMXThread
 {
@@ -39,10 +54,7 @@ public:
 
   ~OMXPlayerSubtitles();
 
-  OMXPlayerSubtitles(float font_size,
-                     bool centered,
-                     bool ghost_box,
-                     unsigned int lines,
+  OMXPlayerSubtitles(OMXSubConfig *config,
                      OMXClock* clock);
 
   bool Open(size_t stream_count, std::string &external_subtitle_path);

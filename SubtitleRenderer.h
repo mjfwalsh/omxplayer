@@ -28,15 +28,13 @@
 class CRegExp;
 class DispmanxLayer;
 class Subtitle;
+class OMXSubConfig;
 
 class SubtitleRenderer {
 	public:
 		SubtitleRenderer(const SubtitleRenderer&) = delete;
 		SubtitleRenderer& operator=(const SubtitleRenderer&) = delete;
-		SubtitleRenderer(float r_font_size,
-						bool centered,
-						bool box_opacity,
-						unsigned int lines);
+		SubtitleRenderer(OMXSubConfig *config);
 
 		void setDVDSubtitleLayer(DispmanxLayer *dl);
 

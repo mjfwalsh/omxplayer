@@ -301,6 +301,9 @@ int startup(int argc, char *argv[])
   if (gpu_mem > 0 && gpu_mem < min_gpu_mem)
     printf("Only %dM of gpu_mem is configured. Try running \"sudo raspi-config\" and ensure that \"memory_split\" has a value of %d or greater\n", gpu_mem, min_gpu_mem);
 
+  const int font_opt        = 0x100;
+  const int italic_font_opt = 0x201;
+  const int bold_font_opt   = 0x214;
   const int font_size_opt   = 0x101;
   const int align_opt       = 0x102;
   const int no_ghost_box_opt = 0x203;
@@ -371,6 +374,9 @@ int startup(int argc, char *argv[])
     { "pos",          required_argument,  NULL,          'l' },    
     { "blank",        optional_argument,  NULL,          'b' },
     { "no-playlist",  no_argument,        NULL,          'a' },
+    { "font",         required_argument,  NULL,          font_opt },
+    { "italic-font",  required_argument,  NULL,          italic_font_opt },
+    { "bold-font",    required_argument,  NULL,          bold_font_opt },
     { "font-size",    required_argument,  NULL,          font_size_opt },
     { "align",        required_argument,  NULL,          align_opt },
     { "no-ghost-box", no_argument,        NULL,          no_ghost_box_opt },
@@ -411,10 +417,7 @@ int startup(int argc, char *argv[])
   };
 
   int               c;
-  bool              centered            = false;
-  bool              ghost_box           = true;
-  unsigned int      subtitle_lines      = 3;
-  float             font_size           = 0.055f;
+  OMXSubConfig      config_sub;
   bool              no_hdmi_clock_sync  = false;
   uint32_t          background          = 0;
   const char        *keymap_file        = NULL;
@@ -608,18 +611,42 @@ int startup(int argc, char *argv[])
       case no_keys_opt:
         use_key_ctrl = false;
         break;
+      case font_opt:
+        config_sub.reg_font = optarg;
+        if(!Exists(config_sub.reg_font))
+        {
+          printf("File \"%s\" not found.", config_sub.reg_font);
+          return EXIT_FAILURE;
+        }
+        break;
+      case italic_font_opt:
+        config_sub.italic_font = optarg;
+        if(!Exists(config_sub.italic_font))
+        {
+          printf("File \"%s\" not found.", config_sub.italic_font);
+          return EXIT_FAILURE;
+        }
+        break;
+      case bold_font_opt:
+        config_sub.bold_font = optarg;
+        if(!Exists(config_sub.bold_font))
+        {
+          printf("File \"%s\" not found.", config_sub.bold_font);
+          return EXIT_FAILURE;
+        }
+        break;
       case font_size_opt:
         {
           const int thousands = atoi(optarg);
           if (thousands > 0)
-            font_size = thousands*0.001f;
+            config_sub.font_size = thousands*0.001f;
         }
         break;
       case align_opt:
-        centered = !strcmp(optarg, "center");
+        config_sub.centered = !strcmp(optarg, "center");
         break;
       case no_ghost_box_opt:
-        ghost_box = false;
+        config_sub.ghost_box = false;
         break;
       case subtitles_opt:
         m_external_subtitles_path = optarg;
@@ -634,7 +661,7 @@ int startup(int argc, char *argv[])
 
         break;
       case lines_opt:
-        subtitle_lines = std::max(atoi(optarg), 1);
+        config_sub.subtitle_lines = std::max(atoi(optarg), 1);
         break;
       case pos_opt:
         {
@@ -817,7 +844,7 @@ int startup(int argc, char *argv[])
   }
 
   // init subtitle object
-  static OMXPlayerSubtitles player_subs(font_size, centered, ghost_box, subtitle_lines, m_av_clock);
+  static OMXPlayerSubtitles player_subs(&config_sub, m_av_clock);
   m_player_subtitles = &player_subs;
 
   osd_print("Loading...");

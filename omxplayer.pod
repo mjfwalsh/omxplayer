@@ -69,6 +69,11 @@ Options passed to demuxer, e.g., 'rtsp_transport:tcp,...'
 
 Set the video background color to black (or optional ARGB value)
 
+=item B<--bold-font> I<path>
+
+Path to true type bold font file for osd and subtitles. Defaults to
+/usr/share/fonts/truetype/freefont/FreeSansBold.ttf
+
 =item B<--cookie> I<cookie>
 
 Send specified cookie as part of HTTP requests. May be specified more than once for multiple cookies
@@ -95,6 +100,11 @@ Set display to output to
 
 Set ffmpeg logging level (quiet, panic, fatal, error, warning, info, verbose, debug, or trace)
 
+=item B<--font> I<path>
+
+Path to true type regular font file for osd and subtitles. Defaults to
+/usr/share/fonts/truetype/freefont/FreeSans.ttf
+
 =item B<--font-size> I<size>
 
 Font size in 1/1000 screen height (default: 55)
@@ -118,6 +128,11 @@ Dump stream format and exit
 =item B<-I>,  B<--with-info>
 
 dump stream format before playback
+
+=item B<--italic-font> I<path>
+
+Path to true type italic font file for osd and subtitles. Defaults to
+/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf
 
 =item B<--key-config> I<file>
 
