@@ -32,19 +32,12 @@
 #include "DispmanxLayer.h"
 #include "utils/simple_geometry.h"
 
-#define ELEMENT_CHANGE_LAYER          (1<<0)
-#define ELEMENT_CHANGE_OPACITY        (1<<1)
-#define ELEMENT_CHANGE_DEST_RECT      (1<<2)
-#define ELEMENT_CHANGE_SRC_RECT       (1<<3)
-#define ELEMENT_CHANGE_MASK_RESOURCE  (1<<4)
-#define ELEMENT_CHANGE_TRANSFORM      (1<<5)
-
 DISPMANX_DISPLAY_HANDLE_T DispmanxLayer::s_display;
 int DispmanxLayer::s_layer;
 Rect DispmanxLayer::s_screen_rect;
 bool DispmanxLayer::s_is_fullscreen;
 
-void DispmanxLayer::openDisplay(int display_num, int layer, Rect rect)
+void DispmanxLayer::openDisplay(int display_num, int layer, Rect screen_rect)
 {
 	// Open display
 	s_display = vc_dispmanx_display_open(display_num);
@@ -56,9 +49,9 @@ void DispmanxLayer::openDisplay(int display_num, int layer, Rect rect)
 	s_layer = layer;
 
 	// set s_screen_rect rectangle
-	if(rect.width > 0 && rect.height > 0)
+	if(screen_rect.width > 0 && screen_rect.height > 0)
 	{
-		s_screen_rect.set(rect);
+		s_screen_rect.set(screen_rect);
 		s_is_fullscreen = false;
 	}
 	else

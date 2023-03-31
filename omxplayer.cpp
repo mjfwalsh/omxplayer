@@ -411,7 +411,6 @@ int startup(int argc, char *argv[])
   };
 
   int               c;
-  std::string       mode;
   bool              centered            = false;
   bool              ghost_box           = true;
   unsigned int      subtitle_lines      = 3;
@@ -494,12 +493,11 @@ int startup(int argc, char *argv[])
         no_hdmi_clock_sync = true;
         break;
       case '3':
-        mode = optarg;
-        if(mode == "TB")
+        if(strcmp("TB", optarg) == 0)
           m_3d = CONF_FLAGS_FORMAT_TB;
-        else if(mode == "FP")
+        else if(strcmp("FP", optarg) == 0)
           m_3d = CONF_FLAGS_FORMAT_FP;
-        else if(mode == "SBS")
+        else if(strcmp("SBS", optarg) == 0)
           m_3d = CONF_FLAGS_FORMAT_SBS;
         else
         {
@@ -591,16 +589,12 @@ int startup(int argc, char *argv[])
         break;
       case 'l':
         {
-          if(strchr(optarg, ':'))
-          {
-            unsigned int h, m, s;
-            if(sscanf(optarg, "%u:%u:%u", &h, &m, &s) == 3)
-              m_incr = h*3600 + m*60 + s;
-          }
+          unsigned int h, m, s;
+          if(sscanf(optarg, "%u:%u:%u", &h, &m, &s) == 3)
+            m_incr = h*3600 + m*60 + s;
           else
-          {
             m_incr = atoi(optarg);
-          }
+
           if(m_loop)
             m_loop_from = m_incr;
         }
@@ -720,27 +714,22 @@ int startup(int argc, char *argv[])
         m_config_audio.is_live = true;
         break;
       case layout_opt:
-      {
-        const char *layouts[] = {"2.0", "2.1", "3.0", "3.1", "4.0", "4.1", "5.0", "5.1", "7.0", "7.1"};
-        const int size = sizeof(layouts) / sizeof(*layouts);
-        int i;
-
-        for(i=0; i < size; i++)
+        if(optarg[0] >= '2' && optarg[0] <= '7' && optarg[0] != '6' && optarg[1] == '.'
+            && (optarg[2] == '0' || optarg[2] == '1'))
         {
-          if (strcmp(optarg, layouts[i]) == 0)
-          {
-            m_config_audio.layout = (enum PCMLayout)i;
-            break;
-          }
+          int layout = ((optarg[0] - '2') * 2) + (optarg[2] - '0');
+          if(layout > 7)
+            layout -= 2;
+
+          m_config_audio.layout = (enum PCMLayout)layout;
         }
-        if (i == size)
+        else
         {
           printf("Invalid layout specified: %s\n", optarg);
           puts("Valid options are: 2.0, 2.1, 3.0, 3.1, 4.0, 4.1, 5.0, 5.1, 7.0, and 7.1");
           return EXIT_FAILURE;
         }
         break;
-      }
       case dbus_name_opt:
         dbus_name = optarg;
         break;
