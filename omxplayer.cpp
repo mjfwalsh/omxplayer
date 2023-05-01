@@ -2141,8 +2141,10 @@ int run_play_loop()
       break;
 
     case AVMEDIA_TYPE_SUBTITLE:
-      if(m_has_subtitle && playspeed_current == playspeed_normal)
-        m_player_subtitles->AddPacket(m_omx_pkt);
+      if(!m_has_subtitle || playspeed_current != playspeed_normal)
+        goto discard_packet;
+
+      m_player_subtitles->AddPacket(m_omx_pkt);
       m_omx_pkt = NULL;
       break;
 
