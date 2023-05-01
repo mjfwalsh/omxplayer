@@ -66,6 +66,13 @@ enum OMXStreamType
   OMXSTREAM_SUBTITLE  = 3
 };
 
+enum SeekResult {
+  SEEK_SUCCESS = -1,
+  SEEK_FAIL = -2,
+  SEEK_OUT_OF_BOUNDS = -3,
+  SEEK_NO_CHAPTERS = -4,
+};
+
 class OMXReader
 {
 private:
@@ -108,18 +115,10 @@ private:
   static std::string        s_avdict;
 
 public:
-  // results for chapter seek function
-  enum SeekResult {
-    SEEK_SUCCESS,
-    SEEK_ERROR,
-    SEEK_OUT_OF_BOUNDS,
-    SEEK_NO_CHAPTERS
-  };
-
   OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd);
   ~OMXReader();
 
-  bool SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false);
+  enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false);
   bool SeekBytes(int64_t seek_bytes, bool backwords);
   OMXPacket *Read();
   bool SetHints(AVStream *stream, COMXStreamInfo *hints);

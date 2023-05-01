@@ -42,7 +42,6 @@ class OMXDvdPlayer
 	int GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos);
 	int64_t GetChapterBytePos(int seek_ch);
 	bool IsEOF();
-	int64_t GetSizeInBytes();
 	int getCurrentTrackLength();
 	int TotalChapters();
 	int GetAudioStreamCount();

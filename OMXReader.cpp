@@ -113,10 +113,7 @@ static int64_t dvd_seek(void *h, int64_t pos, int whence)
     return -1;
 
   OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
-  if(whence == AVSEEK_SIZE)
-    return reader->GetSizeInBytes();
-  else
-    return reader->Seek(pos, whence);
+  return reader->Seek(pos, whence);
 }
 
 void OMXReader::SetDefaultTimeout(float timeout)
@@ -297,32 +294,54 @@ OMXReader::~OMXReader()
   avformat_network_deinit();
 }
 
-bool OMXReader::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
+
+enum SeekResult OMXReader::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
 {
   if(!CanSeek())
-    return false;
+    return SEEK_FAIL;
 
   if(m_ioContext)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
-  if(cur_pts != NULL)
+  if(cur_pts)
     backwards = seek_pts < *cur_pts;
 
-  int64_t start_offset = 0;
-  if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
-    start_offset = m_pFormatContext->start_time;
+  int flags = backwards ? AVSEEK_FLAG_BACKWARD : 0;
+  int64_t seek_value;
+  if(m_DvdPlayer)
+  {
+    int cur_ch = cur_pts ? m_DvdPlayer->getChapter(*cur_pts) : -1;
+    int seek_ch = m_DvdPlayer->GetChapterInfo(seek_pts, seek_value);
+    if(seek_ch == -1)
+    {
+      m_eof = true;
+      return SEEK_OUT_OF_BOUNDS;
+    }
+
+    if(cur_ch == seek_ch)
+      return SEEK_FAIL;
+
+    flags |= AVSEEK_FLAG_BYTE;
+  }
+  else
+  {
+    seek_value = seek_pts;
+    if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
+      seek_value += m_pFormatContext->start_time;
+  }
 
   RESET_TIMEOUT(1);
-  int ret = av_seek_frame(m_pFormatContext, -1, start_offset + seek_pts,
-                          backwards ? AVSEEK_FLAG_BACKWARD : 0);
+  bool success = av_seek_frame(m_pFormatContext, -1, seek_value, flags) >= 0;
 
-  if(cur_pts != NULL)
+  if(success && cur_pts != NULL)
     *cur_pts = seek_pts;
 
   // demuxer will return failure, if you seek to eof
-  m_eof = ret < 0;
+  m_eof = !success;
 
-  return !m_eof;
+  if(success) return SEEK_SUCCESS;
+  else if(m_DvdPlayer) return SEEK_FAIL;
+  else return SEEK_OUT_OF_BOUNDS;
 }
 
 bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
@@ -335,12 +354,12 @@ bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
 
   int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
   RESET_TIMEOUT(1);
-  int ret = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE);
+  bool success = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE) >= 0;
 
   // demuxer will return failure, if you seek to eof
-  m_eof = ret < 0;
+  m_eof = !success;
 
-  return !m_eof;
+  return success;
 }
 
 OMXPacket *OMXReader::Read()
@@ -680,14 +699,17 @@ bool OMXReader::IsEof()
   return m_eof;
 }
 
-OMXReader::SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
+SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
 {
-  if(cur_pts == AV_NOPTS_VALUE) return SEEK_ERROR;
+  if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
 
   if(m_DvdPlayer)
   {
-    bool backwards = chapter < 1;
+    bool backwards = chapter < 0;
     int cur_ch = m_DvdPlayer->getChapter(cur_pts);
+    if(cur_ch == -1)
+      return SEEK_OUT_OF_BOUNDS;
+
     int seek_ch = cur_ch + chapter;
 
     // check if within bounds
@@ -696,7 +718,7 @@ OMXReader::SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
 
     // Do the seek
     if(!SeekBytes(m_DvdPlayer->GetChapterBytePos(seek_ch), backwards))
-    	return SEEK_ERROR;
+      return SEEK_FAIL;
 
     // convert delta new chapter
     chapter = seek_ch;
@@ -705,7 +727,7 @@ OMXReader::SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
   }
   else
   {
-    // If we have no chapters to seek to, just seek 10 mins up or down
+    // We have no chapters to seek to
     if(m_chapter_count == 0)
       return SEEK_NO_CHAPTERS;
 
@@ -723,7 +745,7 @@ OMXReader::SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
     // convert delta new chapter
     chapter = new_chapter;
 
-    return SeekTime(m_chapters[new_chapter], &cur_pts) ? SEEK_SUCCESS : SEEK_ERROR;
+    return SeekTime(m_chapters[new_chapter], &cur_pts);
   }
 }
 

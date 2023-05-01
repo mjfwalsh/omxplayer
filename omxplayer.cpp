@@ -254,20 +254,30 @@ static void FlushStreams(int64_t pts = AV_NOPTS_VALUE)
   }
 }
 
-void Seek(int seconds_delta)
+enum ControlFlow Seek(int seconds_delta)
 {
   // dvds can only seek to the start of chapters
-  if(m_DvdPlayer) return;
+  if(m_DvdPlayer) return CONTINUE;
 
   int64_t cur_pts = m_av_clock->GetMediaTime();
   int64_t seek_pts = cur_pts + (int64_t)seconds_delta * AV_TIME_BASE;
 
-  if(m_omx_reader->SeekTime(seek_pts, &cur_pts))
+  switch(m_omx_reader->SeekTime(seek_pts, &cur_pts))
   {
+  case SEEK_SUCCESS:
     show_progress_message("Seek", (int)(cur_pts * 1e-6));
     FlushStreams(cur_pts);
     CLogLog(LOGDEBUG, "Seeked %lld", cur_pts);
+    break;
+  case SEEK_OUT_OF_BOUNDS:
+    m_send_eos = true;
+    m_next_prev_file = seconds_delta > 0 ? 1 : -1;
+    return END_PLAY;
+  case SEEK_NO_CHAPTERS:
+  case SEEK_FAIL:
+    break;
   }
+  return CONTINUE;
 }
 
 // find the nearest element of the playspeeds array
@@ -1145,18 +1155,18 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
       switch(m_omx_reader->SeekChapter(ch, cur_pts))
       {
-      case OMXReader::SEEK_SUCCESS:
+      case SEEK_SUCCESS:
         osd_printf(UM_NORM, "Chapter %d", ch + 1);
         FlushStreams(cur_pts);
         break;
-      case OMXReader::SEEK_OUT_OF_BOUNDS:
+      case SEEK_OUT_OF_BOUNDS:
         m_send_eos = true;
         m_next_prev_file = ch;
         return END_PLAY;
-      case OMXReader::SEEK_NO_CHAPTERS:
-        Seek(ch * 600);
-        break;
-      case OMXReader::SEEK_ERROR:
+      case SEEK_NO_CHAPTERS:
+        return Seek(ch * 600);
+
+      case SEEK_FAIL:
         break;
       }
     }
@@ -1255,20 +1265,16 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case ACTION_SEEK_BACK_SMALL:
-    Seek(-30);
-    break;
+    return Seek(-30);
 
   case ACTION_SEEK_FORWARD_SMALL:
-    Seek(30);
-    break;
+    return Seek(30);
 
   case ACTION_SEEK_FORWARD_LARGE:
-    Seek(600);
-    break;
+    return Seek(600);
 
   case ACTION_SEEK_BACK_LARGE:
-    Seek(-600);
-    break;
+    return Seek(-600);
 
   case ACTION_PLAY:
   case ACTION_PAUSE:
@@ -1505,33 +1511,14 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       if(search_key == ACTION_SEEK_RELATIVE)
         seek_pts += cur_pts;
 
-	  if(m_DvdPlayer)
-	  {
-	    int64_t byte_pos;
-	    int cur_ch = m_DvdPlayer->getChapter(cur_pts);
-	    int seek_ch = m_DvdPlayer->GetChapterInfo(seek_pts, byte_pos);
-
-        if(cur_ch == seek_ch)
-          break;
-
-        if(!m_omx_reader->SeekBytes(byte_pos, seek_ch < cur_ch))
-          break;
-
-        show_progress_message("Chapter", seek_ch + 1);
-        cur_pts = seek_pts;
-      }
-      else
+      if(m_omx_reader->SeekTime(seek_pts, &cur_pts) == SEEK_SUCCESS)
       {
-        if(!m_omx_reader->SeekTime(seek_pts, &cur_pts))
-          break;
-
         show_progress_message("Seek", (int)(cur_pts * 1e-6));
+        FlushStreams(cur_pts);
+        CLogLog(LOGDEBUG, "Seeked %lld", cur_pts);
       }
 
-      FlushStreams(cur_pts);
-      CLogLog(LOGDEBUG, "Seeked %lld", cur_pts);
       m->respond_int64(cur_pts);
-
       break;
     }
 
@@ -1717,16 +1704,13 @@ int run_play_loop()
   // display some startup osd
   if(m_DvdPlayer)
   {
-    int ch;
+    int ch = 0;
 
     // seek at start
     if(m_incr > 0)
     {
-      int64_t seek_bytes;
       int64_t seek_ts = (int64_t)m_incr * AV_TIME_BASE;
-      ch = m_DvdPlayer->GetChapterInfo(seek_ts, seek_bytes);
-
-      if(!m_omx_reader->SeekBytes(seek_bytes, false))
+      if(m_omx_reader->SeekChapter(ch, seek_ts) != SEEK_SUCCESS)
         m_incr = 0;
     }
 
@@ -1748,7 +1732,7 @@ int run_play_loop()
   else
   {
     // seek at start
-    if(m_incr > 0 && !m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, NULL, false))
+    if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, NULL, false) != SEEK_SUCCESS)
       m_incr = 0;
 
     printf("Playing: %s\n", m_filename.c_str());
@@ -2089,23 +2073,10 @@ int run_play_loop()
       if (m_loop)
       {
         int64_t seek_ts = (int64_t)m_loop_from * AV_TIME_BASE;
-        if(m_DvdPlayer)
+        if(m_omx_reader->SeekTime(seek_ts, NULL, true) == SEEK_SUCCESS)
         {
-          int64_t seek_bytes;
-          m_DvdPlayer->GetChapterInfo(seek_ts, seek_bytes);
-          if(m_omx_reader->SeekBytes(seek_bytes, true))
-          {
-            FlushStreams(seek_ts);
-            continue;
-          }
-        }
-        else
-        {
-          if(m_omx_reader->SeekTime(seek_ts, NULL, true))
-          {
-            FlushStreams(seek_ts);
-            continue;
-          }
+          FlushStreams(seek_ts);
+          continue;
         }
       }
 

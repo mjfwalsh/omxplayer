@@ -25,6 +25,10 @@
 #include <dvdread/ifo_read.h>
 #include <memory>
 
+extern "C" {
+#include <libavformat/avio.h>
+}
+
 #include "OMXDvdPlayer.h"
 
 OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
@@ -296,24 +300,39 @@ uint32_t *OMXDvdPlayer::getPalette()
 
 int64_t OMXDvdPlayer::Seek(int64_t iFilePosition, int iWhence)
 {
-	if (!m_open || iWhence != SEEK_SET)
-		return -1;
-
-	// seek in blocks
-	pos_byte_offset = iFilePosition % DVD_VIDEO_LB_LEN;
-
-	pos = iFilePosition / DVD_VIDEO_LB_LEN;
-	current_part = 0;
-
-	// loop through blocks (except the last)
-	while(current_part + 1 < (int)tracks[current_track].parts.size()
-			&& pos >= tracks[current_track].parts[current_part].blocks)
+	if (!m_open)
 	{
-		pos -= tracks[current_track].parts[current_part].blocks;
-		current_part++;
+		return -1;
 	}
+	if(iWhence == SEEK_SET)
+	{
+		// seek in blocks
+		pos_byte_offset = iFilePosition % DVD_VIDEO_LB_LEN;
 
-	return 0;
+		pos = iFilePosition / DVD_VIDEO_LB_LEN;
+		current_part = 0;
+
+		// loop through blocks (except the last)
+		while(current_part + 1 < (int)tracks[current_track].parts.size()
+				&& pos >= tracks[current_track].parts[current_part].blocks)
+		{
+			pos -= tracks[current_track].parts[current_part].blocks;
+			current_part++;
+		}
+		return iFilePosition;
+	}
+	else if(iWhence == AVSEEK_SIZE)
+	{
+		int total_blocks = 0;
+		for(uint i = 0; i < tracks[current_track].parts.size(); i++)
+			total_blocks += tracks[current_track].parts[i].blocks;
+
+		return (int64_t)total_blocks * DVD_VIDEO_LB_LEN;
+	}
+	else
+	{
+		return -1;
+	}
 }
 
 // search for the chapter the timestamp is in
@@ -321,10 +340,10 @@ int OMXDvdPlayer::getChapter(int64_t timestamp)
 {
 	int needle = timestamp / 1000;
 	int l = 0;
-	int r = (int)tracks[current_track].chapters.size() - 1;
+	int r = (int)tracks[current_track].chapters.size();
 
-	if(needle >= tracks[current_track].chapters[r].time)
-		return r;
+	if(needle < 0 || needle >= tracks[current_track].length)
+		return -1;
 
 	while(r - l > 1)
 	{
@@ -342,8 +361,11 @@ int OMXDvdPlayer::getChapter(int64_t timestamp)
 int OMXDvdPlayer::GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos)
 {
 	int seek_ch = getChapter(seek_ts);
-	seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
-	byte_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
+	if(seek_ch != -1)
+	{
+		seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
+		byte_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
+	}
 
 	return seek_ch;
 }
@@ -351,15 +373,6 @@ int OMXDvdPlayer::GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos)
 int64_t OMXDvdPlayer::GetChapterBytePos(int seek_ch)
 {
 	return (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
-}
-
-int64_t OMXDvdPlayer::GetSizeInBytes()
-{
-	int total_blocks = 0;
-	for(uint i = 0; i < tracks[current_track].parts.size(); i++)
-		total_blocks += tracks[current_track].parts[i].blocks;
-
-	return (int64_t)total_blocks * DVD_VIDEO_LB_LEN;
 }
 
 bool OMXDvdPlayer::IsEOF()
