@@ -21,9 +21,7 @@
 
 #include "OMXReader.h"
 #include "OMXClock.h"
-#include "OMXDvdPlayer.h"
 #include "utils/log.h"
-#include "utils/misc.h"
 
 #include <stdio.h>
 #include <unordered_map>
@@ -36,25 +34,16 @@ extern "C" {
 #include <libavutil/opt.h>
 }
 
-#define MAX_DATA_SIZE_VIDEO    8 * 1024 * 1024
-#define MAX_DATA_SIZE_AUDIO    2 * 1024 * 1024
-#define MAX_DATA_SIZE          10 * 1024 * 1024
-
 using namespace std;
 
 std::string OMXReader::s_cookie;
 std::string OMXReader::s_user_agent;
 std::string OMXReader::s_lavfdopts;
-std::string OMXReader::s_avdict;
+AVDictionary *OMXReader::s_avdict = NULL;
 
-static int64_t timeout_start;
-static int64_t timeout_default_duration = (int64_t)1e10; // amount of time file/network operation can stall for before timing out
-static int64_t timeout_duration;
-
-#define RESET_TIMEOUT(x) do { \
-  timeout_start = OMXClock::CurrentHostCounter(); \
-  timeout_duration = (x) * timeout_default_duration; \
-} while (0)
+int64_t OMXReader::timeout_start;
+int64_t OMXReader::timeout_default_duration = (int64_t)1e10; // amount of time file/network operation can stall for before timing out
+int64_t OMXReader::timeout_duration;
 
 OMXPacket::OMXPacket(AVFormatContext *format_context)
 :
@@ -77,43 +66,21 @@ OMXPacket::~OMXPacket()
   	av_packet_unref(this);
 }
 
-static int interrupt_cb(void *unused)
+void OMXReader::reset_timeout(int x)
 {
-  int ret = 0;
+  timeout_start = OMXClock::CurrentHostCounter();
+  timeout_duration = x * timeout_default_duration;
+}
+
+
+int OMXReader::interrupt_cb(void *unused)
+{
   if (timeout_duration && OMXClock::CurrentHostCounter() - timeout_start > timeout_duration)
   {
     CLogLog(LOGERROR, "COMXPlayer::interrupt_cb - Timed out");
-    ret = 1;
+    return 1;
   }
-  return ret;
-}
-
-static int dvd_read(void *h, uint8_t* buf, int size)
-{
-  RESET_TIMEOUT(1);
-  if(interrupt_cb(NULL))
-    return -1;
-
-  OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
-  int ret = reader->Read(buf, size);
-
-  if (ret == 0) {
-    if(reader->IsEOF())
-      return AVERROR_EOF;
-    else puts("OMXDvdPlayer failed to read anything");
-  }
-
-  return ret;
-}
-
-static int64_t dvd_seek(void *h, int64_t pos, int whence)
-{
-  RESET_TIMEOUT(1);
-  if(interrupt_cb(NULL))
-    return -1;
-
-  OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
-  return reader->Seek(pos, whence);
+  return 0;
 }
 
 void OMXReader::SetDefaultTimeout(float timeout)
@@ -134,144 +101,25 @@ void OMXReader::SetCookie(const char *cookie)
     }
 }
 
-OMXReader::OMXReader(std::string &filename, bool dump_format, bool live, OMXDvdPlayer *dvd)
+OMXReader::OMXReader()
 {
-  m_speed       = DVD_PLAYSPEED_NORMAL;
-  m_DvdPlayer   = dvd;
-  const AVIOInterruptCB int_cb = { interrupt_cb, NULL };
-  RESET_TIMEOUT(3);
+  reset_timeout(3);
 
   avformat_network_init();
-
-  if(dump_format && av_log_get_level() < AV_LOG_INFO)
-    av_log_set_level(AV_LOG_INFO);
-
-  int           result    = -1;
-  AVInputFormat *iformat  = NULL;
-  unsigned char *buffer   = NULL;
 
   m_pFormatContext     = avformat_alloc_context();
   if(m_pFormatContext == NULL)
     throw "avformat_alloc_context failed";
 
-  result = av_set_options_string(m_pFormatContext, s_lavfdopts.c_str(), ":", ",");
-  if (result < 0)
+  if (av_set_options_string(m_pFormatContext, s_lavfdopts.c_str(), ":", ",") < 0)
     throw "Invalid lavfdopts";
 
-  AVDictionary *d = NULL;
-  result = av_dict_parse_string(&d, s_avdict.c_str(), ":", ",", 0);
-  if (result < 0)
-    throw "Invalid avdict";
-
   // set the interrupt callback, appeared in libavformat 53.15.0
-  m_pFormatContext->interrupt_callback = int_cb;
+  m_pFormatContext->interrupt_callback = { interrupt_cb, NULL };
 
   // if format can be nonblocking, let's use that
   m_pFormatContext->flags |= AVFMT_FLAG_NONBLOCK;
-
-  if(m_DvdPlayer)
-  {
-    CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - open dvd %s ", filename.c_str());
-
-    buffer = (unsigned char*)av_malloc(FFMPEG_FILE_BUFFER_SIZE);
-    if(!buffer)
-      throw "av_malloc failed";
-
-    m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, m_DvdPlayer, dvd_read, NULL, dvd_seek);
-    if(!m_ioContext)
-      throw "avio_alloc_context failed";
-
-    av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
-    if(!iformat)
-      throw "av_probe_input_buffer failed";
-
-    m_pFormatContext->pb = m_ioContext;
-    result = avformat_open_input(&m_pFormatContext, NULL, iformat, &d);
-    av_dict_free(&d);
-    if(result < 0)
-      throw "avformat_open_input failed";
-  }
-  else
-  {
-    if(IsURL(filename))
-    {
-      if(filename.substr(0, 8) == "shout://" )
-        filename.replace(0, 8, "http://");
-
-      // ffmpeg dislikes the useragent from AirPlay urls
-      size_t idx = filename.find("|");
-      if(idx != string::npos)
-        filename = filename.substr(0, idx);
-
-      // Enable seeking if http, ftp
-      if(!live && (filename.substr(0,7) == "http://" ||
-          filename.substr(0,8) == "https://" ||
-          filename.substr(0,6) == "ftp://" ||
-          filename.substr(0,7) == "sftp://"))
-      {
-         av_dict_set(&d, "seekable", "1", 0);
-      }
-
-      // set user-agent and cookie
-      if(!s_cookie.empty())
-      {
-         av_dict_set(&d, "cookies", s_cookie.c_str(), 0);
-      }
-      if(!s_user_agent.empty())
-      {
-         av_dict_set(&d, "user_agent", s_user_agent.c_str(), 0);
-      }
-    }
-
-    CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s", filename.c_str());
-
-    result = avformat_open_input(&m_pFormatContext, filename.c_str(), iformat, &d);
-    av_dict_free(&d);
-    if(result < 0)
-      throw "avformat_open_input failed";
-
-    if(live)
-    {
-       CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input disabled SEEKING");
-       m_pFormatContext->pb->seekable = 0;
-    }
-
-    m_bMatroska = strncmp(m_pFormatContext->iformat->name, "matroska", 8) == 0; // for "matroska.webm"
-    m_bAVI = strcmp(m_pFormatContext->iformat->name, "avi") == 0;
-
-    // analyse very short to speed up mjpeg playback start
-    if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->seekable == 0)
-      m_pFormatContext->max_analyze_duration = 500000;
-
-    if(m_bMatroska)
-      m_pFormatContext->max_analyze_duration = 0;
-
-    if (live)
-      m_pFormatContext->flags |= AVFMT_FLAG_NOBUFFER;
-  }
-
-  result = avformat_find_stream_info(m_pFormatContext, NULL);
-  if(result < 0)
-    throw "avformat_find_stream_info failed";
-
-  // fill in rest of metadata
-  if(m_DvdPlayer)
-  {
-    m_pFormatContext->duration = (int64_t)m_DvdPlayer->getCurrentTrackLength() * 1000;
-
-    GetDvdStreams();
-  }
-  else
-  {
-    GetStreams();
-    GetChapters();
-  }
-
-  // print chapter info
-  if(dump_format)
-    info_dump(filename);
 }
-
 
 OMXReader::~OMXReader()
 {
@@ -294,56 +142,6 @@ OMXReader::~OMXReader()
   avformat_network_deinit();
 }
 
-
-enum SeekResult OMXReader::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
-{
-  if(!CanSeek())
-    return SEEK_FAIL;
-
-  if(m_ioContext)
-    m_ioContext->buf_ptr = m_ioContext->buf_end;
-
-  if(cur_pts)
-    backwards = seek_pts < *cur_pts;
-
-  int flags = backwards ? AVSEEK_FLAG_BACKWARD : 0;
-  int64_t seek_value;
-  if(m_DvdPlayer)
-  {
-    int cur_ch = cur_pts ? m_DvdPlayer->getChapter(*cur_pts) : -1;
-    int seek_ch = m_DvdPlayer->GetChapterInfo(seek_pts, seek_value);
-    if(seek_ch == -1)
-    {
-      m_eof = true;
-      return SEEK_OUT_OF_BOUNDS;
-    }
-
-    if(cur_ch == seek_ch)
-      return SEEK_FAIL;
-
-    flags |= AVSEEK_FLAG_BYTE;
-  }
-  else
-  {
-    seek_value = seek_pts;
-    if (m_pFormatContext->start_time != (int64_t)AV_NOPTS_VALUE)
-      seek_value += m_pFormatContext->start_time;
-  }
-
-  RESET_TIMEOUT(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, seek_value, flags) >= 0;
-
-  if(success && cur_pts != NULL)
-    *cur_pts = seek_pts;
-
-  // demuxer will return failure, if you seek to eof
-  m_eof = !success;
-
-  if(success) return SEEK_SUCCESS;
-  else if(m_DvdPlayer) return SEEK_FAIL;
-  else return SEEK_OUT_OF_BOUNDS;
-}
-
 bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
 {
   if(!CanSeek())
@@ -353,7 +151,7 @@ bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
     m_ioContext->buf_ptr = m_ioContext->buf_end;
 
   int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
-  RESET_TIMEOUT(1);
+  reset_timeout(1);
   bool success = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE) >= 0;
 
   // demuxer will return failure, if you seek to eof
@@ -372,19 +170,23 @@ OMXPacket *OMXReader::Read()
     m_pFormatContext->pb->eof_reached = 0;
 
   // timeout
-  RESET_TIMEOUT(1);
+  reset_timeout(1);
 
   // create packet
   OMXPacket *m_omx_pkt;
   try
   {
     m_omx_pkt = new OMXPacket(m_pFormatContext);
-    m_omx_pkt->index = m_steam_map.at(m_omx_pkt->stream_index);
   }
   catch(const char *msg)
   {
     m_eof = true;
     return NULL;
+  }
+
+  try
+  {
+    m_omx_pkt->index = m_steam_map.at(m_omx_pkt->stream_index);
   }
   catch(std::out_of_range const&)
   {
@@ -392,7 +194,7 @@ OMXPacket *OMXReader::Read()
     return NULL;
   }
 
-  if (m_omx_pkt->size < 0 || interrupt_cb(NULL))
+  if (m_omx_pkt->size < 0 || interrupt_cb())
   {
     // XXX, in some cases ffmpeg returns a negative packet size
     if(m_pFormatContext->pb && !m_pFormatContext->pb->eof_reached)
@@ -458,72 +260,6 @@ OMXPacket *OMXReader::Read()
 }
 
 
-void OMXReader::GetDvdStreams()
-{
-  std::unordered_map<int, int> stream_lookup;
-  for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-    stream_lookup[m_pFormatContext->streams[i]->id] = i;
-
-  auto AddStreamById = [&](int id)
-  {
-    try {
-      AddStream(stream_lookup.at(id));
-      return true;
-    }
-    catch(std::out_of_range const&) {
-      return false;
-    }
-  };
-
-  // assume video is always 0x1e0
-  AddStreamById(0x1e0);
-
-  // audio streams
-  for(int i = 0; i < m_DvdPlayer->GetAudioStreamCount(); i++)
-    AddStreamById(m_DvdPlayer->GetAudioStreamId(i));
-
-  // subtitle streams
-  for(int i = 0; i < m_DvdPlayer->GetSubtitleStreamCount(); i++)
-  {
-    int id = m_DvdPlayer->GetSubtitleStreamId(i);
-    
-    if(!AddStreamById(id))
-    {
-      AddMissingSubtitleStream(id);
-      AddStream(m_pFormatContext->nb_streams - 1);
-    }
-  }
-}
-
-void OMXReader::GetStreams()
-{
-  unsigned int program = UINT_MAX;
-
-  if (m_pFormatContext->nb_programs)
-  {
-    // look for first non empty stream and discard nonselected programs
-    for (unsigned int i = 0; i < m_pFormatContext->nb_programs; i++)
-    {
-      if(program == UINT_MAX && m_pFormatContext->programs[i]->nb_stream_indexes > 0)
-        program = i;
-      else
-        m_pFormatContext->programs[i]->discard = AVDISCARD_ALL;
-    }
-  }
-
-  if(program != UINT_MAX)
-  {
-    // add streams from selected program
-    for (unsigned int i = 0; i < m_pFormatContext->programs[program]->nb_stream_indexes; i++)
-      AddStream(m_pFormatContext->programs[program]->stream_index[i]);
-  }
-  else
-  {
-    // if there were no programs or they were all empty, add all streams
-    for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-      AddStream(i);
-  }
-}
 
 void OMXReader::GetChapters()
 {
@@ -541,7 +277,7 @@ void OMXReader::GetChapters()
   }
 }
 
-void OMXReader::AddStream(int id)
+void OMXReader::AddStream(int id, const char *lang)
 {
   AVStream *pStream = m_pFormatContext->streams[id];
 
@@ -554,9 +290,6 @@ void OMXReader::AddStream(int id)
       this_stream              = &m_audio_streams[m_audio_count];
       this_stream->type        = OMXSTREAM_AUDIO;
       m_steam_map[id]          = m_audio_count;
-      if(m_DvdPlayer)
-        this_stream->language = m_DvdPlayer->GetAudioStreamLanguage(m_audio_count);
-      
       m_audio_count++;
       break;
     case AVMEDIA_TYPE_VIDEO:
@@ -575,9 +308,6 @@ void OMXReader::AddStream(int id)
       this_stream              = &m_subtitle_streams[m_subtitle_count];
       this_stream->type        = OMXSTREAM_SUBTITLE;
       m_steam_map[id]          = m_subtitle_count;
-      if(m_DvdPlayer)
-        this_stream->language = m_DvdPlayer->GetSubtitleStreamLanguage(m_subtitle_count);
-
       m_subtitle_count++;
       break;
     default:
@@ -590,9 +320,16 @@ void OMXReader::AddStream(int id)
   this_stream->id          = id;
   SetHints(pStream, &this_stream->hints);
 
-  AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
-  if (langTag)
-    this_stream->language = langTag->value;
+  if(lang)
+  {
+    this_stream->language = lang;
+  }
+  else
+  {
+    AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
+    if (langTag)
+      this_stream->language = langTag->value;
+  }
 
   AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata, "title", NULL, 0);
   if (titleTag)
@@ -699,55 +436,6 @@ bool OMXReader::IsEof()
   return m_eof;
 }
 
-SeekResult OMXReader::SeekChapter(int &chapter, int64_t &cur_pts)
-{
-  if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
-
-  if(m_DvdPlayer)
-  {
-    bool backwards = chapter < 0;
-    int cur_ch = m_DvdPlayer->getChapter(cur_pts);
-    if(cur_ch == -1)
-      return SEEK_OUT_OF_BOUNDS;
-
-    int seek_ch = cur_ch + chapter;
-
-    // check if within bounds
-    if(seek_ch < 0 || seek_ch >= m_DvdPlayer->TotalChapters())
-      return SEEK_OUT_OF_BOUNDS;
-
-    // Do the seek
-    if(!SeekBytes(m_DvdPlayer->GetChapterBytePos(seek_ch), backwards))
-      return SEEK_FAIL;
-
-    // convert delta new chapter
-    chapter = seek_ch;
-
-    return SEEK_SUCCESS;
-  }
-  else
-  {
-    // We have no chapters to seek to
-    if(m_chapter_count == 0)
-      return SEEK_NO_CHAPTERS;
-
-    // Find current chapter
-    int current_chapter = 0;
-    for(; current_chapter < m_chapter_count - 1; current_chapter++)
-      if(cur_pts >=   m_chapters[current_chapter] && cur_pts <  m_chapters[current_chapter+1])
-        break;
-
-    // turn delta into absolute value and check in within range
-    int new_chapter = current_chapter + chapter;
-    if(new_chapter < 0 || new_chapter >= m_chapter_count)
-      return SEEK_OUT_OF_BOUNDS;
-
-    // convert delta new chapter
-    chapter = new_chapter;
-
-    return SeekTime(m_chapters[new_chapter], &cur_pts);
-  }
-}
 
 int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
 {
@@ -972,7 +660,7 @@ bool OMXReader::CanSeek()
   return false;
 }
 
-void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
+static void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
 {
   while(p < end) {
     if(strncmp(p, "palette:", 8) == 0) {
@@ -1029,18 +717,6 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette)
   return false;
 }
 
-void OMXReader::AddMissingSubtitleStream(int id)
-{
-  // We've found a new subtitle stream
-  AVStream *st = avformat_new_stream(m_pFormatContext, NULL);
-  if (!st)
-    throw "This isn't meant to happen";
-  
-  st->id = id;
-  st->codecpar->codec_type = AVMEDIA_TYPE_SUBTITLE;
-  st->codecpar->codec_id = AV_CODEC_ID_DVD_SUBTITLE;
-}
-
 void OMXReader::info_dump(const std::string &filename)
 {
     printf("File: %s\n", filename.c_str());
@@ -1076,6 +752,10 @@ void OMXReader::info_dump(const std::string &filename)
             m_subtitle_streams[i].codec_name.c_str(),
             m_audio_streams[i].language.c_str());
     }
-    if(m_DvdPlayer)
-        m_DvdPlayer->info_dump();
 }
+
+bool OMXReader::SetAvDict(const char *ad)
+{
+  return av_dict_parse_string(&s_avdict, ad, ":", ",", 0) >= 0;
+}
+

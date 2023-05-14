@@ -30,6 +30,8 @@
 #include "OMXClock.h"
 #include "OMXAudio.h"
 #include "OMXReader.h"
+#include "OMXReaderFile.h"
+#include "OMXReaderDvd.h"
 #include "OMXPlayerVideo.h"
 #include "OMXPlayerAudio.h"
 #include "OMXPlayerSubtitles.h"
@@ -1680,7 +1682,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 int run_play_loop()
 {
   try {
-    m_omx_reader = new OMXReader(m_filename, m_dump_format, m_config_audio.is_live, m_DvdPlayer);
+    if(m_DvdPlayer)
+      m_omx_reader = (OMXReader *)new OMXReaderDvd(m_filename, m_dump_format, m_DvdPlayer);
+    else
+      m_omx_reader = (OMXReader *)new OMXReaderFile(m_filename, m_dump_format, m_config_audio.is_live);
   }
   catch(const char *msg)
   {
