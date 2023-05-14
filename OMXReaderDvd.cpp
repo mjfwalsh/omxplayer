@@ -93,7 +93,7 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool 
   int flags = AVSEEK_FLAG_BYTE | (backwards ? AVSEEK_FLAG_BACKWARD : 0);
   int64_t seek_value;
 
-  int cur_ch = cur_pts ? m_DvdPlayer->getChapter(*cur_pts) : -1;
+  int cur_ch = cur_pts ? m_DvdPlayer->GetChapter(*cur_pts / 1000) : -1;
   int seek_ch = m_DvdPlayer->GetChapterInfo(seek_pts, seek_value);
   if(seek_ch == -1)
   {
@@ -159,7 +159,7 @@ SeekResult OMXReaderDvd::SeekChapter(int &chapter, int64_t &cur_pts)
   if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
 
   bool backwards = chapter < 0;
-  int cur_ch = m_DvdPlayer->getChapter(cur_pts);
+  int cur_ch = m_DvdPlayer->GetChapter(cur_pts / 1000);
   if(cur_ch == -1)
     return SEEK_OUT_OF_BOUNDS;
 
@@ -200,15 +200,14 @@ int OMXReaderDvd::dvd_read(void *h, uint8_t* buf, int size)
     return -1;
 
   OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
-  int ret = reader->Read(buf, size);
+  int ret = reader->Read(buf, size / DVD_VIDEO_LB_LEN);
 
-  if (ret == 0) {
-    if(reader->IsEOF())
-      return AVERROR_EOF;
-    else puts("OMXDvdPlayer failed to read anything");
-  }
-
-  return ret;
+  if (ret == 0 && reader->IsEOF())
+    return AVERROR_EOF;
+  else if(ret <= 0)
+    return ret;
+  else
+    return ret * DVD_VIDEO_LB_LEN;
 }
 
 int64_t OMXReaderDvd::dvd_seek(void *h, int64_t pos, int whence)
@@ -218,5 +217,7 @@ int64_t OMXReaderDvd::dvd_seek(void *h, int64_t pos, int whence)
     return -1;
 
   OMXDvdPlayer *reader = static_cast<OMXDvdPlayer*>(h);
-  return reader->Seek(pos, whence);
+
+  int blocks = reader->Seek(pos / DVD_VIDEO_LB_LEN, whence);
+  return blocks < 0 ? blocks : (int64_t)blocks * DVD_VIDEO_LB_LEN;
 }

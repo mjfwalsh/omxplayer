@@ -36,9 +36,9 @@ class OMXDvdPlayer
 	bool ChangeTrack(int delta, int &t);
 	bool OpenTrack(int ct);
 
-	int Read(unsigned char *lpBuf, int64_t uiBufSize);
-	int64_t Seek(int64_t iFilePosition, int iWhence);
-	int getChapter(int64_t timestamp);
+	int Read(unsigned char *lpBuf, int no_blocks);
+	int Seek(int blocks, int whence = SEEK_SET);
+	int GetChapter(int ms);
 	int GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos);
 	int64_t GetChapterBytePos(int seek_ch);
 	bool IsEOF();
