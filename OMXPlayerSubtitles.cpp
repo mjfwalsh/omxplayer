@@ -511,12 +511,12 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index)
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
 {
   char *start, *end;
-  start = (char*)pkt->data;
-  end   = (char*)pkt->data + pkt->size;
+  start = (char*)pkt->avpkt->data;
+  end   = (char*)pkt->avpkt->data + pkt->avpkt->size;
 
   // set time
-  sub.start = static_cast<int>(pkt->pts/1000);
-  sub.stop = sub.start + static_cast<int>(pkt->duration/1000);
+  sub.start = static_cast<int>(pkt->avpkt->pts/1000);
+  sub.stop = sub.start + static_cast<int>(pkt->avpkt->duration/1000);
 
   // skip the prefixed ssa fields (8 fields)
   if (pkt->hints.codec == AV_CODEC_ID_SSA || pkt->hints.codec == AV_CODEC_ID_ASS)
@@ -528,7 +528,7 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
   }
 
   // allocate space
-  sub.text.resize(pkt->size);
+  sub.text.resize(pkt->avpkt->size);
 
   // replace literal '\N' with newlines, ignore form feeds
   char *r = start;
@@ -560,14 +560,14 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   AVSubtitle s;
   int got_sub_ptr;
 
-  if(avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt) < 0)
+  if(avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt->avpkt) < 0)
     return false;
 
   // partial packet with timestamp but no content
   if(got_sub_ptr == 0)
   {
-    if(pkt->pts != AV_NOPTS_VALUE)
-      m_prev_pts = static_cast<int>(pkt->pts/1000);
+    if(pkt->avpkt->pts != AV_NOPTS_VALUE)
+      m_prev_pts = static_cast<int>(pkt->avpkt->pts/1000);
     return false;
   }
 
@@ -579,8 +579,8 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
     goto ignore_sub;
 
   // set time
-  if(pkt->pts != AV_NOPTS_VALUE)
-    sub.start = static_cast<int>(pkt->pts/1000);
+  if(pkt->avpkt->pts != AV_NOPTS_VALUE)
+    sub.start = static_cast<int>(pkt->avpkt->pts/1000);
   else if(m_prev_pts != -1)
     sub.start = m_prev_pts;
   else

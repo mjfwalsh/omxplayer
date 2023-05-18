@@ -121,14 +121,14 @@ bool COMXAudioCodecOMX::SendPacket(OMXPacket *pkt)
 {
   if (!m_iBufferOutputUsed)
   {
-    m_dts = pkt->dts;
-    m_pts = pkt->pts;
+    m_dts = pkt->avpkt->dts;
+    m_pts = pkt->avpkt->pts;
   }
 
-  int result = avcodec_send_packet(m_pCodecContext, pkt);
+  int result = avcodec_send_packet(m_pCodecContext, pkt->avpkt);
 
   if (result && m_bFirstFrame)
-    CLogLog(LOGDEBUG, "COMXAudioCodecOMX::SendPacket(%p,%d)", pkt->data, pkt->size);
+    CLogLog(LOGDEBUG, "COMXAudioCodecOMX::SendPacket(%p,%d)", pkt->avpkt->data, pkt->avpkt->size);
 
   return result == 0;
 }

@@ -45,25 +45,24 @@ int64_t OMXReader::timeout_start;
 int64_t OMXReader::timeout_default_duration = (int64_t)1e10; // amount of time file/network operation can stall for before timing out
 int64_t OMXReader::timeout_duration;
 
-OMXPacket::OMXPacket(AVFormatContext *format_context)
+OMXPacket::OMXPacket()
 :
-codec_type(AVMEDIA_TYPE_UNKNOWN)
+codec_type(AVMEDIA_TYPE_UNKNOWN),
+stream_type_index(-1)
 {
-  dts  = AV_NOPTS_VALUE;
-  pts  = AV_NOPTS_VALUE;
-  duration = AV_NOPTS_VALUE;
-  size = 0;
-  data = NULL;
-  stream_index = -1;
-
-  if(av_read_frame(format_context, this) < 0)
-    throw "No packet";
+  avpkt = av_packet_alloc();
+  if(!avpkt) throw "Memory Error";
+  
+  avpkt->duration = AV_NOPTS_VALUE;
+  avpkt->size = 0;
+  avpkt->data = NULL;
+  avpkt->stream_index = -1;
 }
 
 
 OMXPacket::~OMXPacket()
 {
-  	av_packet_unref(this);
+  	av_packet_free(&avpkt);
 }
 
 void OMXReader::reset_timeout(int x)
@@ -173,34 +172,24 @@ OMXPacket *OMXReader::Read()
   reset_timeout(1);
 
   // create packet
-  OMXPacket *omx_pkt;
-  try
-  {
-    omx_pkt = new OMXPacket(m_pFormatContext);
-  }
-  catch(const char *msg)
-  {
-    m_eof = true;
-    return NULL;
-  }
-
-  try
-  {
-    omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->stream_index);
-  }
-  catch(std::out_of_range const&)
-  {
-    omx_pkt->stream_type_index = -1;
-  }
-
-  if (omx_pkt->size < 0 || interrupt_cb())
+  OMXPacket *omx_pkt = new OMXPacket();
+  if(av_read_frame(m_pFormatContext, omx_pkt->avpkt) < 0 || omx_pkt->avpkt->size < 0 || interrupt_cb())
   {
     delete omx_pkt;
     m_eof = true;
     return NULL;
   }
 
-  AVStream *pStream = m_pFormatContext->streams[omx_pkt->stream_index];
+  try
+  {
+    omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
+  }
+  catch(std::out_of_range const&)
+  {
+    omx_pkt->stream_type_index = -1;
+  }
+
+  AVStream *pStream = m_pFormatContext->streams[omx_pkt->avpkt->stream_index];
   omx_pkt->codec_type = pStream->codecpar->codec_type;
 
   if(m_bMatroska && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -211,25 +200,25 @@ OMXPacket *OMXReader::Read()
     // sets these two timestamps equal all the
     // time, so we select it here instead
     if(pStream->codecpar->codec_tag == 0)
-      omx_pkt->dts = AV_NOPTS_VALUE;
+      omx_pkt->avpkt->dts = AV_NOPTS_VALUE;
     else
-      omx_pkt->pts = AV_NOPTS_VALUE;
+      omx_pkt->avpkt->pts = AV_NOPTS_VALUE;
   }
 
   if(m_bAVI && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
   {
     // AVI's always have borked pts, specially if m_pFormatContext->flags includes
     // AVFMT_FLAG_GENPTS so always use dts
-    omx_pkt->pts = AV_NOPTS_VALUE;
+    omx_pkt->avpkt->pts = AV_NOPTS_VALUE;
   }
 
   SetHints(pStream, &omx_pkt->hints);
 
   // check if stream has passed full duration, needed for live streams
   // Do this before we convert dts and pts values
-  if(omx_pkt->dts != (int64_t)AV_NOPTS_VALUE)
+  if(omx_pkt->avpkt->dts != (int64_t)AV_NOPTS_VALUE)
   {
-    int64_t duration = omx_pkt->dts;
+    int64_t duration = omx_pkt->avpkt->dts;
     if(pStream->start_time != AV_NOPTS_VALUE)
       duration -= pStream->start_time;
 
@@ -243,9 +232,9 @@ OMXPacket *OMXReader::Read()
     }
   }
 
-  omx_pkt->dts = ConvertTimestamp(omx_pkt->dts, pStream->time_base.den, pStream->time_base.num);
-  omx_pkt->pts = ConvertTimestamp(omx_pkt->pts, pStream->time_base.den, pStream->time_base.num);
-  omx_pkt->duration = AV_TIME_BASE * omx_pkt->duration * pStream->time_base.num / pStream->time_base.den;
+  omx_pkt->avpkt->dts = ConvertTimestamp(omx_pkt->avpkt->dts, pStream->time_base.den, pStream->time_base.num);
+  omx_pkt->avpkt->pts = ConvertTimestamp(omx_pkt->avpkt->pts, pStream->time_base.den, pStream->time_base.num);
+  omx_pkt->avpkt->duration = AV_TIME_BASE * omx_pkt->avpkt->duration * pStream->time_base.num / pStream->time_base.den;
 
   return omx_pkt;
 }

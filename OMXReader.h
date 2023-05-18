@@ -42,12 +42,13 @@ extern "C" {
 
 #define MAX_OMX_CHAPTERS 64
 
-class OMXPacket : public AVPacket
+class OMXPacket
 {
-  public: 
-  explicit OMXPacket(AVFormatContext *format_context);
+public:
+  OMXPacket();
   ~OMXPacket();
   
+  AVPacket *avpkt;
   COMXStreamInfo hints;
   enum AVMediaType codec_type;
   int stream_type_index;

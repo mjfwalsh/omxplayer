@@ -163,12 +163,12 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
       return false;
   }
 
-  CLogLog(LOGINFO, "CDVDPlayerAudio::Decode dts:%lld pts:%lld size:%d", pkt->dts, pkt->pts, pkt->size);
+  CLogLog(LOGINFO, "CDVDPlayerAudio::Decode dts:%lld pts:%lld size:%d", pkt->avpkt->dts, pkt->avpkt->pts, pkt->avpkt->size);
 
-  if(pkt->pts != AV_NOPTS_VALUE)
-    m_iCurrentPts = pkt->pts;
-  else if(pkt->dts != AV_NOPTS_VALUE)
-    m_iCurrentPts = pkt->dts;
+  if(pkt->avpkt->pts != AV_NOPTS_VALUE)
+    m_iCurrentPts = pkt->avpkt->pts;
+  else if(pkt->avpkt->dts != AV_NOPTS_VALUE)
+    m_iCurrentPts = pkt->avpkt->dts;
 
   if(!m_passthrough && !m_hw_decode)
   {
@@ -177,7 +177,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
 
     while (m_pAudioCodec->GetFrame()) {
       uint8_t *decoded;
-      int decoded_size = m_pAudioCodec->GetData(&decoded, pkt->dts, pkt->pts);
+      int decoded_size = m_pAudioCodec->GetData(&decoded, pkt->avpkt->dts, pkt->avpkt->pts);
 
       if(decoded_size <=0)
         continue;
@@ -188,19 +188,19 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
         if(m_flush_requested) return true;
       }
 
-      if(!m_decoder->AddPackets(decoded, decoded_size, pkt->dts, pkt->pts, m_pAudioCodec->GetFrameSize()))
+      if(!m_decoder->AddPackets(decoded, decoded_size, pkt->avpkt->dts, pkt->avpkt->pts, m_pAudioCodec->GetFrameSize()))
         return false;
     }
   }
   else
   {
-    while((int) m_decoder->GetSpace() < pkt->size)
+    while((int) m_decoder->GetSpace() < pkt->avpkt->size)
     {
       OMXClock::Sleep(10);
       if(m_flush_requested) return true;
     }
 
-    if(!m_decoder->AddPackets(pkt->data, pkt->size, pkt->dts, pkt->pts, 0))
+    if(!m_decoder->AddPackets(pkt->avpkt->data, pkt->avpkt->size, pkt->avpkt->dts, pkt->avpkt->pts, 0))
       return false;
   }
 
@@ -234,7 +234,7 @@ void OMXPlayerAudio::Process()
       omx_pkt = m_packets.front();
       if (omx_pkt)
       {
-        m_cached_size -= omx_pkt->size;
+        m_cached_size -= omx_pkt->avpkt->size;
       }
       else
       {
@@ -295,10 +295,10 @@ bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
     return true;
   }
 
-  if((m_cached_size + pkt->size) < m_config.queue_size * 1024 * 1024)
+  if((m_cached_size + pkt->avpkt->size) < m_config.queue_size * 1024 * 1024)
   {
     Lock();
-    m_cached_size += pkt->size;
+    m_cached_size += pkt->avpkt->size;
     m_packets.push_back(pkt);
     UnLock();
     pthread_cond_broadcast(&m_packet_cond);

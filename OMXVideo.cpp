@@ -675,22 +675,22 @@ bool COMXVideo::Decode(OMXPacket *pkt)
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
 
-  if (pkt->data && pkt->size > 0)
+  if (pkt->avpkt->data && pkt->avpkt->size > 0)
   {
     OMX_U32 nFlags = 0;
 
     if(m_setStartTime)
     {
       nFlags |= OMX_BUFFERFLAG_STARTTIME;
-      CLogLog(LOGDEBUG, "OMXVideo::Decode VDec : setStartTime %f", (pkt->pts == AV_NOPTS_VALUE ? 0.0 : (double)pkt->pts) / AV_TIME_BASE);
+      CLogLog(LOGDEBUG, "OMXVideo::Decode VDec : setStartTime %f", (pkt->avpkt->pts == AV_NOPTS_VALUE ? 0.0 : (double)pkt->avpkt->pts) / AV_TIME_BASE);
       m_setStartTime = false;
     }
-    if (pkt->pts == AV_NOPTS_VALUE && pkt->dts == AV_NOPTS_VALUE)
+    if (pkt->avpkt->pts == AV_NOPTS_VALUE && pkt->avpkt->dts == AV_NOPTS_VALUE)
       nFlags |= OMX_BUFFERFLAG_TIME_UNKNOWN;
-    else if (pkt->pts == AV_NOPTS_VALUE)
+    else if (pkt->avpkt->pts == AV_NOPTS_VALUE)
       nFlags |= OMX_BUFFERFLAG_TIME_IS_DTS;
 
-    while(pkt->size)
+    while(pkt->avpkt->size)
     {
       // 500ms timeout
       OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(500);
@@ -703,14 +703,14 @@ bool COMXVideo::Decode(OMXPacket *pkt)
 
       omx_buffer->nFlags = nFlags;
       omx_buffer->nOffset = 0;
-      omx_buffer->nTimeStamp = ToOMXTime((uint64_t)(pkt->pts != AV_NOPTS_VALUE ? pkt->pts : pkt->dts != AV_NOPTS_VALUE ? pkt->dts : 0));
-      omx_buffer->nFilledLen = std::min((OMX_U32)pkt->size, omx_buffer->nAllocLen);
-      memcpy(omx_buffer->pBuffer, pkt->data, omx_buffer->nFilledLen);
+      omx_buffer->nTimeStamp = ToOMXTime((uint64_t)(pkt->avpkt->pts != AV_NOPTS_VALUE ? pkt->avpkt->pts : pkt->avpkt->dts != AV_NOPTS_VALUE ? pkt->avpkt->dts : 0));
+      omx_buffer->nFilledLen = std::min((OMX_U32)pkt->avpkt->size, omx_buffer->nAllocLen);
+      memcpy(omx_buffer->pBuffer, pkt->avpkt->data, omx_buffer->nFilledLen);
 
-      pkt->size -= omx_buffer->nFilledLen;
-      pkt->data += omx_buffer->nFilledLen;
+      pkt->avpkt->size -= omx_buffer->nFilledLen;
+      pkt->avpkt->data += omx_buffer->nFilledLen;
 
-      if(pkt->size == 0)
+      if(pkt->avpkt->size == 0)
         omx_buffer->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
 
       omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);
