@@ -290,7 +290,7 @@ void OMXPlayerSubtitles::RenderLoop()
             if(GetSubData(pkt, sub))
             {
               // Add to buffer
-              m_subtitle_buffers[pkt->index].push_back(sub);
+              m_subtitle_buffers[pkt->stream_type_index].push_back(sub);
 
               // and send to renderer if this subtitle stream is currently showing
               if(a->currently_showing)
@@ -637,7 +637,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
     return;
   }
 
-  SendToRenderer(new Mailbox::Push(pkt, m_visible && pkt->index == m_active_index));
+  SendToRenderer(new Mailbox::Push(pkt, m_visible && pkt->stream_type_index == m_active_index));
 }
 
 void OMXPlayerSubtitles::DisplayText(const char *text, int duration, bool wait)

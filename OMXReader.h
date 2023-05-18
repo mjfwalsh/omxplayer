@@ -50,7 +50,7 @@ class OMXPacket : public AVPacket
   
   COMXStreamInfo hints;
   enum AVMediaType codec_type;
-  int index;
+  int stream_type_index;
 };
 
 enum OMXStreamType

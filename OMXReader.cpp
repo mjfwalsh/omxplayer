@@ -173,10 +173,10 @@ OMXPacket *OMXReader::Read()
   reset_timeout(1);
 
   // create packet
-  OMXPacket *m_omx_pkt;
+  OMXPacket *omx_pkt;
   try
   {
-    m_omx_pkt = new OMXPacket(m_pFormatContext);
+    omx_pkt = new OMXPacket(m_pFormatContext);
   }
   catch(const char *msg)
   {
@@ -186,33 +186,24 @@ OMXPacket *OMXReader::Read()
 
   try
   {
-    m_omx_pkt->index = m_steam_map.at(m_omx_pkt->stream_index);
+    omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->stream_index);
   }
   catch(std::out_of_range const&)
   {
-    delete m_omx_pkt;
-    return NULL;
+    omx_pkt->stream_type_index = -1;
   }
 
-  if (m_omx_pkt->size < 0 || interrupt_cb())
+  if (omx_pkt->size < 0 || interrupt_cb())
   {
-    // XXX, in some cases ffmpeg returns a negative packet size
-    if(m_pFormatContext->pb && !m_pFormatContext->pb->eof_reached)
-    {
-      CLogLog(LOGERROR, "OMXReader::Read no valid packet");
-      //FlushRead();
-    }
-
-    delete m_omx_pkt;
-
+    delete omx_pkt;
     m_eof = true;
     return NULL;
   }
 
-  AVStream *pStream = m_pFormatContext->streams[m_omx_pkt->stream_index];
-  m_omx_pkt->codec_type = pStream->codecpar->codec_type;
+  AVStream *pStream = m_pFormatContext->streams[omx_pkt->stream_index];
+  omx_pkt->codec_type = pStream->codecpar->codec_type;
 
-  if(m_bMatroska && m_omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
+  if(m_bMatroska && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
   { // matroska can store different timestamps
     // for different formats, for native stored
     // stuff it is pts, but for ms compatibility
@@ -220,25 +211,25 @@ OMXPacket *OMXReader::Read()
     // sets these two timestamps equal all the
     // time, so we select it here instead
     if(pStream->codecpar->codec_tag == 0)
-      m_omx_pkt->dts = AV_NOPTS_VALUE;
+      omx_pkt->dts = AV_NOPTS_VALUE;
     else
-      m_omx_pkt->pts = AV_NOPTS_VALUE;
+      omx_pkt->pts = AV_NOPTS_VALUE;
   }
 
-  if(m_bAVI && m_omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
+  if(m_bAVI && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
   {
     // AVI's always have borked pts, specially if m_pFormatContext->flags includes
     // AVFMT_FLAG_GENPTS so always use dts
-    m_omx_pkt->pts = AV_NOPTS_VALUE;
+    omx_pkt->pts = AV_NOPTS_VALUE;
   }
 
-  SetHints(pStream, &m_omx_pkt->hints);
+  SetHints(pStream, &omx_pkt->hints);
 
   // check if stream has passed full duration, needed for live streams
   // Do this before we convert dts and pts values
-  if(m_omx_pkt->dts != (int64_t)AV_NOPTS_VALUE)
+  if(omx_pkt->dts != (int64_t)AV_NOPTS_VALUE)
   {
-    int64_t duration = m_omx_pkt->dts;
+    int64_t duration = omx_pkt->dts;
     if(pStream->start_time != AV_NOPTS_VALUE)
       duration -= pStream->start_time;
 
@@ -252,11 +243,11 @@ OMXPacket *OMXReader::Read()
     }
   }
 
-  m_omx_pkt->dts = ConvertTimestamp(m_omx_pkt->dts, pStream->time_base.den, pStream->time_base.num);
-  m_omx_pkt->pts = ConvertTimestamp(m_omx_pkt->pts, pStream->time_base.den, pStream->time_base.num);
-  m_omx_pkt->duration = AV_TIME_BASE * m_omx_pkt->duration * pStream->time_base.num / pStream->time_base.den;
+  omx_pkt->dts = ConvertTimestamp(omx_pkt->dts, pStream->time_base.den, pStream->time_base.num);
+  omx_pkt->pts = ConvertTimestamp(omx_pkt->pts, pStream->time_base.den, pStream->time_base.num);
+  omx_pkt->duration = AV_TIME_BASE * omx_pkt->duration * pStream->time_base.num / pStream->time_base.den;
 
-  return m_omx_pkt;
+  return omx_pkt;
 }
 
 

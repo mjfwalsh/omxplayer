@@ -212,13 +212,10 @@ static void UpdateRaspicastMetaData(const std::string &msg)
 
 static void PrintSubtitleInfo()
 {
-  int count = m_player_subtitles->GetStreamCount();
-  int index = m_player_subtitles->GetActiveStream();
-
   printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
-         count,
+         m_player_subtitles->GetStreamCount(),
          m_has_subtitle && m_player_subtitles->GetVisible() ? " on" : "off",
-         index+1,
+         m_player_subtitles->GetActiveStream()+1,
          m_has_subtitle ? m_player_subtitles->GetDelay() : 0);
 }
 
@@ -2094,10 +2091,13 @@ int run_play_loop()
       continue;
     }
 
+    if(m_omx_pkt->stream_type_index == -1)
+      goto discard_packet;
+
     switch(m_omx_pkt->codec_type)
     {
     case AVMEDIA_TYPE_VIDEO:
-      if(!m_player_video || m_omx_pkt->index != 0)
+      if(!m_player_video || m_omx_pkt->stream_type_index != 0)
         goto discard_packet;
 
       if(m_player_video->AddPacket(m_omx_pkt))

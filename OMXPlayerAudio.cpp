@@ -122,7 +122,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
   if(!m_decoder || !m_pAudioCodec)
     return true;
 
-  if(m_stream_index != pkt->index)
+  if(m_stream_index != pkt->stream_type_index)
     return true; 
 
   int channels = pkt->hints.channels;
