@@ -76,7 +76,6 @@ public:
   virtual ~OMXReader();
 
   virtual enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false) = 0;
-  bool SeekBytes(int64_t seek_bytes, bool backwords);
   OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();

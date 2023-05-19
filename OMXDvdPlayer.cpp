@@ -23,6 +23,7 @@
 #include <limits.h>
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
+#include <dvdread/nav_read.h>
 #include <memory>
 
 extern "C" {
@@ -319,6 +320,96 @@ int OMXDvdPlayer::Seek(int new_pos, int whence)
 	{
 		return -1;
 	}
+}
+
+// this function finds the nearest vobu to the
+// desired seek point and return it's byte position
+int64_t OMXDvdPlayer::getBytePoint(int seek_ms)
+{
+    // save these do they can be restored later
+    int old_pos = pos;
+    int old_current_part = current_part;
+
+	dsi_t dsi_pack;
+	unsigned char data[DVD_VIDEO_LB_LEN];
+	int list[] = {0, 500, 8000, 10000, 30000, 60000, 120000};
+	int diff;
+
+	int ch = GetChapter(seek_ms);
+	if(ch == -1) return -1;
+
+	int cur_time_seeking_pos = tracks[current_track].chapters[ch].time;
+	int cur_cell_seeking_pos = tracks[current_track].chapters[ch].cell;
+
+	bool last = false;
+	while(!last)
+	{
+		Seek(cur_cell_seeking_pos);
+		if(Read(data, 1) != 1)
+		{
+		    printf("read error: %d\n", cur_cell_seeking_pos);
+			goto fail;
+		}
+
+		navRead_DSI(&dsi_pack, &data[DSI_START_BYTE]);
+
+		diff = seek_ms - cur_time_seeking_pos;
+
+		int jump;
+        int lower = 0;
+        int higher = 7;
+
+        while(higher - lower > 1)
+        {
+            int m = (lower + higher) / 2;
+
+            if(diff >= list[m])
+                lower = m;
+            else
+                higher = m;
+        }
+
+		switch(lower)
+		{
+		case 0:
+			goto finish;
+
+		case 1:
+            jump = 19 - (diff / 500);
+            last = true;
+            break;
+
+		case 2: // 8,000 to 9,999
+			cur_time_seeking_pos += 7500;
+			jump = 6 - diff;
+			break;
+
+		default:
+			cur_time_seeking_pos +=  list[lower];
+			jump = 6 - lower;
+			break;
+		}
+
+        // 0xfffffff means an invalid jump point
+        int next = dsi_pack.vobu_sri.fwda[jump] & 0xfffffff;
+        if(next == 0xfffffff) goto fail;
+        cur_cell_seeking_pos += next;
+	}
+
+finish:
+    // restore seek point
+    pos = old_pos;
+    current_part = old_current_part;
+
+	return cur_cell_seeking_pos * DVD_VIDEO_LB_LEN;
+
+fail:
+    // restore seek point
+    pos = old_pos;
+    current_part = old_current_part;
+
+	puts("failed find seek point");
+	return -1;
 }
 
 // search for the chapter the timestamp is in

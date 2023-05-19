@@ -81,30 +81,17 @@ OMXReaderDvd::OMXReaderDvd(string &filename, bool dump_format, OMXDvdPlayer *dvd
 
 enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
 {
-  if(!CanSeek())
-    return SEEK_FAIL;
-
-  if(m_ioContext)
-    m_ioContext->buf_ptr = m_ioContext->buf_end;
-
   if(cur_pts)
     backwards = seek_pts < *cur_pts;
 
-  int flags = AVSEEK_FLAG_BYTE | (backwards ? AVSEEK_FLAG_BACKWARD : 0);
-  int64_t seek_value;
-
-  int cur_ch = cur_pts ? m_DvdPlayer->GetChapter(*cur_pts / 1000) : -1;
-  int seek_ch = m_DvdPlayer->GetChapterInfo(seek_pts, seek_value);
-  if(seek_ch == -1)
+  int64_t bytes = m_DvdPlayer->getBytePoint(seek_pts / 1000);
+  if(bytes == -1)
   {
     m_eof = true;
     return SEEK_OUT_OF_BOUNDS;
   }
-  else if(cur_ch == seek_ch)
-    return SEEK_FAIL;
 
-  reset_timeout(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, seek_value, flags) >= 0;
+  bool success = SeekBytes(bytes, backwards);
 
   if(success && cur_pts != NULL)
     *cur_pts = seek_pts;
@@ -112,8 +99,24 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
 
-  return success ? SEEK_SUCCESS : SEEK_OUT_OF_BOUNDS;
+  return success ? SEEK_SUCCESS : SEEK_FAIL;
 }
+
+bool OMXReaderDvd::SeekBytes(int64_t seek_bytes, bool backwords)
+{
+  if(m_ioContext)
+    m_ioContext->buf_ptr = m_ioContext->buf_end;
+
+  int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
+  reset_timeout(1);
+  bool success = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE) >= 0;
+
+  // demuxer will return failure, if you seek to eof
+  m_eof = !success;
+
+  return success;
+}
+
 
 void OMXReaderDvd::GetStreams()
 {

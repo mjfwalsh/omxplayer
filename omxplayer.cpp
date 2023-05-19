@@ -1703,56 +1703,31 @@ int run_play_loop()
   m_av_clock->Stop();
   m_av_clock->Pause();
 
+  // seek at start
+  if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, NULL, false) != SEEK_SUCCESS)
+    m_incr = 0;
+
   // display some startup osd
+  std::string display_name;
   if(m_DvdPlayer)
+    display_name = m_DvdPlayer->GetTitle() + ", Track " + std::to_string(m_track + 1);
+  else
+    display_name = getShortFileName();
+
+  printf("Playing: %s\n", display_name.c_str());
+
+  if(m_incr > 0)
   {
-    int ch = 0;
-
-    // seek at start
-    if(m_incr > 0)
-    {
-      int64_t seek_ts = (int64_t)m_incr * AV_TIME_BASE;
-      if(m_omx_reader->SeekChapter(ch, seek_ts) != SEEK_SUCCESS)
-        m_incr = 0;
-    }
-
-    printf("Playing: %s, Track: %d\n", m_filename.c_str(), m_track + 1);
-
-    if(m_incr > 0)
-    {
-      osd_printf(UM_LONG, "%s\nTrack %d\nChapter %d", m_DvdPlayer->GetTitle().c_str(),
-        m_track + 1, ch + 1);
-      m_incr = 0;
-    }
-    else
-    {
-      osd_printf(UM_LONG, "%s\nTrack %d", m_DvdPlayer->GetTitle().c_str(), m_track + 1);
-    }
-
-    UpdateRaspicastMetaData(m_DvdPlayer->GetTitle() + " - Track " + std::to_string(m_track + 1));
+    int dur = m_omx_reader->GetStreamLengthSeconds();
+    osd_printf(UM_LONG, "%s\n%02d:%02d:%02d / %02d:%02d:%02d", display_name.c_str(),
+      (m_incr/3600), (m_incr/60)%60, m_incr%60, (dur/3600), (dur/60)%60, dur%60);
+    m_incr = 0;
   }
   else
   {
-    // seek at start
-    if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, NULL, false) != SEEK_SUCCESS)
-      m_incr = 0;
-
-    printf("Playing: %s\n", m_filename.c_str());
-    std::string short_filename = getShortFileName();
-
-    if(m_incr > 0)
-    {
-      int dur = m_omx_reader->GetStreamLengthSeconds();
-      osd_printf(UM_LONG, "%s\n%02d:%02d:%02d / %02d:%02d:%02d", short_filename.c_str(),
-        (m_incr/3600), (m_incr/60)%60, m_incr%60, (dur/3600), (dur/60)%60, dur%60);
-      m_incr = 0;
-    }
-    else
-    {
-      osd_print(UM_LONG, short_filename.c_str());
-    }
-    UpdateRaspicastMetaData(short_filename);
+    osd_print(UM_LONG, display_name.c_str());
   }
+  UpdateRaspicastMetaData(display_name);
 
   /* -------------------------------------------------------
                            Video Setup

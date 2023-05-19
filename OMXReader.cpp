@@ -141,24 +141,6 @@ OMXReader::~OMXReader()
   avformat_network_deinit();
 }
 
-bool OMXReader::SeekBytes(int64_t seek_bytes, bool backwords)
-{
-  if(!CanSeek())
-    return false;
-
-  if(m_ioContext)
-    m_ioContext->buf_ptr = m_ioContext->buf_end;
-
-  int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
-  reset_timeout(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE) >= 0;
-
-  // demuxer will return failure, if you seek to eof
-  m_eof = !success;
-
-  return success;
-}
-
 OMXPacket *OMXReader::Read()
 {
   if(m_eof)

@@ -38,6 +38,7 @@ class OMXDvdPlayer
 
 	int Read(unsigned char *lpBuf, int no_blocks);
 	int Seek(int blocks, int whence = SEEK_SET);
+	int64_t getBytePoint(int seek_ms);
 	int GetChapter(int ms);
 	int GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos);
 	int64_t GetChapterBytePos(int seek_ch);

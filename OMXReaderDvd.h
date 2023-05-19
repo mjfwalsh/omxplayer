@@ -40,6 +40,7 @@ public:
 
 protected:
   OMXDvdPlayer *m_DvdPlayer = NULL;
+  bool SeekBytes(int64_t seek_bytes, bool backwords);
   void AddMissingSubtitleStream(int id);
   void GetStreams() override;
 };
