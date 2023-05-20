@@ -67,8 +67,7 @@ OMXReaderFile::OMXReaderFile(string &filename, bool dump_format, bool live)
 
   CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s", filename.c_str());
 
-  AVInputFormat *iformat = NULL;
-  int result = avformat_open_input(&m_pFormatContext, filename.c_str(), iformat, &d);
+  int result = avformat_open_input(&m_pFormatContext, filename.c_str(), NULL, &d);
   av_dict_free(&d);
   if(result < 0)
     throw "avformat_open_input failed";
@@ -83,7 +82,7 @@ OMXReaderFile::OMXReaderFile(string &filename, bool dump_format, bool live)
   m_bAVI = strcmp(m_pFormatContext->iformat->name, "avi") == 0;
 
   // analyse very short to speed up mjpeg playback start
-  if (iformat && (strcmp(iformat->name, "mjpeg") == 0) && m_ioContext->seekable == 0)
+  if(strcmp(m_pFormatContext->iformat->name, "mjpeg") == 0)
     m_pFormatContext->max_analyze_duration = 500000;
 
   if(m_bMatroska)
@@ -110,9 +109,6 @@ enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool
   if(!CanSeek())
     return SEEK_FAIL;
 
-  if(m_ioContext)
-    m_ioContext->buf_ptr = m_ioContext->buf_end;
-
   if(cur_pts)
     backwards = seek_pts < *cur_pts;
 
@@ -133,6 +129,10 @@ enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool
   return success ? SEEK_SUCCESS : SEEK_OUT_OF_BOUNDS;
 }
 
+bool OMXReaderFile::CanSeek()
+{
+  return m_pFormatContext->pb->seekable & AVIO_SEEKABLE_NORMAL;
+}
 
 void OMXReaderFile::GetStreams()
 {
@@ -189,3 +189,18 @@ SeekResult OMXReaderFile::SeekChapter(int &chapter, int64_t &cur_pts)
   return SeekTime(m_chapters[new_chapter], &cur_pts);
 }
 
+void OMXReaderFile::GetChapters()
+{
+  m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
+  for(int i = 0; i < m_chapter_count; i++)
+  {
+    AVChapter *chapter = m_pFormatContext->chapters[i];
+    if(!chapter)
+    {
+      m_chapter_count = i;
+      break;
+    }
+
+    m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
+  }
+}

@@ -122,22 +122,7 @@ OMXReader::OMXReader()
 
 OMXReader::~OMXReader()
 {
-  if (m_pFormatContext)
-  {
-    if (m_ioContext && m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
-    {
-      CLogLog(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
-      m_ioContext = m_pFormatContext->pb;
-    }
-    avformat_close_input(&m_pFormatContext);
-  }
-
-  if(m_ioContext)
-  {
-    av_free(m_ioContext->buffer);
-    avio_context_free(&m_ioContext);
-  }
-
+  avformat_close_input(&m_pFormatContext);
   avformat_network_deinit();
 }
 
@@ -221,23 +206,6 @@ OMXPacket *OMXReader::Read()
   return omx_pkt;
 }
 
-
-
-void OMXReader::GetChapters()
-{
-  m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
-  for(int i = 0; i < m_chapter_count; i++)
-  {
-    AVChapter *chapter = m_pFormatContext->chapters[i];
-    if(!chapter)
-    {
-      m_chapter_count = i;
-      break;
-    }
-
-    m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
-  }
-}
 
 void OMXReader::AddStream(int id, const char *lang)
 {
@@ -606,20 +574,6 @@ void OMXReader::GetMetaData(OMXStreamType type, vector<string> &list)
   list.resize(count);
   for(int i = 0; i < count; i++)
     list[i] = to_string(i) + ":" + st[i].language + ":" + st[i].name + ":" + st[i].codec_name + ":";
-}
-
-bool OMXReader::CanSeek()
-{
-  if(m_ioContext)
-    return m_ioContext->seekable;
-
-  if(!m_pFormatContext->pb)
-    return false;
-
-  if(m_pFormatContext->pb->seekable == AVIO_SEEKABLE_NORMAL)
-    return true;
-
-  return false;
 }
 
 static void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)

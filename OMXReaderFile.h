@@ -28,15 +28,23 @@
 #include <string>
 #include <stdint.h>
 
+#define MAX_OMX_CHAPTERS 64
+
 class OMXReaderFile : public OMXReader
 {
 public:
   OMXReaderFile(std::string &filename, bool dump_format, bool live);
+
+  bool CanSeek() override;
   SeekResult SeekChapter(int &chapter, int64_t &cur_pts) override;
   enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false) override;
 
 protected:
   void GetStreams() override;
+  void GetChapters();
+
+  int64_t m_chapters[MAX_OMX_CHAPTERS];
+  int m_chapter_count = 0;
 };
 
 #endif

@@ -40,8 +40,6 @@ extern "C" {
 #define MAX_AUDIO_STREAMS 32
 #define MAX_SUBTITLE_STREAMS 50
 
-#define MAX_OMX_CHAPTERS 64
-
 class OMXPacket
 {
 public:
@@ -94,7 +92,7 @@ public:
   void GetMetaData(OMXStreamType type, std::vector<std::string> &list);
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
-  bool CanSeek();
+  virtual bool CanSeek() = 0;
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
   static void SetCookie(const char *c);
   inline static void SetUserAgent(const char *ua) { s_user_agent.assign(ua); }
@@ -123,13 +121,10 @@ protected:
   bool                      m_bMatroska       = false;
   bool                      m_bAVI            = false;
   AVFormatContext           *m_pFormatContext = NULL;
-  AVIOContext               *m_ioContext      = NULL;
   bool                      m_eof             = false;
-  int64_t                   m_chapters[MAX_OMX_CHAPTERS];
   OMXStream                 m_audio_streams[MAX_AUDIO_STREAMS];
   OMXStream                 m_video_streams[MAX_VIDEO_STREAMS];
   OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
-  int                       m_chapter_count   = 0;
   float                     m_speed           = DVD_PLAYSPEED_NORMAL;
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
@@ -145,7 +140,6 @@ protected:
 
   std::string GetStreamCodecName(AVStream *stream);
   virtual void GetStreams() = 0;
-  void GetChapters();
   void AddStream(int id, const char* lang = NULL);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);

@@ -78,6 +78,17 @@ OMXReaderDvd::OMXReaderDvd(string &filename, bool dump_format, OMXDvdPlayer *dvd
   }
 }
 
+OMXReaderDvd::~OMXReaderDvd()
+{
+  if(m_pFormatContext->pb && m_pFormatContext->pb != m_ioContext)
+  {
+    CLogLog(LOGWARNING, "CDVDDemuxFFmpeg::Dispose - demuxer changed our byte context behind our back, possible memleak");
+    m_ioContext = m_pFormatContext->pb;
+  }
+
+  av_free(m_ioContext->buffer);
+  avio_context_free(&m_ioContext);
+}
 
 enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
 {
@@ -104,8 +115,7 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool 
 
 bool OMXReaderDvd::SeekBytes(int64_t seek_bytes, bool backwords)
 {
-  if(m_ioContext)
-    m_ioContext->buf_ptr = m_ioContext->buf_end;
+  m_ioContext->buf_ptr = m_ioContext->buf_end;
 
   int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
   reset_timeout(1);

@@ -33,8 +33,11 @@ class OMXReaderDvd : public OMXReader
 {
 public:
   OMXReaderDvd(std::string &filename, bool dump_format, OMXDvdPlayer *dvd);
+  ~OMXReaderDvd();
+
   SeekResult SeekChapter(int &chapter, int64_t &cur_pts) override;
   enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false) override;
+  inline bool CanSeek() override { return true; };
   static int dvd_read(void *h, uint8_t* buf, int size);
   static int64_t dvd_seek(void *h, int64_t pos, int whence);
 
@@ -43,6 +46,8 @@ protected:
   bool SeekBytes(int64_t seek_bytes, bool backwords);
   void AddMissingSubtitleStream(int id);
   void GetStreams() override;
+
+  AVIOContext *m_ioContext = NULL;
 };
 
 #endif
