@@ -34,9 +34,7 @@ extern "C" {
 
 using namespace std;
 
-#ifndef FFMPEG_FILE_BUFFER_SIZE
 #define FFMPEG_FILE_BUFFER_SIZE   32768 // default reading size for ffmpeg
-#endif
 
 OMXReaderDvd::OMXReaderDvd(string &filename, bool dump_format, OMXDvdPlayer *dvd)
 {
@@ -90,22 +88,28 @@ OMXReaderDvd::~OMXReaderDvd()
   avio_context_free(&m_ioContext);
 }
 
-enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
+enum SeekResult OMXReaderDvd::SeekTimeDelta(int delta, int64_t &cur_pts)
 {
-  if(cur_pts)
-    backwards = seek_pts < *cur_pts;
+  int64_t seek_pts = cur_pts + (int64_t)delta * AV_TIME_BASE;
+  enum SeekResult r = SeekTime(seek_pts, delta < 0);
 
-  int64_t bytes = m_DvdPlayer->getBytePoint(seek_pts / 1000);
-  if(bytes == -1)
+  if(r == SEEK_SUCCESS)
+    cur_pts = seek_pts;
+
+  return r;
+}
+
+
+enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, bool backwards)
+{
+  int cell = m_DvdPlayer->getCell(seek_pts / 1000);
+  if(cell == -1)
   {
     m_eof = true;
     return SEEK_OUT_OF_BOUNDS;
   }
 
-  bool success = SeekBytes(bytes, backwards);
-
-  if(success && cur_pts != NULL)
-    *cur_pts = seek_pts;
+  bool success = SeekCell(cell, backwards);
 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
@@ -113,13 +117,13 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool 
   return success ? SEEK_SUCCESS : SEEK_FAIL;
 }
 
-bool OMXReaderDvd::SeekBytes(int64_t seek_bytes, bool backwords)
+bool OMXReaderDvd::SeekCell(int seek_cell, bool backwords)
 {
   m_ioContext->buf_ptr = m_ioContext->buf_end;
 
-  int flags = backwords ? AVSEEK_FLAG_BACKWARD : 0;
+  int flags = (backwords ? AVSEEK_FLAG_BACKWARD : 0) | AVSEEK_FLAG_BYTE;
   reset_timeout(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, seek_bytes, flags | AVSEEK_FLAG_BYTE) >= 0;
+  bool success = av_seek_frame(m_pFormatContext, -1, (int64_t)seek_cell * 2048, flags) >= 0;
 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
@@ -167,27 +171,17 @@ void OMXReaderDvd::GetStreams()
 }
 
 
-SeekResult OMXReaderDvd::SeekChapter(int &chapter, int64_t &cur_pts)
+SeekResult OMXReaderDvd::SeekChapter(int delta, int &seek_ch, int64_t &cur_pts)
 {
   if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
 
-  bool backwards = chapter < 0;
-  int cur_ch = m_DvdPlayer->GetChapter(cur_pts / 1000);
-  if(cur_ch == -1)
-    return SEEK_OUT_OF_BOUNDS;
-
-  int seek_ch = cur_ch + chapter;
-
-  // check if within bounds
-  if(seek_ch < 0 || seek_ch >= m_DvdPlayer->TotalChapters())
+  int cell_pos;
+  if(!m_DvdPlayer->PrepChapterSeek(delta, seek_ch, cur_pts, cell_pos))
     return SEEK_OUT_OF_BOUNDS;
 
   // Do the seek
-  if(!SeekBytes(m_DvdPlayer->GetChapterBytePos(seek_ch), backwards))
+  if(!SeekCell(cell_pos, delta < 0))
     return SEEK_FAIL;
-
-  // convert delta new chapter
-  chapter = seek_ch;
 
   return SEEK_SUCCESS;
 }

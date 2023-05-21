@@ -259,9 +259,8 @@ enum ControlFlow Seek(int seconds_delta)
   if(m_DvdPlayer) return CONTINUE;
 
   int64_t cur_pts = m_av_clock->GetMediaTime();
-  int64_t seek_pts = cur_pts + (int64_t)seconds_delta * AV_TIME_BASE;
 
-  switch(m_omx_reader->SeekTime(seek_pts, &cur_pts))
+  switch(m_omx_reader->SeekTimeDelta(seconds_delta, cur_pts))
   {
   case SEEK_SUCCESS:
     show_progress_message("Seek", (int)(cur_pts * 1e-6));
@@ -1150,20 +1149,21 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_NEXT_CHAPTER:
     {
       int64_t cur_pts = m_av_clock->GetMediaTime();
-      int ch = search_key == ACTION_NEXT_CHAPTER ? 1 : -1;
+      int delta = search_key == ACTION_NEXT_CHAPTER ? 1 : -1;
+      int result_chapter;
 
-      switch(m_omx_reader->SeekChapter(ch, cur_pts))
+      switch(m_omx_reader->SeekChapter(delta, result_chapter, cur_pts))
       {
       case SEEK_SUCCESS:
-        osd_printf(UM_NORM, "Chapter %d", ch + 1);
+        osd_printf(UM_NORM, "Chapter %d", result_chapter + 1);
         FlushStreams(cur_pts);
         break;
       case SEEK_OUT_OF_BOUNDS:
         m_send_eos = true;
-        m_next_prev_file = ch;
+        m_next_prev_file = delta;
         return END_PLAY;
       case SEEK_NO_CHAPTERS:
-        return Seek(ch * 600);
+        return Seek(delta * 600);
 
       case SEEK_FAIL:
         break;
@@ -1506,11 +1506,11 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
       int64_t cur_pts = m_av_clock->GetMediaTime();
 
-      // make relative value absolute
-      if(search_key == ACTION_SEEK_RELATIVE)
-        seek_pts += cur_pts;
+      // make absolute value relative
+      if(search_key == SET_POSITION)
+        seek_pts -= cur_pts;
 
-      if(m_omx_reader->SeekTime(seek_pts, &cur_pts) == SEEK_SUCCESS)
+      if(m_omx_reader->SeekTimeDelta(seek_pts / AV_TIME_BASE, cur_pts) == SEEK_SUCCESS)
       {
         show_progress_message("Seek", (int)(cur_pts * 1e-6));
         FlushStreams(cur_pts);
@@ -1704,7 +1704,7 @@ int run_play_loop()
   m_av_clock->Pause();
 
   // seek at start
-  if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, NULL, false) != SEEK_SUCCESS)
+  if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, false) != SEEK_SUCCESS)
     m_incr = 0;
 
   // display some startup osd
@@ -2050,7 +2050,7 @@ int run_play_loop()
       if (m_loop)
       {
         int64_t seek_ts = (int64_t)m_loop_from * AV_TIME_BASE;
-        if(m_omx_reader->SeekTime(seek_ts, NULL, true) == SEEK_SUCCESS)
+        if(m_omx_reader->SeekTime(seek_ts, true) == SEEK_SUCCESS)
         {
           FlushStreams(seek_ts);
           continue;

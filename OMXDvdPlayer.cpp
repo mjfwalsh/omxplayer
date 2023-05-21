@@ -324,7 +324,7 @@ int OMXDvdPlayer::Seek(int new_pos, int whence)
 
 // this function finds the nearest vobu to the
 // desired seek point and return it's byte position
-int64_t OMXDvdPlayer::getBytePoint(int seek_ms)
+int OMXDvdPlayer::getCell(int seek_ms)
 {
     // save these do they can be restored later
     int old_pos = pos;
@@ -348,7 +348,8 @@ int64_t OMXDvdPlayer::getBytePoint(int seek_ms)
 		if(Read(data, 1) != 1)
 		{
 		    printf("read error: %d\n", cur_cell_seeking_pos);
-			goto fail;
+		    cur_cell_seeking_pos = -1;
+			goto finish;
 		}
 
 		navRead_DSI(&dsi_pack, &data[DSI_START_BYTE]);
@@ -391,8 +392,12 @@ int64_t OMXDvdPlayer::getBytePoint(int seek_ms)
 		}
 
         // 0xfffffff means an invalid jump point
-        int next = dsi_pack.vobu_sri.fwda[jump] & 0xfffffff;
-        if(next == 0xfffffff) goto fail;
+        int next = dsi_pack.vobu_sri.fwda[jump] & 0x0fffffff;
+        if(next == 0x0fffffff)
+        {
+            cur_cell_seeking_pos = -1;
+            goto finish;
+        }
         cur_cell_seeking_pos += next;
 	}
 
@@ -401,15 +406,7 @@ finish:
     pos = old_pos;
     current_part = old_current_part;
 
-	return cur_cell_seeking_pos * DVD_VIDEO_LB_LEN;
-
-fail:
-    // restore seek point
-    pos = old_pos;
-    current_part = old_current_part;
-
-	puts("failed find seek point");
-	return -1;
+	return cur_cell_seeking_pos;
 }
 
 // search for the chapter the timestamp is in
@@ -434,21 +431,23 @@ int OMXDvdPlayer::GetChapter(int needle)
 	return l;
 }
 
-int OMXDvdPlayer::GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos)
+bool OMXDvdPlayer::PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, int &cell_pos)
 {
-	int seek_ch = GetChapter(seek_ts / 1000);
-	if(seek_ch != -1)
-	{
-		seek_ts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
-		byte_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
-	}
+  int cur_ch = GetChapter(cur_pts / 1000);
+  if(cur_ch == -1)
+    return -1;
 
-	return seek_ch;
-}
+  seek_ch = cur_ch + delta;
 
-int64_t OMXDvdPlayer::GetChapterBytePos(int seek_ch)
-{
-	return (int64_t)tracks[current_track].chapters[seek_ch].cell * DVD_VIDEO_LB_LEN;
+  // check if within bounds
+  if(seek_ch < 0 || seek_ch >= (int)tracks[current_track].chapters.size())
+    return -1;
+
+  // Set results
+  cur_pts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
+  cell_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell;
+
+  return true;
 }
 
 bool OMXDvdPlayer::IsEOF()
@@ -463,11 +462,6 @@ bool OMXDvdPlayer::IsEOF()
 		return false;
 
 	return pos >= tracks[current_track].parts[current_part].blocks;
-}
-
-int OMXDvdPlayer::TotalChapters()
-{
-	return tracks[current_track].chapters.size();
 }
 
 void OMXDvdPlayer::CloseTrack()

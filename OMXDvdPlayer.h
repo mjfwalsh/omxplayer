@@ -38,13 +38,10 @@ class OMXDvdPlayer
 
 	int Read(unsigned char *lpBuf, int no_blocks);
 	int Seek(int blocks, int whence = SEEK_SET);
-	int64_t getBytePoint(int seek_ms);
-	int GetChapter(int ms);
-	int GetChapterInfo(int64_t &seek_ts, int64_t &byte_pos);
-	int64_t GetChapterBytePos(int seek_ch);
+	int getCell(int seek_ms);
+	bool PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, int &cell_pos);
 	bool IsEOF();
 	int getCurrentTrackLength();
-	int TotalChapters();
 	int GetAudioStreamCount();
 	int GetSubtitleStreamCount();
 	int GetAudioStreamId(int i);
@@ -58,6 +55,7 @@ class OMXDvdPlayer
 	void info_dump();
 
   private:
+	int GetChapter(int ms);
 	int dvdtime2msec(dvd_time_t *dt);
 	const char* convertLangCode(uint16_t lang);
 	void read_title_name();

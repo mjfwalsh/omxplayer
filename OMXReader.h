@@ -73,7 +73,8 @@ public:
   OMXReader();
   virtual ~OMXReader();
 
-  virtual enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false) = 0;
+  virtual enum SeekResult SeekTime(int64_t time, bool backwards) = 0;
+  virtual enum SeekResult SeekTimeDelta(int delta_secs, int64_t &cur_pts) = 0;
   OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();
@@ -84,7 +85,7 @@ public:
   inline int GetWidth() { return m_width; };
   inline int GetHeight() { return m_height; };
   void SetSpeed(float iSpeed);
-  virtual SeekResult SeekChapter(int &chapter, int64_t &cur_pts) = 0;
+  virtual SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) = 0;
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
   static double NormalizeFrameduration(double frameduration);

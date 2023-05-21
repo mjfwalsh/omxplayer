@@ -103,14 +103,21 @@ OMXReaderFile::OMXReaderFile(string &filename, bool dump_format, bool live)
     info_dump(filename);
 }
 
+enum SeekResult OMXReaderFile::SeekTimeDelta(int delta, int64_t &cur_pts)
+{
+  int64_t seek_pts = cur_pts + (int64_t)delta * AV_TIME_BASE;
+  enum SeekResult r = SeekTime(seek_pts, delta < 0);
 
-enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool backwards)
+  if(r == SEEK_SUCCESS)
+    cur_pts = seek_pts;
+
+  return r;
+}
+
+enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, bool backwards)
 {
   if(!CanSeek())
     return SEEK_FAIL;
-
-  if(cur_pts)
-    backwards = seek_pts < *cur_pts;
 
   int flags = backwards ? AVSEEK_FLAG_BACKWARD : 0;
   int64_t seek_value = seek_pts;
@@ -119,9 +126,6 @@ enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, int64_t *cur_pts, bool
 
   reset_timeout(1);
   bool success = av_seek_frame(m_pFormatContext, -1, seek_value, flags) >= 0;
-
-  if(success && cur_pts != NULL)
-    *cur_pts = seek_pts;
 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
@@ -164,7 +168,7 @@ void OMXReaderFile::GetStreams()
   }
 }
 
-SeekResult OMXReaderFile::SeekChapter(int &chapter, int64_t &cur_pts)
+SeekResult OMXReaderFile::SeekChapter(int delta, int &result_chapter, int64_t &cur_pts)
 {
   if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
 
@@ -179,14 +183,21 @@ SeekResult OMXReaderFile::SeekChapter(int &chapter, int64_t &cur_pts)
       break;
 
   // turn delta into absolute value and check in within range
-  int new_chapter = current_chapter + chapter;
+  int new_chapter = current_chapter + delta;
   if(new_chapter < 0 || new_chapter >= m_chapter_count)
     return SEEK_OUT_OF_BOUNDS;
 
-  // convert delta new chapter
-  chapter = new_chapter;
+  SeekResult r = SeekTime(m_chapters[new_chapter], delta < 0);
+  if(r == SEEK_SUCCESS)
+  {
+    // update time
+    cur_pts = m_chapters[new_chapter];
 
-  return SeekTime(m_chapters[new_chapter], &cur_pts);
+    // convert delta to new chapter
+    result_chapter = new_chapter;
+  }
+
+  return r;
 }
 
 void OMXReaderFile::GetChapters()

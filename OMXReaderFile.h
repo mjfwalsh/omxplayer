@@ -36,8 +36,9 @@ public:
   OMXReaderFile(std::string &filename, bool dump_format, bool live);
 
   bool CanSeek() override;
-  SeekResult SeekChapter(int &chapter, int64_t &cur_pts) override;
-  enum SeekResult SeekTime(int64_t time, int64_t *cur_pts, bool backwards = false) override;
+  SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
+  enum SeekResult SeekTime(int64_t time, bool backwards) override;
+  enum SeekResult SeekTimeDelta(int delta, int64_t &cur_pts) override;
 
 protected:
   void GetStreams() override;
