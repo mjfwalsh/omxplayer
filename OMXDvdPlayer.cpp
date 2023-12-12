@@ -131,7 +131,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 		int cell_i = 0;
 		for (int i = 0; i < pgc->nr_of_programs; i++) {
 			int cell_no = pgc->program_map[i] - 1;
-			if(pgc->cell_playback[cell_no].block_type == BLOCK_TYPE_ANGLE_BLOCK)
+			if(cell_i >= cell_no || pgc->cell_playback[cell_no].block_type == BLOCK_TYPE_ANGLE_BLOCK)
 				continue;
 
 			this_track.chapters.push_back({
@@ -435,17 +435,17 @@ bool OMXDvdPlayer::PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, in
 {
   int cur_ch = GetChapter(cur_pts / 1000);
   if(cur_ch == -1)
-    return -1;
+    return false;
 
   seek_ch = cur_ch + delta;
 
   // check if within bounds
   if(seek_ch < 0 || seek_ch >= (int)tracks[current_track].chapters.size())
-    return -1;
+    return false;
 
   // Set results
   cur_pts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
-  cell_pos = (int64_t)tracks[current_track].chapters[seek_ch].cell;
+  cell_pos = tracks[current_track].chapters[seek_ch].cell;
 
   return true;
 }
