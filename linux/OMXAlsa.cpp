@@ -1021,7 +1021,13 @@ static void *omxalsasink_worker(void *ptr)
 	SwrContext *resampler = 0;
 	uint8_t *resample_buf = 0;
 	int32_t timescale;
+
+#if LIBSWRESAMPLE_VERSION_MAJOR < 4
 	uint64_t layout;
+#else
+	AVChannelLayout *layout = NULL;
+#endif
+
 	size_t resample_bufsz;
 	unsigned int in_sample_rate;
 	unsigned int rate;
@@ -1062,11 +1068,20 @@ static void *omxalsasink_worker(void *ptr)
 	sink->frame_size = (sink->pcm.nChannels * sink->pcm.nBitPerSample) >> 3;
 	sink->sample_rate = rate;
 
+#if LIBSWRESAMPLE_VERSION_MAJOR < 4
 	layout = av_get_default_channel_layout(sink->pcm.nChannels);
 	resampler = swr_alloc_set_opts(NULL,
 		/*out*/ layout, AV_SAMPLE_FMT_S16, rate,
 		/*in*/ layout, AV_SAMPLE_FMT_S16, in_sample_rate,
 		0, NULL);
+#else
+	av_channel_layout_default(layout, sink->pcm.nChannels);
+	swr_alloc_set_opts2(&resampler,
+		/*out*/ layout, AV_SAMPLE_FMT_S16, rate,
+		/*in*/ layout, AV_SAMPLE_FMT_S16, in_sample_rate,
+		0, NULL);
+#endif
+
 	if (!resampler) goto err;
 
 	av_opt_set_double(resampler, "cutoff", 0.985, 0);

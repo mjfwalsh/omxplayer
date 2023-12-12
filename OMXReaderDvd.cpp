@@ -22,6 +22,7 @@
 #include "OMXReader.h"
 #include "OMXReaderDvd.h"
 #include "OMXDvdPlayer.h"
+#include "utils/defs.h"
 #include "utils/log.h"
 
 #include <string>
@@ -50,7 +51,7 @@ OMXReaderDvd::OMXReaderDvd(string &filename, bool dump_format, OMXDvdPlayer *dvd
   if(!m_ioContext)
     throw "avio_alloc_context failed";
 
-  AVInputFormat *iformat = NULL;
+  AVCONST AVInputFormat *iformat = NULL;
   av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
   if(!iformat)
     throw "av_probe_input_buffer failed";

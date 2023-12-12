@@ -21,6 +21,7 @@
 
 #include "OMXReader.h"
 #include "OMXClock.h"
+#include "utils/defs.h"
 #include "utils/log.h"
 
 #include <stdio.h>
@@ -302,7 +303,13 @@ bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
   hints->codec         = stream->codecpar->codec_id;
   hints->extradata     = stream->codecpar->extradata;
   hints->extrasize     = stream->codecpar->extradata_size;
+
+#if LIBAVCODEC_VERSION_MAJOR < 59
   hints->channels      = stream->codecpar->channels;
+#else
+  hints->channels      = stream->codecpar->ch_layout.nb_channels;
+#endif
+
   hints->samplerate    = stream->codecpar->sample_rate;
   hints->blockalign    = stream->codecpar->block_align;
   hints->bitrate       = stream->codecpar->bit_rate;
@@ -491,7 +498,7 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
   }
 #endif
 
-  AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
+  AVCONST AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
 
   if (codec)
     strStreamName = codec->name;

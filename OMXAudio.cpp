@@ -22,14 +22,18 @@
 #include "utils/log.h"
 #include "OMXClock.h"
 
+#include <assert.h>
+#include <algorithm>
+
+extern "C" {
+#include <libavutil/channel_layout.h>
+}
+
 #define CLASSNAME "COMXAudio"
 
 #ifndef VOLUME_MINIMUM
 #define VOLUME_MINIMUM 0
 #endif
-
-#include <assert.h>
-#include <algorithm>
 
 using namespace std;
 

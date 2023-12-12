@@ -26,6 +26,7 @@ extern "C" {
 #include "OMXPlayerSubtitles.h"
 #include "SubtitleRenderer.h"
 #include "Subtitle.h"
+#include "utils/defs.h"
 #include "utils/log.h"
 #include "Srt.h"
 #include "DispmanxLayer.h"
@@ -92,7 +93,7 @@ bool OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32
     m_palette = NULL;
   }
 
-  AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
+  AVCONST AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
     return false;
   
