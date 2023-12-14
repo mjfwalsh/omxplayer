@@ -57,7 +57,7 @@ public:
   int alpha = 255;
   int aspectMode = 0;
   int display = 0;
-  int layer = 0;
+  int layer = 1;
   float queue_size = 10.0f;
   float fifo_size = (float)80*1024*60 / (1024*1024);
 };
