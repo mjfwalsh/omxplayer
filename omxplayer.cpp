@@ -1220,6 +1220,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       }
       PrintSubtitleInfo();
     }
+    else
+    {
+      osd_print("Subtitles Off");
+    }
     break;
 
   case ACTION_TOGGLE_SUBTITLE:
@@ -1235,6 +1239,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       m_player_subtitles->SetVisible(new_visible);
       osd_print(new_visible ? "Subtitles On" : "Subtitles Off");
       PrintSubtitleInfo();
+    }
+    else
+    {
+      osd_print("Subtitles Off");
     }
     break;
 
