@@ -255,9 +255,6 @@ static void FlushStreams(int64_t pts = AV_NOPTS_VALUE)
 
 enum ControlFlow Seek(int seconds_delta)
 {
-  // dvds can only seek to the start of chapters
-  if(m_DvdPlayer) return CONTINUE;
-
   int64_t cur_pts = m_av_clock->GetMediaTime();
 
   switch(m_omx_reader->SeekTimeDelta(seconds_delta, cur_pts))

@@ -75,7 +75,7 @@ public:
 
   virtual enum SeekResult SeekTime(int64_t time, bool backwards) = 0;
   virtual enum SeekResult SeekTimeDelta(int delta_secs, int64_t &cur_pts) = 0;
-  OMXPacket *Read();
+  virtual OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();
   inline int  AudioStreamCount() { return m_audio_count; };

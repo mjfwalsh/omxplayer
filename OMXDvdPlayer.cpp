@@ -125,30 +125,31 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 			continue;
 		}
 
-		// Chapters
+        // Cells
 		int acc_time = 0;
 		int acc_cells = 0;
-		int cell_i = 0;
-		for (int i = 0; i < pgc->nr_of_programs; i++) {
-			int cell_no = pgc->program_map[i] - 1;
-			if(cell_i >= cell_no || pgc->cell_playback[cell_no].block_type == BLOCK_TYPE_ANGLE_BLOCK)
+		bool is_chapter;
+		int chapter_i = 0;
+        for(int i = 0; i < (int)cell_count; i++) {
+		    if(pgc->cell_playback[i].block_type == BLOCK_TYPE_ANGLE_BLOCK)
 				continue;
 
-			this_track.chapters.push_back({
-				.cell = acc_cells,
-				.time = acc_time
-			});
+            if(i == pgc->program_map[chapter_i] - 1) {
+                is_chapter = true;
+                chapter_i++;
+            } else {
+                is_chapter = false;
+            }
 
-			for(; cell_i < cell_no; cell_i++)
-			{
-				// skip angle cells
-				if(pgc->cell_playback[cell_i].block_type == BLOCK_TYPE_ANGLE_BLOCK)
-					continue;
+            this_track.cells.push_back({
+                .cell = acc_cells,
+                .time = acc_time,
+                .is_chapter = is_chapter,
+            });
 
-				acc_time += dvdtime2msec(&pgc->cell_playback[cell_i].playback_time);
-				acc_cells += pgc->cell_playback[cell_i].last_sector - pgc->cell_playback[cell_i].first_sector + 1;
-			}
-		}
+            acc_time += dvdtime2msec(&pgc->cell_playback[i].playback_time);
+            acc_cells += pgc->cell_playback[i].last_sector - pgc->cell_playback[i].first_sector + 1;
+        }
 
 		// stream data is the same for each title set
 		// check if we've already seen this title set
@@ -262,7 +263,10 @@ int OMXDvdPlayer::Read(unsigned char *lpBuf, int blocks_to_read)
 
 	// return any error
 	if(read_blocks <= 0)
+	{
+		printf("OMXDvdPlayer::Read failed: %d - %d - %d - %d\n", current_track, current_part, read_start, blocks_to_read);
 		return read_blocks;
+    }
 
 	// move internal pointers forward
 	pos += read_blocks;
@@ -324,37 +328,40 @@ int OMXDvdPlayer::Seek(int new_pos, int whence)
 
 // this function finds the nearest vobu to the
 // desired seek point and return it's byte position
-int OMXDvdPlayer::getCell(int seek_ms)
+int OMXDvdPlayer::getVobu(int64_t &seek_micro)
 {
     // save these do they can be restored later
     int old_pos = pos;
     int old_current_part = current_part;
+    int seek_ms = seek_micro / 1000;
 
 	dsi_t dsi_pack;
 	unsigned char data[DVD_VIDEO_LB_LEN];
 	int list[] = {0, 500, 8000, 10000, 30000, 60000, 120000};
 	int diff;
 
-	int ch = GetChapter(seek_ms);
+	int ch = GetCell(seek_ms);
 	if(ch == -1) return -1;
 
-	int cur_time_seeking_pos = tracks[current_track].chapters[ch].time;
-	int cur_cell_seeking_pos = tracks[current_track].chapters[ch].cell;
+	int cur_time_seeking_pos;
+	int cur_cell_seeking_pos = tracks[current_track].cells[ch].cell;
+	int seek_within_cell = seek_ms - tracks[current_track].cells[ch].time;
 
-	bool last = false;
-	while(!last)
+	// limit to 12 jumps to avoid indef loops
+	for(int i = 0; i < 12; i++)
 	{
 		Seek(cur_cell_seeking_pos);
 		if(Read(data, 1) != 1)
 		{
-		    printf("read error: %d\n", cur_cell_seeking_pos);
-		    cur_cell_seeking_pos = -1;
+			printf("read error: %d\n", cur_cell_seeking_pos);
+			cur_cell_seeking_pos = -1;
 			goto finish;
 		}
 
 		navRead_DSI(&dsi_pack, &data[DSI_START_BYTE]);
+		cur_time_seeking_pos = dvdtime2msec(&dsi_pack.dsi_gi.c_eltm);
 
-		diff = seek_ms - cur_time_seeking_pos;
+		diff = seek_within_cell - cur_time_seeking_pos;
 
 		int jump;
         int lower = 0;
@@ -377,27 +384,20 @@ int OMXDvdPlayer::getCell(int seek_ms)
 
 		case 1:
             jump = 19 - (diff / 500);
-            last = true;
             break;
 
-		case 2: // 8,000 to 9,999
-			cur_time_seeking_pos += 7500;
-			jump = 6 - diff;
-			break;
-
 		default:
-			cur_time_seeking_pos +=  list[lower];
 			jump = 6 - lower;
 			break;
 		}
 
-        // 0xfffffff means an invalid jump point
-        int next = dsi_pack.vobu_sri.fwda[jump] & 0x0fffffff;
-        if(next == 0x0fffffff)
-        {
-            cur_cell_seeking_pos = -1;
-            goto finish;
-        }
+        // the two most significants bits indicate meta data
+        // the rest constitute the offset to another vobu
+        // 0x3fffffff means there's not vobu to jump to
+        int next = dsi_pack.vobu_sri.fwda[jump] & 0x3fffffff;
+        if(next == 0x3fffffff || next <= 0)
+          goto finish;
+
         cur_cell_seeking_pos += next;
 	}
 
@@ -406,14 +406,18 @@ finish:
     pos = old_pos;
     current_part = old_current_part;
 
+    // save seek time
+    int seeked_ms = tracks[current_track].cells[ch].time + cur_time_seeking_pos;
+    seek_micro = (int64_t)seeked_ms * (int64_t)1000;
+
 	return cur_cell_seeking_pos;
 }
 
-// search for the chapter the timestamp is in
-int OMXDvdPlayer::GetChapter(int needle)
+// search for the cell the timestamp is in
+int OMXDvdPlayer::GetCell(int needle)
 {
 	int l = 0;
-	int r = (int)tracks[current_track].chapters.size();
+	int r = (int)tracks[current_track].cells.size();
 
 	if(needle < 0 || needle >= tracks[current_track].length)
 		return -1;
@@ -422,7 +426,7 @@ int OMXDvdPlayer::GetChapter(int needle)
 	{
 		int m = (l + r) / 2;
 
-		if(needle >= tracks[current_track].chapters[m].time)
+		if(needle >= tracks[current_track].cells[m].time)
 			l = m;
 		else
 			r = m;
@@ -431,21 +435,25 @@ int OMXDvdPlayer::GetChapter(int needle)
 	return l;
 }
 
-bool OMXDvdPlayer::PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, int &cell_pos)
+bool OMXDvdPlayer::PrepChapterSeek(int delta, int &cell, int64_t &pts, int &byte_pos)
 {
-  int cur_ch = GetChapter(cur_pts / 1000);
-  if(cur_ch == -1)
+  cell = GetCell(pts / 1000);
+  if(cell == -1)
     return false;
 
-  seek_ch = cur_ch + delta;
+  // find the next/prev cell that's a cell
+  do {
+    cell += delta;
 
-  // check if within bounds
-  if(seek_ch < 0 || seek_ch >= (int)tracks[current_track].chapters.size())
-    return false;
+    // check if within bounds
+    if(cell < 0 || cell >= (int)tracks[cell].cells.size())
+      return false;
+
+  } while(!tracks[current_track].cells[cell].is_chapter);
 
   // Set results
-  cur_pts  = (int64_t)tracks[current_track].chapters[seek_ch].time * 1000;
-  cell_pos = tracks[current_track].chapters[seek_ch].cell;
+  pts  = (int64_t)tracks[current_track].cells[cell].time * 1000;
+  byte_pos = tracks[current_track].cells[cell].cell;
 
   return true;
 }

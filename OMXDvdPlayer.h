@@ -38,7 +38,7 @@ class OMXDvdPlayer
 
 	int Read(unsigned char *lpBuf, int no_blocks);
 	int Seek(int blocks, int whence = SEEK_SET);
-	int getCell(int seek_ms);
+	int getVobu(int64_t &seek_micro);
 	bool PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, int &cell_pos);
 	bool IsEOF();
 	int getCurrentTrackLength();
@@ -55,7 +55,7 @@ class OMXDvdPlayer
 	void info_dump();
 
   private:
-	int GetChapter(int ms);
+	int GetCell(int ms);
 	int dvdtime2msec(dvd_time_t *dt);
 	const char* convertLangCode(uint16_t lang);
 	void read_title_name();
@@ -96,12 +96,13 @@ class OMXDvdPlayer
 	typedef struct {
 		int cell;
 		int time;
-	} chapter_info;
+		bool is_chapter;
+	} cell_info;
 
 	typedef struct {
 		std::shared_ptr<title_info> title;
 		int length;
-		std::vector<chapter_info> chapters;
+		std::vector<cell_info> cells;
 		std::vector<part_info> parts;
 	} track_info;
 

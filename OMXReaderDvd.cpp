@@ -31,11 +31,17 @@
 extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
+#include <libavutil/intreadwrite.h>
 }
+
+#include <dvdread/dvd_reader.h>
+#include <dvdread/ifo_read.h>
+#include <dvdread/nav_read.h>
 
 using namespace std;
 
 #define FFMPEG_FILE_BUFFER_SIZE   32768 // default reading size for ffmpeg
+#define PCI_SIZE  980
 
 OMXReaderDvd::OMXReaderDvd(string &filename, bool dump_format, OMXDvdPlayer *dvd)
 {
@@ -89,6 +95,53 @@ OMXReaderDvd::~OMXReaderDvd()
   avio_context_free(&m_ioContext);
 }
 
+OMXPacket *OMXReaderDvd::Read()
+{
+  static uint32_t prev_pack_end = 0;
+  static int64_t offset = 0;
+  pci_t pci_pack;
+
+again:
+  OMXPacket *pkt = OMXReader::Read();
+
+  if(pkt == NULL)
+    return NULL;
+
+  // check for dvd_nav_packets
+  if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV && pkt->avpkt->size == 1998)
+  {
+    navRead_PCI(&pci_pack, &pkt->avpkt->data[1]);
+    AVStream *pStream = m_pFormatContext->streams[pkt->avpkt->stream_index];
+
+    if(fix_time_stamps)
+    {
+        int64_t cell_start = ConvertTimestamp(pci_pack.pci_gi.vobu_s_ptm, pStream->time_base.den, pStream->time_base.num);
+        offset = prev_seek - cell_start;
+        fix_time_stamps = false;
+        printf("Setting offset after jump: %lld\n", offset);
+    }
+    else if(prev_pack_end != 0 && prev_pack_end != pci_pack.pci_gi.vobu_s_ptm)
+    {
+        int64_t diff = (int64_t)prev_pack_end - (int64_t)pci_pack.pci_gi.vobu_s_ptm;
+        offset += ConvertTimestamp(diff, pStream->time_base.den, pStream->time_base.num);
+        printf("Discontinuity offset: %lld\n", offset);
+    }
+
+    prev_pack_end = pci_pack.pci_gi.vobu_e_ptm;
+
+    delete pkt;
+    goto again;
+  }
+
+  if(pkt->avpkt->pts != AV_NOPTS_VALUE)
+    pkt->avpkt->pts += offset;
+
+  if(pkt->avpkt->dts != AV_NOPTS_VALUE)
+    pkt->avpkt->dts += offset;
+
+  return pkt;
+}
+
 enum SeekResult OMXReaderDvd::SeekTimeDelta(int delta, int64_t &cur_pts)
 {
   int64_t seek_pts = cur_pts + (int64_t)delta * AV_TIME_BASE;
@@ -103,14 +156,14 @@ enum SeekResult OMXReaderDvd::SeekTimeDelta(int delta, int64_t &cur_pts)
 
 enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, bool backwards)
 {
-  int cell = m_DvdPlayer->getCell(seek_pts / 1000);
+  int cell = m_DvdPlayer->getVobu(seek_pts);
   if(cell == -1)
   {
     m_eof = true;
     return SEEK_OUT_OF_BOUNDS;
   }
 
-  bool success = SeekCell(cell, backwards);
+  bool success = SeekByte(cell, backwards, seek_pts);
 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
@@ -118,16 +171,22 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_pts, bool backwards)
   return success ? SEEK_SUCCESS : SEEK_FAIL;
 }
 
-bool OMXReaderDvd::SeekCell(int seek_cell, bool backwords)
+bool OMXReaderDvd::SeekByte(int seek_byte, bool backwords, const int64_t &new_pts)
 {
   m_ioContext->buf_ptr = m_ioContext->buf_end;
 
   int flags = (backwords ? AVSEEK_FLAG_BACKWARD : 0) | AVSEEK_FLAG_BYTE;
   reset_timeout(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, (int64_t)seek_cell * 2048, flags) >= 0;
+  bool success = av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) >= 0;
 
   // demuxer will return failure, if you seek to eof
   m_eof = !success;
+
+  if(success)
+  {
+    prev_seek = new_pts;
+    fix_time_stamps = true;
+  }
 
   return success;
 }
@@ -172,16 +231,16 @@ void OMXReaderDvd::GetStreams()
 }
 
 
-SeekResult OMXReaderDvd::SeekChapter(int delta, int &seek_ch, int64_t &cur_pts)
+SeekResult OMXReaderDvd::SeekChapter(int delta, int &result_ch, int64_t &cur_pts)
 {
   if(cur_pts == AV_NOPTS_VALUE) return SEEK_FAIL;
 
   int cell_pos;
-  if(!m_DvdPlayer->PrepChapterSeek(delta, seek_ch, cur_pts, cell_pos))
+  if(!m_DvdPlayer->PrepChapterSeek(delta, result_ch, cur_pts, cell_pos))
     return SEEK_OUT_OF_BOUNDS;
 
   // Do the seek
-  if(!SeekCell(cell_pos, delta < 0))
+  if(!SeekByte(cell_pos, delta < 0, cur_pts))
     return SEEK_FAIL;
 
   return SEEK_SUCCESS;
