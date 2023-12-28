@@ -22,17 +22,15 @@
 #ifndef _OMX_READER_DVD_H_
 #define _OMX_READER_DVD_H_
 
-#include <string>
 #include <stdint.h>
 
 #include "OMXReader.h"
-
-class OMXDvdPlayer;
+#include "OMXDvdPlayer.h"
 
 class OMXReaderDvd : public OMXReader
 {
 public:
-  OMXReaderDvd(std::string &filename, bool dump_format, OMXDvdPlayer *dvd);
+  OMXReaderDvd(dvd_file_t *dt, OMXDvdPlayer::track_info &ct, int tn);
   ~OMXReaderDvd();
 
   OMXPacket *Read() override;
@@ -40,18 +38,30 @@ public:
   enum SeekResult SeekTime(int64_t time, bool backwards) override;
   enum SeekResult SeekTimeDelta(int delta, int64_t &cur_pts) override;
   inline bool CanSeek() override { return true; };
-  static int dvd_read(void *h, uint8_t* buf, int size);
-  static int64_t dvd_seek(void *h, int64_t pos, int whence);
+  uint32_t *getPalette();
 
 protected:
-  OMXDvdPlayer *m_DvdPlayer = NULL;
+  static int dvd_read(void *h, uint8_t* buf, int size);
+  static int64_t dvd_seek(void *h, int64_t new_pos, int whence);
   bool SeekByte(int seek_byte, bool backwords, const int64_t &new_pts);
   void AddMissingSubtitleStream(int id);
   void GetStreams() override;
+  int DvdRead(unsigned char *lpBuf, int no_blocks);
+  int64_t DvdSeek(int blocks, int whence = SEEK_SET);
+  bool IsEOF();
+  int GetCell(int ms);
 
   AVIOContext *m_ioContext = NULL;
-  int64_t prev_seek = 0;
-  bool fix_time_stamps = false;
+  int64_t m_prev_seek = 0;
+  bool m_fix_time_stamps = false;
+  int m_pos = 0;
+  int pos_byte_offset = 0;
+  dvd_file_t *m_dvd_track = NULL;
+  OMXDvdPlayer::track_info &m_current_track;
+  int m_track_num;
+  int m_current_part = 0;
+  uint32_t m_prev_pack_end = 0;
+  int64_t m_offset = 0;
 };
 
 #endif

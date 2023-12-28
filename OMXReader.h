@@ -100,6 +100,8 @@ public:
   inline static void SetLavDopts(const char *lo)  { s_lavfdopts.assign(lo); }
   static bool SetAvDict(const char *ad);
   static void SetDefaultTimeout(float timeout);
+  void info_dump(const std::string &filename);
+  virtual uint32_t *getPalette() { return NULL; }
 
 protected:
   class OMXStream
@@ -144,7 +146,6 @@ protected:
   void AddStream(int id, const char* lang = NULL);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
-  void info_dump(const std::string &filename);
   static int interrupt_cb(void *unused = NULL);
   static void reset_timeout(int x);
   bool SetHints(AVStream *stream, COMXStreamInfo *hints);

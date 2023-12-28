@@ -33,7 +33,7 @@
 class OMXReaderFile : public OMXReader
 {
 public:
-  OMXReaderFile(std::string &filename, bool dump_format, bool live);
+  OMXReaderFile(std::string &filename, bool live);
 
   bool CanSeek() override;
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;

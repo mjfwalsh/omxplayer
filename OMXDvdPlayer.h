@@ -23,6 +23,8 @@
 #include <string>
 #include <memory>
 
+class OMXReaderDvd;
+
 class OMXDvdPlayer
 {
   public:
@@ -32,49 +34,16 @@ class OMXDvdPlayer
 	OMXDvdPlayer(const OMXDvdPlayer&) = delete;
 	OMXDvdPlayer& operator=(const OMXDvdPlayer&) = delete;
 
-	void CloseTrack();
-	bool ChangeTrack(int delta, int &t);
-	bool OpenTrack(int ct);
+	bool CanChangeTrack(int delta, int &t);
+	OMXReaderDvd *OpenTrack(int ct);
 
-	int Read(unsigned char *lpBuf, int no_blocks);
-	int Seek(int blocks, int whence = SEEK_SET);
-	int getVobu(int64_t &seek_micro);
-	bool PrepChapterSeek(int delta, int &seek_ch, int64_t &cur_pts, int &cell_pos);
-	bool IsEOF();
-	int getCurrentTrackLength();
-	int GetAudioStreamCount();
-	int GetSubtitleStreamCount();
-	int GetAudioStreamId(int i);
-	int GetSubtitleStreamId(int i);
-	const char *GetAudioStreamLanguage(int i);
-	const char *GetSubtitleStreamLanguage(int i);
 	std::string GetID() const { return disc_checksum; }
 	std::string GetTitle() const { return disc_title; }
 	void removeCompositeTracks();
-	uint32_t *getPalette();
+
 	void info_dump();
-
-  private:
-	int GetCell(int ms);
-	int dvdtime2msec(dvd_time_t *dt);
-	const char* convertLangCode(uint16_t lang);
-	void read_title_name();
-	void read_disc_checksum();
-	void read_disc_serial_number();
-
-	bool m_open = false;
-	int pos = 0;
-	int pos_byte_offset = 0;
-
-	dvd_reader_t *dvd_device;
-	dvd_file_t *dvd_track = NULL;
-
-	int current_track = -1;
-	int current_part = -1;
-
-	std::string device_path;
-	std::string disc_title;
-	std::string disc_checksum;
+	static int dvdtime2msec(dvd_time_t *dt);
+	static const char* convertLangCode(uint16_t lang);
 
 	typedef struct {
 		unsigned int first_sector;
@@ -106,7 +75,21 @@ class OMXDvdPlayer
 		std::vector<part_info> parts;
 	} track_info;
 
+  private:
 	std::vector<track_info> tracks;
+
+	void read_title_name();
+	void read_disc_checksum();
+	void read_disc_serial_number();
+
+	dvd_reader_t *dvd_device;
+	dvd_file_t *dvd_track = NULL;
+
+    int track_no = -1;
+
+	std::string device_path;
+	std::string disc_title;
+	std::string disc_checksum;
 
 	int yvu2rgb(int c);
 };

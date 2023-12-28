@@ -33,7 +33,7 @@ extern "C" {
 
 using namespace std;
 
-OMXReaderFile::OMXReaderFile(string &filename, bool dump_format, bool live)
+OMXReaderFile::OMXReaderFile(string &filename, bool live)
 {
   AVDictionary *d = NULL;
 
@@ -97,10 +97,6 @@ OMXReaderFile::OMXReaderFile(string &filename, bool dump_format, bool live)
   // fill in rest of metadata
   GetStreams();
   GetChapters();
-
-  // print chapter info
-  if(dump_format)
-    info_dump(filename);
 }
 
 enum SeekResult OMXReaderFile::SeekTimeDelta(int delta, int64_t &cur_pts)

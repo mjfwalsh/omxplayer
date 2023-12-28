@@ -1010,12 +1010,6 @@ int change_playlist_item()
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)
       m_track = 0;
-
-    if(!m_DvdPlayer->OpenTrack(m_track))
-    {
-      puts("Failed to open DVD track");
-      return END_PLAY_WITH_ERROR;
-    }
   }
   else
   {
@@ -1685,15 +1679,25 @@ int run_play_loop()
 {
   try {
     if(m_DvdPlayer)
-      m_omx_reader = (OMXReader *)new OMXReaderDvd(m_filename, m_dump_format, m_DvdPlayer);
+      m_omx_reader = (OMXReader *)m_DvdPlayer->OpenTrack(m_track);
     else
-      m_omx_reader = (OMXReader *)new OMXReaderFile(m_filename, m_dump_format, m_config_audio.is_live);
+      m_omx_reader = (OMXReader *)new OMXReaderFile(m_filename, m_config_audio.is_live);
   }
   catch(const char *msg)
   {
     osd_printf(UM_ALL, "OMXReader error: %s", msg);
     m_omx_reader = NULL;
     return END_PLAY_WITH_ERROR;
+  }
+
+  // print chapter info
+  if(m_dump_format)
+  {
+    m_omx_reader->info_dump(m_filename);
+
+    // print dvd info
+    if(m_DvdPlayer)
+      m_DvdPlayer->info_dump();
   }
 
   if (m_dump_format_exit)
@@ -1859,7 +1863,7 @@ int run_play_loop()
     // If so, setup a dispmanx layer to display them
     Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
     float sub_aspect = m_config_video.hints.aspect;
-    uint32_t *palette = m_DvdPlayer ? m_DvdPlayer->getPalette() : NULL;
+    uint32_t *palette = m_omx_reader->getPalette();
 
     if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
     {
@@ -2163,7 +2167,7 @@ int playlist_control()
     if(m_next_prev_file != 0) {
       // if this is a DVD look for next track
       if(m_DvdPlayer) {
-        if(m_DvdPlayer->ChangeTrack(m_next_prev_file, m_track))
+        if(m_DvdPlayer->CanChangeTrack(m_next_prev_file, m_track))
         {
           m_firstfile = false;
           m_next_prev_file = 0;

@@ -31,6 +31,7 @@ extern "C" {
 }
 
 #include "OMXDvdPlayer.h"
+#include "OMXReaderDvd.h"
 
 OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 {
@@ -211,307 +212,47 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 	puts("Finished parsing DVD meta data");
 }
 
-bool OMXDvdPlayer::ChangeTrack(int delta, int &t)
+bool OMXDvdPlayer::CanChangeTrack(int delta, int &t)
 {
 	int ct = t + delta;
 
-	bool r = OpenTrack(ct);
-	t = current_track;
-	return r;
-}
-
-bool OMXDvdPlayer::OpenTrack(int ct)
-{
-	if(ct < 0 || ct > (int)tracks.size() - 1)
+	if(ct < 0 || ct >= (int)tracks.size())
 		return false;
 
-	if(m_open && tracks[ct].title->title_num != tracks[current_track].title->title_num)
-		CloseTrack();
-
-	// select track
-	current_track = ct;
-
-	// seek to beginning to track/part
-	pos = 0;
-	current_part = 0;
-
-	// open dvd track
-	if(!m_open) {
-		dvd_track = DVDOpenFile(dvd_device, tracks[current_track].title->title_num, DVD_READ_TITLE_VOBS );
-
-		if(!dvd_track) {
-			puts("Error on DVDOpenFile");
-			return false;
-		}
-	}
-
-	m_open = true;
+    t = ct;
 	return true;
 }
 
-int OMXDvdPlayer::Read(unsigned char *lpBuf, int blocks_to_read)
+OMXReaderDvd *OMXDvdPlayer::OpenTrack(int ct)
 {
-	if(pos + blocks_to_read > tracks[current_track].parts[current_part].blocks) {
-		blocks_to_read = tracks[current_track].parts[current_part].blocks - pos;
+	if(ct < 0 || ct >= (int)tracks.size())
+		throw "Track out of range";
 
-		if(blocks_to_read < 1)
-			return 0;
-	}
-
-    int read_start = tracks[current_track].parts[current_part].first_sector + pos;
-	int read_blocks = DVDReadBlocks(dvd_track, read_start, blocks_to_read, lpBuf);
-
-	// return any error
-	if(read_blocks <= 0)
+	// close the dvd track if one is open and we're opening a different vob
+	if(dvd_track && tracks[ct].title->title_num != tracks[track_no].title->title_num)
 	{
-		printf("OMXDvdPlayer::Read failed: %d - %d - %d - %d\n", current_track, current_part, read_start, blocks_to_read);
-		return read_blocks;
-    }
-
-	// move internal pointers forward
-	pos += read_blocks;
-	if(pos == tracks[current_track].parts[current_part].blocks
-			&& current_part < (int)tracks[current_track].parts.size() - 1)
-	{
-		current_part++;
-		pos = 0;
+        DVDCloseFile(dvd_track);
+        dvd_track = NULL;
 	}
 
-	return read_blocks;
-}
+	// select track
+	track_no = ct;
 
-int OMXDvdPlayer::getCurrentTrackLength()
-{
-	return tracks[current_track].length;
-}
+	// open dvd track
+	if(!dvd_track) {
+		dvd_track = DVDOpenFile(dvd_device, tracks[track_no].title->title_num, DVD_READ_TITLE_VOBS );
 
-uint32_t *OMXDvdPlayer::getPalette()
-{
-	return tracks[current_track].title->palette;
-}
-
-int OMXDvdPlayer::Seek(int new_pos, int whence)
-{
-	if (!m_open)
-	{
-		return -1;
-	}
-    else if(whence == SEEK_SET)
-    {
-        pos = new_pos;
-        current_part = 0;
-
-        // find the part of the current track we are seeking to and adjust the
-        // pos to be within that part
-        while(current_part + 1 < (int)tracks[current_track].parts.size()
-                && pos >= tracks[current_track].parts[current_part].blocks)
-        {
-            pos -= tracks[current_track].parts[current_part].blocks;
-            current_part++;
-        }
-
-        return new_pos;
-	}
-    else if(whence == AVSEEK_SIZE)
-    {
-        int total_blocks = 0;
-        for(uint i = 0; i < tracks[current_track].parts.size(); i++)
-            total_blocks += tracks[current_track].parts[i].blocks;
-
-        return total_blocks;
-    }
-	else
-	{
-		return -1;
-	}
-}
-
-// this function finds the nearest vobu to the
-// desired seek point and return it's byte position
-int OMXDvdPlayer::getVobu(int64_t &seek_micro)
-{
-    // save these do they can be restored later
-    int old_pos = pos;
-    int old_current_part = current_part;
-    int seek_ms = seek_micro / 1000;
-
-	dsi_t dsi_pack;
-	unsigned char data[DVD_VIDEO_LB_LEN];
-	int list[] = {0, 500, 8000, 10000, 30000, 60000, 120000};
-	int diff;
-
-	int ch = GetCell(seek_ms);
-	if(ch == -1) return -1;
-
-	int cur_time_seeking_pos;
-	int cur_cell_seeking_pos = tracks[current_track].cells[ch].cell;
-	int seek_within_cell = seek_ms - tracks[current_track].cells[ch].time;
-
-	// limit to 12 jumps to avoid indef loops
-	for(int i = 0; i < 12; i++)
-	{
-		Seek(cur_cell_seeking_pos);
-		if(Read(data, 1) != 1)
-		{
-			printf("read error: %d\n", cur_cell_seeking_pos);
-			cur_cell_seeking_pos = -1;
-			goto finish;
-		}
-
-		navRead_DSI(&dsi_pack, &data[DSI_START_BYTE]);
-		cur_time_seeking_pos = dvdtime2msec(&dsi_pack.dsi_gi.c_eltm);
-
-		diff = seek_within_cell - cur_time_seeking_pos;
-
-		int jump;
-        int lower = 0;
-        int higher = 7;
-
-        while(higher - lower > 1)
-        {
-            int m = (lower + higher) / 2;
-
-            if(diff >= list[m])
-                lower = m;
-            else
-                higher = m;
-        }
-
-		switch(lower)
-		{
-		case 0:
-			goto finish;
-
-		case 1:
-            jump = 19 - (diff / 500);
-            break;
-
-		default:
-			jump = 6 - lower;
-			break;
-		}
-
-        // the two most significants bits indicate meta data
-        // the rest constitute the offset to another vobu
-        // 0x3fffffff means there's not vobu to jump to
-        int next = dsi_pack.vobu_sri.fwda[jump] & 0x3fffffff;
-        if(next == 0x3fffffff || next <= 0)
-          goto finish;
-
-        cur_cell_seeking_pos += next;
+		if(!dvd_track)
+			throw "Error on DVDOpenFile";
 	}
 
-finish:
-    // restore seek point
-    pos = old_pos;
-    current_part = old_current_part;
-
-    // save seek time
-    int seeked_ms = tracks[current_track].cells[ch].time + cur_time_seeking_pos;
-    seek_micro = (int64_t)seeked_ms * (int64_t)1000;
-
-	return cur_cell_seeking_pos;
-}
-
-// search for the cell the timestamp is in
-int OMXDvdPlayer::GetCell(int needle)
-{
-	int l = 0;
-	int r = (int)tracks[current_track].cells.size();
-
-	if(needle < 0 || needle >= tracks[current_track].length)
-		return -1;
-
-	while(r - l > 1)
-	{
-		int m = (l + r) / 2;
-
-		if(needle >= tracks[current_track].cells[m].time)
-			l = m;
-		else
-			r = m;
-	}
-
-	return l;
-}
-
-bool OMXDvdPlayer::PrepChapterSeek(int delta, int &cell, int64_t &pts, int &byte_pos)
-{
-  cell = GetCell(pts / 1000);
-  if(cell == -1)
-    return false;
-
-  // find the next/prev cell that's a cell
-  do {
-    cell += delta;
-
-    // check if within bounds
-    if(cell < 0 || cell >= (int)tracks[cell].cells.size())
-      return false;
-
-  } while(!tracks[current_track].cells[cell].is_chapter);
-
-  // Set results
-  pts  = (int64_t)tracks[current_track].cells[cell].time * 1000;
-  byte_pos = tracks[current_track].cells[cell].cell;
-
-  return true;
-}
-
-bool OMXDvdPlayer::IsEOF()
-{
-	if(!m_open)
-		return true;
-
-	if(current_part > (int)tracks[current_track].parts.size() - 1)
-		return true;
-
-	if(current_part < (int)tracks[current_track].parts.size() - 1)
-		return false;
-
-	return pos >= tracks[current_track].parts[current_part].blocks;
-}
-
-void OMXDvdPlayer::CloseTrack()
-{
-	DVDCloseFile(dvd_track);
-	m_open = false;
-}
-
-int OMXDvdPlayer::GetAudioStreamCount()
-{
-	return tracks[current_track].title->audio_streams.size();
-}
-
-int OMXDvdPlayer::GetSubtitleStreamCount()
-{
-	return tracks[current_track].title->subtitle_streams.size();
-}
-
-int OMXDvdPlayer::GetAudioStreamId(int i)
-{
-	return tracks[current_track].title->audio_streams[i].id;
-}
-
-int OMXDvdPlayer::GetSubtitleStreamId(int i)
-{
-	return tracks[current_track].title->subtitle_streams[i].id;
-}
-
-const char *OMXDvdPlayer::GetAudioStreamLanguage(int i)
-{
-	return convertLangCode(tracks[current_track].title->audio_streams[i].lang);
-}
-
-const char *OMXDvdPlayer::GetSubtitleStreamLanguage(int i)
-{
-	return convertLangCode(tracks[current_track].title->subtitle_streams[i].lang);
+	return new OMXReaderDvd(dvd_track, tracks[track_no], track_no);
 }
 
 OMXDvdPlayer::~OMXDvdPlayer()
 {
-	if(m_open)
-		CloseTrack();
+	if(dvd_track)
+	  DVDCloseFile(dvd_track);
 
 	DVDClose(dvd_device);
 }
@@ -684,7 +425,7 @@ int clamp(float val)
 	else return (int)(val + 0.5f);
 }
 
-// This is a condensed version code from mpv
+// This is a condensed version of code from mpv
 int OMXDvdPlayer::yvu2rgb(int color)
 {
 	int y = color >> 16 & 0xff;
