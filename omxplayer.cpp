@@ -1126,6 +1126,14 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_PREVIOUS_AUDIO:
   case ACTION_NEXT_AUDIO:
   case SET_AUDIO_STREAM:
+    if(!m_player_audio)
+    {
+      osd_print(UM_NORM, "Audio unavailable");
+      if(search_key == SET_AUDIO_STREAM)
+        m->respond_bool(false);
+      break;
+    }
+
     if(search_key == SET_AUDIO_STREAM)
     {
       int index;
@@ -1784,7 +1792,7 @@ int run_play_loop()
     if(m_audio_index >= m_omx_reader->AudioStreamCount())
     {
       printf("Error: file has only %d audio streams\n", m_omx_reader->AudioStreamCount());
-      return END_PLAY_WITH_ERROR;
+      m_audio_index = -1;
     }
 
     // an audio string overrides any provided stream number
@@ -1825,18 +1833,18 @@ int run_play_loop()
     // start audio decoder encoder
     try {
       m_player_audio = new OMXPlayerAudio(m_av_clock, m_config_audio, m_omx_reader, m_audio_index);
+
+      // set volume
+      m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
+      if (m_Amplification)
+        m_player_audio->SetDynamicRangeCompression(m_Amplification);
     }
     catch(const char *msg)
     {
-      osd_printf(UM_ALL, msg);
+      puts(msg);
+      osd_printf(UM_ALL, "Audio unavailable");
       m_player_audio = NULL;
-      return END_PLAY_WITH_ERROR;
     }
-
-    // set volume
-    m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
-    if (m_Amplification)
-      m_player_audio->SetDynamicRangeCompression(m_Amplification);
   }
 
   /* -------------------------------------------------------
