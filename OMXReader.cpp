@@ -154,19 +154,25 @@ OMXPacket *OMXReader::Read()
 
   try
   {
-    omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
+    // let dvd nav streams through
+    if(pStream->codecpar->codec_id != AV_CODEC_ID_DVD_NAV)
+      omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
   }
   catch(std::out_of_range const&)
   {
+    // try adding a new subtitle stream
+    // AddStream may still return -1 if unsupported
+    // dvd sub system may need to be initialised
     if(omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
     {
-      int dvd_subs_before = m_dvd_subs;
       omx_pkt->stream_type_index = AddStream(omx_pkt->avpkt->stream_index);
-      if(dvd_subs_before != m_dvd_subs)
+      if(m_dvd_subs_need_init)
         initDVDSubs();
     }
-    else
-      omx_pkt->stream_type_index = -1;
+
+    // otherwise ignore it
+    if(omx_pkt->stream_type_index == -1)
+      pStream->discard = AVDISCARD_ALL;
   }
 
   if(m_bMatroska && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -228,17 +234,31 @@ int OMXReader::AddStream(int id, const char *lang)
       type = OMXSTREAM_AUDIO;
       break;
     case AVMEDIA_TYPE_VIDEO:
-      // discard if it's a picture attachment (e.g. album art embedded in MP3 or AAC)
+      // only allow a single video stream
+      // and discard picture attachments (e.g. album art embedded in MP3 or AAC)
       if(m_streams[OMXSTREAM_VIDEO].size() == MAX_VIDEO_STREAMS
           || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
-        return -1;
+        goto ignore_stream;
 
       type = OMXSTREAM_VIDEO;
       break;
     case AVMEDIA_TYPE_SUBTITLE:
+      switch(pStream->codecpar->codec_id)
+      {
+      case AV_CODEC_ID_SUBRIP:
+      case AV_CODEC_ID_SSA:
+      case AV_CODEC_ID_ASS:
+      case AV_CODEC_ID_DVD_SUBTITLE:
+        break;
+      default:
+        goto ignore_stream;
+      }
+
       type = OMXSTREAM_SUBTITLE;
       break;
     default:
+    ignore_stream:
+      pStream->discard = AVDISCARD_ALL;
       return -1;
   }
 
@@ -284,6 +304,7 @@ int OMXReader::AddStream(int id, const char *lang)
       && m_dvd_subs == -1)
   {
     m_dvd_subs = m_steam_map[id];
+    m_dvd_subs_need_init = true;
   }
 
   // return the stream type index
@@ -559,6 +580,7 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uin
   }
 
   *palette = getPalette(&dvd_sub_stream, buf);
+  m_dvd_subs_need_init = false;
 
   return true;
 }

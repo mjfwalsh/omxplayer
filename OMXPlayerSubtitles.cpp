@@ -638,15 +638,6 @@ bool OMXPlayerSubtitles::GetSubData(OMXPacket *pkt, Subtitle &sub)
 
 void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
 {
-  if(pkt->hints.codec != AV_CODEC_ID_SUBRIP &&
-     pkt->hints.codec != AV_CODEC_ID_SSA &&
-     pkt->hints.codec != AV_CODEC_ID_ASS &&
-     pkt->hints.codec != AV_CODEC_ID_DVD_SUBTITLE)
-  {
-    delete pkt;
-    return;
-  }
-
   SendToRenderer(new Mailbox::Push(pkt, m_visible && pkt->stream_type_index == m_active_index));
 }
 

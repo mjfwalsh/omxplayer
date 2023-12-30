@@ -102,7 +102,7 @@ again:
     return NULL;
 
   // check for dvd_nav_packets
-  if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV && pkt->avpkt->size == 1998)
+  if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV)
   {
     navRead_PCI(&pci_pack, &pkt->avpkt->data[1]);
     AVStream *pStream = m_pFormatContext->streams[pkt->avpkt->stream_index];
@@ -153,18 +153,19 @@ bool OMXReaderDvd::SeekByte(int seek_byte, bool backwords, const int64_t &new_pt
 
   int flags = (backwords ? AVSEEK_FLAG_BACKWARD : 0) | AVSEEK_FLAG_BYTE;
   reset_timeout(1);
-  bool success = av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) >= 0;
 
-  // demuxer will return failure, if you seek to eof
-  m_eof = !success;
-
-  if(success)
+  if(av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) >= 0)
   {
     m_prev_seek = new_pts;
     m_fix_time_stamps = true;
+    m_eof = false;
+    return true;
   }
-
-  return success;
+  else
+  {
+    m_eof = true;
+    return false;
+  }
 }
 
 

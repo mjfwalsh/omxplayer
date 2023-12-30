@@ -36,9 +36,7 @@ extern "C" {
 #include <unordered_map>
 
 
-#define MAX_VIDEO_STREAMS 3
-#define MAX_AUDIO_STREAMS 32
-#define MAX_SUBTITLE_STREAMS 50
+#define MAX_VIDEO_STREAMS 1
 
 class OMXPacket
 {
@@ -128,6 +126,7 @@ protected:
   int                       m_width           = 0;
   int                       m_height          = 0;
   int                       m_dvd_subs        = -1;
+  bool                      m_dvd_subs_need_init = false;
   std::unordered_map<int, int>   m_steam_map;
   static std::string        s_cookie;
   static std::string        s_user_agent;

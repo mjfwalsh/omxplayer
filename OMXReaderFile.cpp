@@ -136,32 +136,8 @@ bool OMXReaderFile::CanSeek()
 
 void OMXReaderFile::GetStreams()
 {
-  unsigned int program = UINT_MAX;
-
-  if (m_pFormatContext->nb_programs)
-  {
-    // look for first non empty stream and discard nonselected programs
-    for (unsigned int i = 0; i < m_pFormatContext->nb_programs; i++)
-    {
-      if(program == UINT_MAX && m_pFormatContext->programs[i]->nb_stream_indexes > 0)
-        program = i;
-      else
-        m_pFormatContext->programs[i]->discard = AVDISCARD_ALL;
-    }
-  }
-
-  if(program != UINT_MAX)
-  {
-    // add streams from selected program
-    for (unsigned int i = 0; i < m_pFormatContext->programs[program]->nb_stream_indexes; i++)
-      AddStream(m_pFormatContext->programs[program]->stream_index[i]);
-  }
-  else
-  {
-    // if there were no programs or they were all empty, add all streams
-    for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-      AddStream(i);
-  }
+  for (unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
+    AddStream(i);
 }
 
 SeekResult OMXReaderFile::SeekChapter(int delta, int &result_chapter, int64_t &cur_pts)
