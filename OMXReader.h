@@ -54,10 +54,11 @@ public:
 
 enum OMXStreamType
 {
-  OMXSTREAM_NONE      = 0,
+  OMXSTREAM_NONE      = -1,
+  OMXSTREAM_VIDEO     = 0,
   OMXSTREAM_AUDIO     = 1,
-  OMXSTREAM_VIDEO     = 2,
-  OMXSTREAM_SUBTITLE  = 3
+  OMXSTREAM_SUBTITLE  = 2,
+  OMXSTREAM_END       = 3,
 };
 
 enum SeekResult {
@@ -78,9 +79,9 @@ public:
   virtual OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();
-  inline int  AudioStreamCount() { return m_audio_count; };
-  inline int  VideoStreamCount() { return m_video_count; };
-  inline int  SubtitleStreamCount() { return m_subtitle_count; };
+  inline int  AudioStreamCount() { return m_streams[OMXSTREAM_AUDIO].size(); };
+  inline int  VideoStreamCount() { return m_streams[OMXSTREAM_VIDEO].size(); };
+  inline int  SubtitleStreamCount() { return m_streams[OMXSTREAM_SUBTITLE].size(); };
   inline double GetAspectRatio() { return m_aspect; };
   inline int GetWidth() { return m_width; };
   inline int GetHeight() { return m_height; };
@@ -117,16 +118,11 @@ protected:
     COMXStreamInfo hints;
   };
 
-  int                       m_video_count     = 0;
-  int                       m_audio_count     = 0;
-  int                       m_subtitle_count  = 0;
   bool                      m_bMatroska       = false;
   bool                      m_bAVI            = false;
   AVFormatContext           *m_pFormatContext = NULL;
   bool                      m_eof             = false;
-  OMXStream                 m_audio_streams[MAX_AUDIO_STREAMS];
-  OMXStream                 m_video_streams[MAX_VIDEO_STREAMS];
-  OMXStream                 m_subtitle_streams[MAX_SUBTITLE_STREAMS];
+  std::vector<OMXStream>    m_streams[OMXSTREAM_END];
   float                     m_speed           = DVD_PLAYSPEED_NORMAL;
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;

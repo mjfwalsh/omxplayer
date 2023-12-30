@@ -216,45 +216,37 @@ OMXPacket *OMXReader::Read()
   return omx_pkt;
 }
 
-
 int OMXReader::AddStream(int id, const char *lang)
 {
   AVStream *pStream = m_pFormatContext->streams[id];
+  OMXStreamType type;
 
   OMXStream *this_stream;
   switch (pStream->codecpar->codec_type)
   {
     case AVMEDIA_TYPE_AUDIO:
-      if(m_audio_count == MAX_AUDIO_STREAMS) return -1;
-
-      this_stream              = &m_audio_streams[m_audio_count];
-      this_stream->type        = OMXSTREAM_AUDIO;
-      m_steam_map[id]          = m_audio_count;
-      m_audio_count++;
+      type = OMXSTREAM_AUDIO;
       break;
     case AVMEDIA_TYPE_VIDEO:
       // discard if it's a picture attachment (e.g. album art embedded in MP3 or AAC)
-      if(m_video_count == MAX_VIDEO_STREAMS || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
+      if(m_streams[OMXSTREAM_VIDEO].size() == MAX_VIDEO_STREAMS
+          || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
         return -1;
 
-      this_stream              = &m_video_streams[m_video_count];
-      this_stream->type        = OMXSTREAM_VIDEO;
-      m_steam_map[id]          = m_video_count;
-      m_video_count++;
+      type = OMXSTREAM_VIDEO;
       break;
     case AVMEDIA_TYPE_SUBTITLE:
-      if(m_subtitle_count == MAX_SUBTITLE_STREAMS) return -1;
-
-      this_stream              = &m_subtitle_streams[m_subtitle_count];
-      this_stream->type        = OMXSTREAM_SUBTITLE;
-      m_steam_map[id]          = m_subtitle_count;
-      m_subtitle_count++;
+      type = OMXSTREAM_SUBTITLE;
       break;
     default:
       return -1;
   }
 
-  // The rest are the same for all stream types
+  m_steam_map[id]          = m_streams[type].size();
+
+  m_streams[type].emplace_back();
+  this_stream              = &m_streams[type].back();
+  this_stream->type        = type;
   this_stream->stream      = pStream;
   this_stream->codec_name  = GetStreamCodecName(pStream);
   this_stream->id          = id;
@@ -291,7 +283,7 @@ int OMXReader::AddStream(int id, const char *lang)
       && this_stream->hints.codec == AV_CODEC_ID_DVD_SUBTITLE
       && m_dvd_subs == -1)
   {
-    m_dvd_subs = m_subtitle_count - 1;
+    m_dvd_subs = m_steam_map[id];
   }
 
   // return the stream type index
@@ -376,17 +368,7 @@ bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
 
 COMXStreamInfo OMXReader::GetHints(OMXStreamType type, int index)
 {
-  switch (type)
-  {
-    case OMXSTREAM_AUDIO:
-      return m_audio_streams[index].hints;
-    case OMXSTREAM_VIDEO:
-      return m_video_streams[index].hints;
-    case OMXSTREAM_SUBTITLE:
-      return m_subtitle_streams[index].hints;
-    default:
-      abort();
-  }
+  return m_streams[type][index].hints;
 }
 
 bool OMXReader::IsEof()
@@ -529,79 +511,33 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
 
 std::string OMXReader::GetCodecName(OMXStreamType type, unsigned int index)
 {
-  switch(type)
-  {
-  case OMXSTREAM_AUDIO:
-    return m_audio_streams[index].codec_name;
-  case OMXSTREAM_VIDEO:
-    return m_video_streams[index].codec_name;
-  case OMXSTREAM_SUBTITLE:
-    return m_subtitle_streams[index].codec_name;
-  default:
-	return "";
-  }
+  return m_streams[type][index].codec_name;
 }
 
 std::string OMXReader::GetStreamLanguage(OMXStreamType type, unsigned int index)
 {
-  switch(type)
-  {
-  case OMXSTREAM_AUDIO:
-    return m_audio_streams[index].language;
-  case OMXSTREAM_SUBTITLE:
-    return m_subtitle_streams[index].language;
-  default:
-	return "";
-  }
+  return m_streams[type][index].language;
 }
 
 int OMXReader::GetStreamByLanguage(OMXStreamType type, const char *lang)
 {
-  switch(type)
-  {
-  case OMXSTREAM_AUDIO:
-    for(int i = 0; i < m_audio_count; i++)
-      if(m_audio_streams[i].language == lang)
-        return i;
-    break;
-  case OMXSTREAM_SUBTITLE:
-    for(int i = 0; i < m_subtitle_count; i++)
-      if(m_subtitle_streams[i].language == lang)
-        return i;
-    break;
-  default:
-	break;
-  }
+  for(int i = 0; i < (int)m_streams[type].size(); i++)
+    if(m_streams[type][i].language == lang)
+      return i;
 
   return -1;
 }
 
 void OMXReader::GetMetaData(OMXStreamType type, vector<string> &list)
 {
-  int count;
-  OMXStream *st;
+  list.resize(m_streams[type].size());
 
-  switch(type)
+  int i = 0;
+  for(const auto &stream : m_streams[type])
   {
-  case OMXSTREAM_AUDIO:
-    st = m_audio_streams;
-    count = m_audio_count;
-    break;
-  case OMXSTREAM_VIDEO:
-    st = m_video_streams;
-    count = m_video_count;
-    break;
-  case OMXSTREAM_SUBTITLE:
-    st = m_subtitle_streams;
-    count = m_subtitle_count;
-    break;
-  case OMXSTREAM_NONE:
-	return;
+    list[i] = to_string(i) + ":" + stream.language + ":" + stream.name + ":" + stream.codec_name + ":";
+    i++;
   }
-
-  list.resize(count);
-  for(int i = 0; i < count; i++)
-    list[i] = to_string(i) + ":" + st[i].language + ":" + st[i].name + ":" + st[i].codec_name + ":";
 }
 
 
@@ -613,15 +549,16 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uin
   if(m_dvd_subs == -1)
     return false;
 
-  if(m_subtitle_streams[m_dvd_subs].hints.width > 0
-      && m_subtitle_streams[m_dvd_subs].hints.height > 0)
+  OMXStream &dvd_sub_stream = m_streams[OMXSTREAM_SUBTITLE][m_dvd_subs];
+
+  if(dvd_sub_stream.hints.width > 0 && dvd_sub_stream.hints.height > 0)
   {
-    d.width = m_subtitle_streams[m_dvd_subs].hints.width;
-    d.height = m_subtitle_streams[m_dvd_subs].hints.height;
+    d.width = dvd_sub_stream.hints.width;
+    d.height = dvd_sub_stream.hints.height;
     aspect = d.width / (float)d.height;
   }
 
-  *palette = getPalette(&m_subtitle_streams[m_dvd_subs], buf);
+  *palette = getPalette(&dvd_sub_stream, buf);
 
   return true;
 }
@@ -629,37 +566,40 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uin
 void OMXReader::info_dump(const std::string &filename)
 {
     printf("File: %s\n", filename.c_str());
-    printf("Video Streams: %d\n", m_video_count);
-    for(int i = 0; i < m_video_count; i++)
+    printf("Video Streams: %u\n", m_streams[OMXSTREAM_VIDEO].size());
+    int i = 0;
+    for(const auto &stream : m_streams[OMXSTREAM_VIDEO])
     {
         printf("    %2d. 0x%x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
-            i + 1,
-            m_video_streams[i].stream->id,
-            m_video_streams[i].codec_name.c_str(),
-            (float)m_video_streams[i].hints.fpsrate / (float)m_video_streams[i].hints.fpsscale,
-            m_video_streams[i].hints.width, m_video_streams[i].hints.height,
-            m_video_streams[i].hints.aspect);
+            ++i,
+            stream.stream->id,
+            stream.codec_name.c_str(),
+            (float)stream.hints.fpsrate / (float)stream.hints.fpsscale,
+            stream.hints.width, stream.hints.height,
+            stream.hints.aspect);
     }
-    printf("Audio Streams: %d\n", m_audio_count);
-    for(int i = 0; i < m_audio_count; i++)
+    printf("Audio Streams: %u\n", m_streams[OMXSTREAM_AUDIO].size());
+    i = 0;
+    for(const auto &stream : m_streams[OMXSTREAM_AUDIO])
     {
         printf("    %2d. 0x%x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
-            i + 1,
-            m_audio_streams[i].stream->id,
-            m_audio_streams[i].codec_name.c_str(),
-            m_audio_streams[i].language.c_str(),
-            m_audio_streams[i].hints.channels,
-            m_audio_streams[i].hints.samplerate,
-            m_audio_streams[i].hints.bitspersample);
+            ++i,
+            stream.stream->id,
+            stream.codec_name.c_str(),
+            stream.language.c_str(),
+            stream.hints.channels,
+            stream.hints.samplerate,
+            stream.hints.bitspersample);
     }
-    printf("Subtitle Streams: %d\n", m_subtitle_count);
-    for(int i = 0; i < m_subtitle_count; i++)
+    printf("Subtitle Streams: %u\n", m_streams[OMXSTREAM_SUBTITLE].size());
+    i = 0;
+    for(const auto &stream : m_streams[OMXSTREAM_SUBTITLE])
     {
         printf("    %2d. 0x%x: subtitle: %s (lang %s)\n",
-            i + 1,
-            m_subtitle_streams[i].stream->id,
-            m_subtitle_streams[i].codec_name.c_str(),
-            m_audio_streams[i].language.c_str());
+            ++i,
+            stream.stream->id,
+            stream.codec_name.c_str(),
+            stream.language.c_str());
     }
 }
 
