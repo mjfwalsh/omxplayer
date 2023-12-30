@@ -74,7 +74,6 @@ int               m_subtitle_index      = -1;
 OMXPlayerVideo    *m_player_video       = NULL;
 OMXPlayerAudio    *m_player_audio       = NULL;
 OMXPlayerSubtitles *m_player_subtitles  = NULL;
-bool              m_has_subtitle        = false;
 bool              m_loop                = false;
 RecentFileStore   m_file_store;
 RecentDVDStore    m_dvd_store;
@@ -214,9 +213,9 @@ static void PrintSubtitleInfo()
 {
   printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
          m_player_subtitles->GetStreamCount(),
-         m_has_subtitle && m_player_subtitles->GetVisible() ? " on" : "off",
+         m_player_subtitles->GetVisible() ? " on" : "off",
          m_player_subtitles->GetActiveStream()+1,
-         m_has_subtitle ? m_player_subtitles->GetDelay() : 0);
+         m_player_subtitles->GetDelay());
 }
 
 static void SetSpeed(float iSpeed)
@@ -243,8 +242,7 @@ static void FlushStreams(int64_t pts = AV_NOPTS_VALUE)
     m_av_clock->Reset(m_player_video, m_player_audio);
   }
 
-  if(m_has_subtitle)
-    m_player_subtitles->Flush();
+  m_player_subtitles->Flush();
 
   if(m_omx_pkt)
   {
@@ -292,6 +290,23 @@ int get_approx_speed(double &new_speed)
   }
   new_speed = playspeeds[arr_len - 1];
   return arr_len - 1;
+}
+
+void initDVDSubs()
+{
+  // Check if we have any DVD subtitles (these can be on ordinary media files as well as DVDs)
+  // If so, setup a dispmanx layer to display them
+  Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
+  float sub_aspect = m_config_video.hints.aspect;
+  uint32_t *palette = NULL;
+  uint32_t buf[16];
+
+  if(!m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette, buf))
+    return;
+
+  Rect view_port = DispmanxLayer::GetVideoPort(sub_aspect, m_config_video.aspectMode);
+
+  m_player_subtitles->initDVDSubs(view_port, sub_dim, palette);
 }
 
 int startup(int argc, char *argv[])
@@ -1175,52 +1190,44 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_PREVIOUS_SUBTITLE:
   case ACTION_NEXT_SUBTITLE:
   case SET_SUBTITLE_STREAM:
-    if(m_has_subtitle)
+    if(search_key == SET_SUBTITLE_STREAM)
     {
-      if(search_key == SET_SUBTITLE_STREAM)
+      int index;
+      if(!m->get_arg_int(&index))
       {
-        int index;
-        if(!m->get_arg_int(&index))
-        {
-          m->respond_bool(false);
-          break;
-        }
-
-        m_subtitle_index = m_player_subtitles->SetActiveStream(index);
-        m->respond_bool(m_subtitle_index == index ? 1 : 0);
-      }
-      else
-      {
-        int delta = search_key == ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
-        m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(delta);
+        m->respond_bool(false);
+        break;
       }
 
-      if(m_subtitle_index == -1) {
-        m_subtitle_lang[0] = '\0';
-        osd_print("Subtitles Off");
-      } else if(m_subtitle_index == m_omx_reader->SubtitleStreamCount()) {
-        m_subtitle_lang[0] = '\0';
-        osd_print("Subtitle stream: External");
-      } else {
-        strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
-            m_subtitle_index).c_str());
-        if(m_subtitle_lang[0] == '\0')
-          osd_printf(UM_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
-        else
-          osd_printf(UM_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
-      }
-      PrintSubtitleInfo();
+      m_subtitle_index = m_player_subtitles->SetActiveStream(index);
+      m->respond_bool(m_subtitle_index == index ? 1 : 0);
     }
     else
     {
-      osd_print("Subtitles Off");
+      int delta = search_key == ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
+      m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(delta);
     }
+
+    if(m_subtitle_index == -1) {
+      m_subtitle_lang[0] = '\0';
+      osd_print("Subtitles Off");
+    } else if(m_subtitle_index == m_omx_reader->SubtitleStreamCount()) {
+      m_subtitle_lang[0] = '\0';
+      osd_print("Subtitle stream: External");
+    } else {
+      strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
+          m_subtitle_index).c_str());
+      if(m_subtitle_lang[0] == '\0')
+        osd_printf(UM_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
+      else
+        osd_printf(UM_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
+    }
+    PrintSubtitleInfo();
     break;
 
   case ACTION_TOGGLE_SUBTITLE:
   case ACTION_HIDE_SUBTITLES:
   case ACTION_SHOW_SUBTITLES:
-    if(m_has_subtitle)
     {
       bool new_visible = search_key == ACTION_TOGGLE_SUBTITLE ?
         !m_player_subtitles->GetVisible()
@@ -1231,14 +1238,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       osd_print(new_visible ? "Subtitles On" : "Subtitles Off");
       PrintSubtitleInfo();
     }
-    else
-    {
-      osd_print("Subtitles Off");
-    }
     break;
 
   case ACTION_DECREASE_SUBTITLE_DELAY:
-    if(m_has_subtitle && m_player_subtitles->GetVisible())
+    if(m_player_subtitles->GetVisible())
     {
       int new_delay = m_player_subtitles->GetDelay() - 250;
       osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
@@ -1248,7 +1251,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case ACTION_INCREASE_SUBTITLE_DELAY:
-    if(m_has_subtitle && m_player_subtitles->GetVisible())
+    if(m_player_subtitles->GetVisible())
     {
       int new_delay = m_player_subtitles->GetDelay() + 250;
       osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
@@ -1290,11 +1293,8 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
         SetSpeed(playspeeds[playspeed_normal]);
       }
 
-      if(m_has_subtitle)
-      {
-        if(m_Pause) m_player_subtitles->Pause();
-        else m_player_subtitles->Resume();
-      }
+      if(m_Pause) m_player_subtitles->Pause();
+      else m_player_subtitles->Resume();
 
       int t = m_av_clock->GetMediaTime() * 1e-6;
       show_progress_message(m_Pause ? "Pause" : "Play", t);
@@ -1704,7 +1704,6 @@ int run_play_loop()
     return ABORT_PLAY;
 
   // what do we have
-  m_has_subtitle  = !m_external_subtitles_path.empty() || m_omx_reader->SubtitleStreamCount() > 0;
   m_loop          = m_loop && m_omx_reader->CanSeek();
 
   // stop the clock
@@ -1844,46 +1843,31 @@ int run_play_loop()
                          Subtitle Setup
      ------------------------------------------------------- */
 
-  if(m_has_subtitle)
+  // sets the number of internal subs
+  // will be adjusted later if additional sub streams are found
+  m_player_subtitles->AllocateInternalSubs(m_omx_reader->SubtitleStreamCount());
+
+  if(!m_external_subtitles_path.empty()
+      && !m_player_subtitles->AddExternalSubs(m_external_subtitles_path))
   {
-    if(!m_player_subtitles->Open(m_omx_reader->SubtitleStreamCount(), m_external_subtitles_path))
-    {
-      osd_printf(UM_ALL, "Failed to open subtitles");
-      return END_PLAY_WITH_ERROR;
-    }
-
-    if(m_cmd_line_subtitles)
-      m_subtitle_index = m_omx_reader->SubtitleStreamCount() - 1;
-    else if(m_subtitle_lang[0] != '\0')
-      m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
-
-    m_player_subtitles->SetActiveStream(m_subtitle_index);
-
-    // Check if we have any DVD subtitles (these can be on ordinary media files as well as DVDs)
-    // If so, setup a dispmanx layer to display them
-    Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
-    float sub_aspect = m_config_video.hints.aspect;
-    uint32_t *palette = m_omx_reader->getPalette();
-
-    if(m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette))
-    {
-      Rect view_port = DispmanxLayer::GetVideoPort(sub_aspect, m_config_video.aspectMode);
-
-      if(!m_player_subtitles->initDVDSubs(view_port, sub_dim, palette))
-      {
-        osd_printf(UM_ALL, "Failed to initialise DVD subtitles");
-        return END_PLAY_WITH_ERROR;
-      }
-    }
-
-    if(!m_DvdPlayer && palette != NULL)
-      delete palette;
+    osd_printf(UM_ALL, "Failed to open subtitles");
+    return END_PLAY_WITH_ERROR;
   }
 
-  PrintSubtitleInfo();
-
+  // user has disable subtitles
   if(m_audio_index != -2)
     m_audio_index = -1;
+  else if(m_cmd_line_subtitles)
+    m_subtitle_index = m_omx_reader->SubtitleStreamCount() - 1;
+  else if(m_subtitle_lang[0] != '\0')
+    m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
+
+  m_player_subtitles->SetActiveStream(m_subtitle_index);
+
+  if(m_audio_index != -2)
+    initDVDSubs();
+
+  PrintSubtitleInfo();
 
   // start the clock
   m_av_clock->Reset(m_player_video, m_player_audio);
@@ -2101,7 +2085,7 @@ int run_play_loop()
       break;
 
     case AVMEDIA_TYPE_SUBTITLE:
-      if(!m_has_subtitle || playspeed_current != playspeed_normal)
+      if(m_audio_index == -2 || playspeed_current != playspeed_normal)
         goto discard_packet;
 
       m_player_subtitles->AddPacket(m_omx_pkt);

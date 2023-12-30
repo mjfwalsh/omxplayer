@@ -25,6 +25,7 @@
 #include <boost/circular_buffer.hpp>
 #include <string>
 #include <vector>
+#include <atomic>
 
 class OMXClock;
 class OMXPacket;
@@ -57,9 +58,10 @@ public:
   OMXPlayerSubtitles(OMXSubConfig *config,
                      OMXClock* clock);
 
-  bool Open(size_t stream_count, std::string &external_subtitle_path);
+  void AllocateInternalSubs(size_t stream_count);
+  bool AddExternalSubs(std::string &external_subtitle_path);
 
-  bool initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
+  void initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
 
   void Close();
   void Flush();
@@ -116,7 +118,7 @@ private:
   int                                           m_external_subtitle_stream = -1;
   std::vector<Subtitle>                         m_external_subtitles;
   int                                           m_active_index = 0;
-  int                                           m_stream_count = 0;
+  std::atomic_int                               m_stream_count{0};
   int                                           m_delay = 0;
   SubtitleRenderer                              m_renderer;
   OMXClock*                                     m_av_clock;

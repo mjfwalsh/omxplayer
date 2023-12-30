@@ -18,6 +18,8 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include "KeyConfig.h"
+
 enum ControlFlow {
   CONTINUE = -1,
 //EXIT_SUCCESS = 0,
@@ -35,3 +37,5 @@ enum ControlFlow {
 class DMessage;
 
 enum ControlFlow handle_event(enum Action search_key, DMessage *m);
+
+void initDVDSubs();

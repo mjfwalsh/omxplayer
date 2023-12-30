@@ -21,6 +21,7 @@
 
 #include "OMXReader.h"
 #include "OMXClock.h"
+#include "omxplayer.h"
 #include "utils/defs.h"
 #include "utils/log.h"
 
@@ -148,17 +149,25 @@ OMXPacket *OMXReader::Read()
     return NULL;
   }
 
+  AVStream *pStream = m_pFormatContext->streams[omx_pkt->avpkt->stream_index];
+  omx_pkt->codec_type = pStream->codecpar->codec_type;
+
   try
   {
     omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
   }
   catch(std::out_of_range const&)
   {
-    omx_pkt->stream_type_index = -1;
+    if(omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
+    {
+      int dvd_subs_before = m_dvd_subs;
+      omx_pkt->stream_type_index = AddStream(omx_pkt->avpkt->stream_index);
+      if(dvd_subs_before != m_dvd_subs)
+        initDVDSubs();
+    }
+    else
+      omx_pkt->stream_type_index = -1;
   }
-
-  AVStream *pStream = m_pFormatContext->streams[omx_pkt->avpkt->stream_index];
-  omx_pkt->codec_type = pStream->codecpar->codec_type;
 
   if(m_bMatroska && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
   { // matroska can store different timestamps
@@ -208,7 +217,7 @@ OMXPacket *OMXReader::Read()
 }
 
 
-void OMXReader::AddStream(int id, const char *lang)
+int OMXReader::AddStream(int id, const char *lang)
 {
   AVStream *pStream = m_pFormatContext->streams[id];
 
@@ -216,7 +225,7 @@ void OMXReader::AddStream(int id, const char *lang)
   switch (pStream->codecpar->codec_type)
   {
     case AVMEDIA_TYPE_AUDIO:
-      if(m_audio_count == MAX_AUDIO_STREAMS) return;
+      if(m_audio_count == MAX_AUDIO_STREAMS) return -1;
 
       this_stream              = &m_audio_streams[m_audio_count];
       this_stream->type        = OMXSTREAM_AUDIO;
@@ -226,7 +235,7 @@ void OMXReader::AddStream(int id, const char *lang)
     case AVMEDIA_TYPE_VIDEO:
       // discard if it's a picture attachment (e.g. album art embedded in MP3 or AAC)
       if(m_video_count == MAX_VIDEO_STREAMS || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
-        return;
+        return -1;
 
       this_stream              = &m_video_streams[m_video_count];
       this_stream->type        = OMXSTREAM_VIDEO;
@@ -234,7 +243,7 @@ void OMXReader::AddStream(int id, const char *lang)
       m_video_count++;
       break;
     case AVMEDIA_TYPE_SUBTITLE:
-      if(m_subtitle_count == MAX_SUBTITLE_STREAMS) return;
+      if(m_subtitle_count == MAX_SUBTITLE_STREAMS) return -1;
 
       this_stream              = &m_subtitle_streams[m_subtitle_count];
       this_stream->type        = OMXSTREAM_SUBTITLE;
@@ -242,7 +251,7 @@ void OMXReader::AddStream(int id, const char *lang)
       m_subtitle_count++;
       break;
     default:
-      return;
+      return -1;
   }
 
   // The rest are the same for all stream types
@@ -276,7 +285,19 @@ void OMXReader::AddStream(int id, const char *lang)
     this_stream->extrasize = 0;
     this_stream->extradata = NULL;
   }
+
+  // remember the first DVD subtitles stream we come across
+  if(this_stream->type == OMXSTREAM_SUBTITLE
+      && this_stream->hints.codec == AV_CODEC_ID_DVD_SUBTITLE
+      && m_dvd_subs == -1)
+  {
+    m_dvd_subs = m_subtitle_count - 1;
+  }
+
+  // return the stream type index
+  return m_steam_map[id];
 }
+
 double OMXReader::SelectAspect(AVStream* st, bool& forced)
 {
   /* if stream aspect unknown or resolves to 1, use codec aspect */
@@ -583,61 +604,26 @@ void OMXReader::GetMetaData(OMXStreamType type, vector<string> &list)
     list[i] = to_string(i) + ":" + st[i].language + ":" + st[i].name + ":" + st[i].codec_name + ":";
 }
 
-static void get_palette_from_extradata(char *p, char *end, uint32_t **palette_c)
-{
-  while(p < end) {
-    if(strncmp(p, "palette:", 8) == 0) {
-      p += 8;
-      goto found_palette;
-    }
-    while(p < end && *p++ != '\n');
-  }
-  return;
 
-  found_palette:
 
-  char *next;
-  uint32_t *palette = *palette_c = new uint32_t[16];
-  for(int i = 0; i < 16; i++) {
-    palette[i] = strtoul(p, &next, 16);
-    if(p == next) {
-      delete palette;
-      *palette_c = NULL;
-      return;
-    } else {
-      p = next;
-    }
-
-    while(*p == ',' || *p == ' ') p++;
-  }
-}
-
-// Find if dvd subs are present and returns true if so.
-// If width and height are available, it sets them too.
+// If dvd subs are present returns and available metadata
 // We assume that all dvd subs will have the same dimensions.
-bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette)
+bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uint32_t *buf)
 {
-  for(int i = 0; i < m_subtitle_count; i++)
-  {
-    if(m_subtitle_streams[i].hints.codec == AV_CODEC_ID_DVD_SUBTITLE)
-    {
-      if(m_subtitle_streams[i].hints.width > 0 && m_subtitle_streams[i].hints.height > 0)
-      {
-        d.width = m_subtitle_streams[i].hints.width;
-        d.height = m_subtitle_streams[i].hints.height;
-        aspect = d.width / (float)d.height;
-      }
+  if(m_dvd_subs == -1)
+    return false;
 
-      if(*palette == NULL && m_subtitle_streams[i].extrasize > 0)
-      {
-        get_palette_from_extradata((char *)m_subtitle_streams[i].extradata,
-                                   (char *)m_subtitle_streams[i].extradata + m_subtitle_streams[i].extrasize,
-                                   palette);
-      }
-      return true;
-    }
+  if(m_subtitle_streams[m_dvd_subs].hints.width > 0
+      && m_subtitle_streams[m_dvd_subs].hints.height > 0)
+  {
+    d.width = m_subtitle_streams[m_dvd_subs].hints.width;
+    d.height = m_subtitle_streams[m_dvd_subs].hints.height;
+    aspect = d.width / (float)d.height;
   }
-  return false;
+
+  *palette = getPalette(&m_subtitle_streams[m_dvd_subs], buf);
+
+  return true;
 }
 
 void OMXReader::info_dump(const std::string &filename)

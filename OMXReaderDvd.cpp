@@ -296,7 +296,7 @@ int OMXReaderDvd::DvdRead(uint8_t *lpBuf, int blocks_to_read)
   return read_blocks * DVD_VIDEO_LB_LEN;
 }
 
-uint32_t *OMXReaderDvd::getPalette()
+uint32_t *OMXReaderDvd::getPalette(OMXStream *st, uint32_t *palette)
 {
   return m_current_track.title->palette;
 }

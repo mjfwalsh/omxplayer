@@ -43,6 +43,7 @@ public:
 protected:
   void GetStreams() override;
   void GetChapters();
+  uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
 
   int64_t m_chapters[MAX_OMX_CHAPTERS];
   int m_chapter_count = 0;

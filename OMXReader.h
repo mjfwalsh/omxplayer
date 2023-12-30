@@ -94,14 +94,13 @@ public:
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
   int GetStreamByLanguage(OMXStreamType type, const char *lang);
   virtual bool CanSeek() = 0;
-  bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette);
+  bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uint32_t *buf);
   static void SetCookie(const char *c);
   inline static void SetUserAgent(const char *ua) { s_user_agent.assign(ua); }
   inline static void SetLavDopts(const char *lo)  { s_lavfdopts.assign(lo); }
   static bool SetAvDict(const char *ad);
   static void SetDefaultTimeout(float timeout);
   void info_dump(const std::string &filename);
-  virtual uint32_t *getPalette() { return NULL; }
 
 protected:
   class OMXStream
@@ -132,6 +131,7 @@ protected:
   double                    m_aspect          = 0.0f;
   int                       m_width           = 0;
   int                       m_height          = 0;
+  int                       m_dvd_subs        = -1;
   std::unordered_map<int, int>   m_steam_map;
   static std::string        s_cookie;
   static std::string        s_user_agent;
@@ -143,12 +143,13 @@ protected:
 
   std::string GetStreamCodecName(AVStream *stream);
   virtual void GetStreams() = 0;
-  void AddStream(int id, const char* lang = NULL);
+  int AddStream(int id, const char* lang = NULL);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
   static int interrupt_cb(void *unused = NULL);
   static void reset_timeout(int x);
   bool SetHints(AVStream *stream, COMXStreamInfo *hints);
+  virtual uint32_t *getPalette(OMXStream *st, uint32_t *palette) = 0;
 };
 
 #endif

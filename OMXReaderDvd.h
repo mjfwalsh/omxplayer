@@ -38,7 +38,6 @@ public:
   enum SeekResult SeekTime(int64_t time, bool backwards) override;
   enum SeekResult SeekTimeDelta(int delta, int64_t &cur_pts) override;
   inline bool CanSeek() override { return true; };
-  uint32_t *getPalette();
 
 protected:
   static int dvd_read(void *h, uint8_t* buf, int size);
@@ -50,6 +49,7 @@ protected:
   int64_t DvdSeek(int blocks, int whence = SEEK_SET);
   bool IsEOF();
   int GetCell(int ms);
+  uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
 
   AVIOContext *m_ioContext = NULL;
   int64_t m_prev_seek = 0;

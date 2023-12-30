@@ -62,25 +62,28 @@ m_av_clock(clock)
 }
 
 
-bool OMXPlayerSubtitles::Open(size_t internal_stream_count, string &subtitle_path)
+void OMXPlayerSubtitles::AllocateInternalSubs(size_t internal_stream_count)
 {
   m_stream_count = internal_stream_count;
-
-  if(subtitle_path.size() > 0)
-  {
-    if(!ReadSrt(subtitle_path, m_external_subtitles))
-      return false;
-
-    m_external_subtitle_stream = m_stream_count;
+  if(m_external_subtitle_stream != -1)
     m_stream_count++;
-  }
 
   m_subtitle_buffers.resize(internal_stream_count, circular_buffer<Subtitle>(32));
+}
+
+bool OMXPlayerSubtitles::AddExternalSubs(string &subtitle_path)
+{
+  if(!ReadSrt(subtitle_path, m_external_subtitles))
+    return false;
+
+  m_external_subtitle_stream = m_stream_count;
+  m_stream_count++;
 
   return true;
 }
 
-bool OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette)
+
+void OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette)
 {
   if(palette) {
     if(!m_palette)
@@ -95,31 +98,29 @@ bool OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32
 
   AVCONST AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
-    return false;
+    throw "Failed to find DVD codec";
   
   m_dvd_codec_context = avcodec_alloc_context3(dvd_codec);
   if(!m_dvd_codec_context)
-    return false;
+    throw "Failed to allocate DVD codec";
 
   if(m_palette == NULL) {
     if(avcodec_open2(m_dvd_codec_context, dvd_codec, NULL) < 0)
-      return false;
+      throw "avcodec_open2 failed 2";
   } else {
     AVDictionary *d = NULL;
     if(av_dict_set(&d, "palette", "0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F", 0) < 0)
-      return false;
+      throw "av_dict_set failed";
 
     if(avcodec_open2(m_dvd_codec_context, dvd_codec, &d) < 0)
-      return false;
+      throw "avcodec_open2 failed 3";
 
     if(av_dict_count(d) != 0)
-      return false;
+      throw "av_dict_count == 0";
   }
 
   DispmanxLayer *layer = new DispmanxLayer(1, view_port, sub_dim, palette);
   SendToRenderer(new Mailbox::DVDSubs(layer));
-
-  return true;
 }
 
 void OMXPlayerSubtitles::Close()
@@ -290,6 +291,14 @@ void OMXPlayerSubtitles::RenderLoop()
             Subtitle sub;
             if(GetSubData(pkt, sub))
             {
+              // Add extra streams as the need arises
+              if(pkt->stream_type_index >= (int)m_subtitle_buffers.size())
+              {
+                m_subtitle_buffers.resize(pkt->stream_type_index + 1, circular_buffer<Subtitle>(32));
+                m_stream_count++;
+                printf("Added extra subtitle stream: %u\n", m_subtitle_buffers.size());
+              }
+
               // Add to buffer
               m_subtitle_buffers[pkt->stream_type_index].push_back(sub);
 

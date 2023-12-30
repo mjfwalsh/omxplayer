@@ -211,3 +211,34 @@ void OMXReaderFile::GetChapters()
     m_chapters[i] = ConvertTimestamp(chapter->start, chapter->time_base.den, chapter->time_base.num);
   }
 }
+
+uint32_t *OMXReaderFile::getPalette(OMXStream *st, uint32_t *palette)
+{
+  const char *p = (const char*)st->extradata;
+
+  const char *end = p + st->extrasize;
+  while(p < end) {
+    if(strncmp(p, "palette:", 8) == 0) {
+      p += 8;
+      goto found_palette;
+    }
+    while(p < end && *p++ != '\n');
+  }
+  return NULL;
+
+  found_palette:
+
+  char *next;
+  for(int i = 0; i < 16; i++) {
+    palette[i] = strtoul(p, &next, 16);
+    if(p == next) {
+      return NULL;
+    } else {
+      p = next;
+    }
+
+    while(*p == ',' || *p == ' ') p++;
+  }
+
+  return palette;
+}
