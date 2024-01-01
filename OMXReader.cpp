@@ -230,43 +230,53 @@ int OMXReader::AddStream(int id, const char *lang)
   OMXStream *this_stream;
   switch (pStream->codecpar->codec_type)
   {
-    case AVMEDIA_TYPE_AUDIO:
-      type = OMXSTREAM_AUDIO;
-      break;
-    case AVMEDIA_TYPE_VIDEO:
-      // only allow a single video stream
-      // and discard picture attachments (e.g. album art embedded in MP3 or AAC)
-      if(m_streams[OMXSTREAM_VIDEO].size() == MAX_VIDEO_STREAMS
-          || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
-        goto ignore_stream;
+  case AVMEDIA_TYPE_AUDIO:
+    type = OMXSTREAM_AUDIO;
+    break;
+  case AVMEDIA_TYPE_VIDEO:
+    // only allow a single video stream
+    // and discard picture attachments (e.g. album art embedded in MP3 or AAC)
+    if(m_streams[OMXSTREAM_VIDEO].size() == MAX_VIDEO_STREAMS
+        || (pStream->disposition & AV_DISPOSITION_ATTACHED_PIC))
+      goto ignore_stream;
 
-      type = OMXSTREAM_VIDEO;
-      break;
-    case AVMEDIA_TYPE_SUBTITLE:
-      switch(pStream->codecpar->codec_id)
-      {
-      case AV_CODEC_ID_SUBRIP:
-      case AV_CODEC_ID_SSA:
-      case AV_CODEC_ID_ASS:
-      case AV_CODEC_ID_DVD_SUBTITLE:
-        break;
-      default:
-        goto ignore_stream;
-      }
-
-      type = OMXSTREAM_SUBTITLE;
+    type = OMXSTREAM_VIDEO;
+    break;
+  case AVMEDIA_TYPE_SUBTITLE:
+    switch(pStream->codecpar->codec_id)
+    {
+    case AV_CODEC_ID_SUBRIP:
+    case AV_CODEC_ID_SSA:
+    case AV_CODEC_ID_ASS:
+    case AV_CODEC_ID_DVD_SUBTITLE:
       break;
     default:
-    ignore_stream:
-      pStream->discard = AVDISCARD_ALL;
-      return -1;
+      goto ignore_stream;
+    }
+
+    type = OMXSTREAM_SUBTITLE;
+    break;
+  default:
+  ignore_stream:
+    pStream->discard = AVDISCARD_ALL;
+    return -1;
   }
 
   m_steam_map[id]          = m_streams[type].size();
-
   m_streams[type].emplace_back();
   this_stream              = &m_streams[type].back();
   this_stream->type        = type;
+
+  PopulateStream(id, lang, this_stream);
+
+  // return the stream type index
+  return m_steam_map[id];
+}
+
+void OMXReader::PopulateStream(int id, const char *lang, OMXStream *this_stream)
+{
+  AVStream *pStream = m_pFormatContext->streams[id];
+
   this_stream->stream      = pStream;
   this_stream->codec_name  = GetStreamCodecName(pStream);
   this_stream->id          = id;
@@ -292,11 +302,6 @@ int OMXReader::AddStream(int id, const char *lang)
     this_stream->extrasize = pStream->codecpar->extradata_size;
     this_stream->extradata = pStream->codecpar->extradata;
   }
-  else
-  {
-    this_stream->extrasize = 0;
-    this_stream->extradata = NULL;
-  }
 
   // remember the first DVD subtitles stream we come across
   if(this_stream->type == OMXSTREAM_SUBTITLE
@@ -306,9 +311,6 @@ int OMXReader::AddStream(int id, const char *lang)
     m_dvd_subs = m_steam_map[id];
     m_dvd_subs_need_init = true;
   }
-
-  // return the stream type index
-  return m_steam_map[id];
 }
 
 double OMXReader::SelectAspect(AVStream* st, bool& forced)

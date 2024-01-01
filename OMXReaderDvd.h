@@ -23,6 +23,7 @@
 #define _OMX_READER_DVD_H_
 
 #include <stdint.h>
+#include <unordered_map>
 
 #include "OMXReader.h"
 #include "OMXDvdPlayer.h"
@@ -43,8 +44,9 @@ protected:
   static int dvd_read(void *h, uint8_t* buf, int size);
   static int64_t dvd_seek(void *h, int64_t new_pos, int whence);
   bool SeekByte(int seek_byte, bool backwords, const int64_t &new_pts);
-  void AddMissingSubtitleStream(int id);
+  void AddMissingSubtitleStream(int id, const char *lang);
   void GetStreams() override;
+  int AddStream(int id, const char* lang = NULL) override;
   int DvdRead(unsigned char *lpBuf, int no_blocks);
   int64_t DvdSeek(int blocks, int whence = SEEK_SET);
   bool IsEOF();
@@ -62,6 +64,7 @@ protected:
   int m_current_part = 0;
   uint32_t m_prev_pack_end = 0;
   int64_t m_offset = 0;
+  std::unordered_map<int, int> m_pending_streams;
 };
 
 #endif

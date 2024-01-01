@@ -296,7 +296,6 @@ void OMXPlayerSubtitles::RenderLoop()
               {
                 m_subtitle_buffers.resize(pkt->stream_type_index + 1, circular_buffer<Subtitle>(32));
                 m_stream_count++;
-                printf("Added extra subtitle stream: %u\n", m_subtitle_buffers.size());
               }
 
               // Add to buffer
@@ -315,7 +314,6 @@ void OMXPlayerSubtitles::RenderLoop()
             Mailbox::UseInternalSubs *a = (Mailbox::UseInternalSubs *)args;
 
             internal_subtitles.clear();
-            m_prev_pts = -1;
             subtitles = &internal_subtitles;
             for(Subtitle &s : m_subtitle_buffers[a->active_stream])
               internal_subtitles.push_back(s);
@@ -327,7 +325,6 @@ void OMXPlayerSubtitles::RenderLoop()
           for(auto &q : m_subtitle_buffers)
             q.clear();
           prev_now = INT_MAX;
-          m_prev_pts = -1;
           break;
         case Mailbox::USE_EXTERNAL_SUBS:
           subtitles = &m_external_subtitles;
@@ -370,7 +367,6 @@ void OMXPlayerSubtitles::RenderLoop()
           internal_subtitles.clear();
           subtitles = &internal_subtitles;
           prev_now = INT_MAX;
-          m_prev_pts = -1;
           break;
         case Mailbox::EXIT:
           delete args;
@@ -570,35 +566,23 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   AVSubtitle s;
   int got_sub_ptr;
 
-  if(avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt->avpkt) < 0)
+  int rv = avcodec_decode_subtitle2(m_dvd_codec_context, &s, &got_sub_ptr, pkt->avpkt);
+  if(rv < 0 || got_sub_ptr == 0)
     return false;
 
-  // partial packet with timestamp but no content
-  if(got_sub_ptr == 0)
+  // Check time
+  if(pkt->avpkt->pts == AV_NOPTS_VALUE)
   {
-    if(pkt->avpkt->pts != AV_NOPTS_VALUE)
-      m_prev_pts = static_cast<int>(pkt->avpkt->pts/1000);
+    avsubtitle_free(&s);
     return false;
   }
 
-  // DVD Subs only have one rectangle
-  AVSubtitleRect *r = s.rects[0];
-
-  // At the moment we only support 4 colour palettes
-  if(r->nb_colors != 4)
-    goto ignore_sub;
-
   // set time
-  if(pkt->avpkt->pts != AV_NOPTS_VALUE)
-    sub.start = static_cast<int>(pkt->avpkt->pts/1000);
-  else if(m_prev_pts != -1)
-    sub.start = m_prev_pts;
-  else
-    goto ignore_sub;
-
+  sub.start = static_cast<int>(pkt->avpkt->pts/1000);
   sub.stop = sub.start + (s.end_display_time - s.start_display_time);
 
   // set sub rectangle
+  AVSubtitleRect *r = s.rects[0];
   sub.image.rect = {r->x, r->y, r->w, r->h};
 
   // calculate palette and copy data
@@ -609,13 +593,7 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
 
   // tidy up
   avsubtitle_free(&s);
-  m_prev_pts = sub.stop;
   return true;
-
-ignore_sub:
-  avsubtitle_free(&s);
-  m_prev_pts = -1;
-  return false;
 }
 
 bool OMXPlayerSubtitles::GetSubData(OMXPacket *pkt, Subtitle &sub)
@@ -623,17 +601,9 @@ bool OMXPlayerSubtitles::GetSubData(OMXPacket *pkt, Subtitle &sub)
   sub.isImage = pkt->hints.codec == AV_CODEC_ID_DVD_SUBTITLE;
 
   if(sub.isImage)
-  {
-    if(!GetImageData(pkt, sub))
-      return false;
-  }
+    return GetImageData(pkt, sub);
   else
-  {
-    if(!GetTextLines(pkt, sub))
-      return false;
-  }
-
-  return true;
+    return GetTextLines(pkt, sub);
 }
 
 void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)

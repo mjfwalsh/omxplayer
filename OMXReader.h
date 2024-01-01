@@ -35,7 +35,6 @@ extern "C" {
 #include <string>
 #include <unordered_map>
 
-
 #define MAX_VIDEO_STREAMS 1
 
 class OMXPacket
@@ -47,7 +46,7 @@ public:
   AVPacket *avpkt;
   COMXStreamInfo hints;
   enum AVMediaType codec_type;
-  int stream_type_index;
+  int stream_type_index = -1;
 };
 
 enum OMXStreamType
@@ -110,7 +109,7 @@ protected:
     std::string    codec_name;
     AVStream       *stream     = NULL;
     OMXStreamType  type      = OMXSTREAM_NONE;
-    int            id          = 0;
+    int            id          = -1;
     void           *extradata  = NULL;
     unsigned int   extrasize  = 0;
     COMXStreamInfo hints;
@@ -138,7 +137,8 @@ protected:
 
   std::string GetStreamCodecName(AVStream *stream);
   virtual void GetStreams() = 0;
-  int AddStream(int id, const char* lang = NULL);
+  virtual int AddStream(int id, const char* lang = NULL);
+  void PopulateStream(int id, const char *lang, OMXStream *this_stream);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
   static int interrupt_cb(void *unused = NULL);
