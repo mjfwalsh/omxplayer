@@ -1032,7 +1032,7 @@ int change_playlist_item()
     m_track = -1;
 
     // and check for external subs
-    if(m_osd && !m_cmd_line_subtitles && !IsURL(m_filename))
+    if(!m_cmd_line_subtitles && !IsURL(m_filename))
     {
       std::string subtitles_path = m_filename.substr(0, m_filename.find_last_of(".")) + ".srt";
 
@@ -1851,7 +1851,7 @@ int run_play_loop()
                          Subtitle Setup
      ------------------------------------------------------- */
 
-  // sets the number of internal subs
+  // set the number of internal subs
   // will be adjusted later if additional sub streams are found
   m_player_subtitles->AllocateInternalSubs(m_omx_reader->SubtitleStreamCount());
 
@@ -1862,24 +1862,36 @@ int run_play_loop()
     return END_PLAY_WITH_ERROR;
   }
 
-  // user has disable subtitles
-  if(m_audio_index != -2)
-    m_audio_index = -1;
-  else if(m_cmd_line_subtitles)
+  // validate command line provided info
+  if(m_subtitle_index >= m_omx_reader->SubtitleStreamCount())
+  {
+    printf("Error: file has only %d subtitle streams\n", m_omx_reader->SubtitleStreamCount());
+    m_subtitle_index = -1;
+  }
+
+  // set subtitle stream
+  if(m_cmd_line_subtitles && m_subtitle_index == -1)
     m_subtitle_index = m_omx_reader->SubtitleStreamCount() - 1;
   else if(m_subtitle_lang[0] != '\0')
     m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
   m_player_subtitles->SetActiveStream(m_subtitle_index);
 
-  if(m_audio_index != -2)
-    initDVDSubs();
+  initDVDSubs();
 
   PrintSubtitleInfo();
+
+  /* -------------------------------------------------------
+                         Clock Setup
+     ------------------------------------------------------- */
 
   // start the clock
   m_av_clock->Reset(m_player_video, m_player_audio);
   m_av_clock->StateExecute();
+
+  /* -------------------------------------------------------
+                         Main Loop
+     ------------------------------------------------------- */
 
   // forget seek time of all files being played
   if(!m_is_dvd_device) m_file_store.forget(m_filename);
