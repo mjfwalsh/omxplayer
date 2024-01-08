@@ -36,8 +36,8 @@ public:
 
   OMXPacket *Read() override;
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
-  enum SeekResult SeekTime(int64_t time, bool backwards) override;
-  enum SeekResult SeekTimeDelta(int delta, int64_t &cur_pts) override;
+  enum SeekResult SeekTime(int64_t &time, bool backwards) override;
+  enum SeekResult SeekTimeDelta(int64_t delta, int64_t &cur_pts) override;
   inline bool CanSeek() override { return true; };
 
 protected:
@@ -54,8 +54,6 @@ protected:
   uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
 
   AVIOContext *m_ioContext = NULL;
-  int64_t m_prev_seek = 0;
-  bool m_fix_time_stamps = false;
   int m_pos = 0;
   int pos_byte_offset = 0;
   dvd_file_t *m_dvd_track = NULL;

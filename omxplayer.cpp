@@ -256,7 +256,7 @@ enum ControlFlow Seek(int seconds_delta)
 {
   int64_t cur_pts = m_av_clock->GetMediaTime();
 
-  switch(m_omx_reader->SeekTimeDelta(seconds_delta, cur_pts))
+  switch(m_omx_reader->SeekTimeDelta(seconds_delta * AV_TIME_BASE, cur_pts))
   {
   case SEEK_SUCCESS:
     show_progress_message("Seek", (int)(cur_pts * 1e-6));
@@ -1513,12 +1513,21 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       }
 
       int64_t cur_pts = m_av_clock->GetMediaTime();
+      SeekResult r;
 
       // make absolute value relative
       if(search_key == SET_POSITION)
-        seek_pts -= cur_pts;
+      {
+        r = m_omx_reader->SeekTime(seek_pts, seek_pts < cur_pts);
+        if(r == SEEK_SUCCESS)
+          cur_pts = seek_pts;
+      }
+      else
+      {
+        r = m_omx_reader->SeekTimeDelta(seek_pts, cur_pts);
+      }
 
-      if(m_omx_reader->SeekTimeDelta(seek_pts / AV_TIME_BASE, cur_pts) == SEEK_SUCCESS)
+      if(r == SEEK_SUCCESS)
       {
         show_progress_message("Seek", (int)(cur_pts * 1e-6));
         FlushStreams(cur_pts);
@@ -1721,8 +1730,14 @@ int run_play_loop()
   m_av_clock->Pause();
 
   // seek at start
-  if(m_incr > 0 && m_omx_reader->SeekTime((int64_t)m_incr * AV_TIME_BASE, false) != SEEK_SUCCESS)
-    m_incr = 0;
+  if(m_incr > 0)
+  {
+    int64_t seek_micro = (int64_t)m_incr * AV_TIME_BASE;
+    if(m_omx_reader->SeekTime(seek_micro, false) == SEEK_SUCCESS)
+      m_incr = seek_micro / AV_TIME_BASE;
+    else
+      m_incr = 0;
+  }
 
   // display some startup osd
   std::string display_name;

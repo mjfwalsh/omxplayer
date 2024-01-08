@@ -77,6 +77,9 @@ OMXReaderDvd::OMXReaderDvd(dvd_file_t *dt, OMXDvdPlayer::track_info &ct, int tn)
 
   m_pFormatContext->duration = (int64_t)m_current_track.length * 1000;
 
+  if(m_pFormatContext->start_time != AV_NOPTS_VALUE)
+    m_prev_pack_end = m_pFormatContext->start_time * 9 / 100;
+
   GetStreams();
 }
 
@@ -106,20 +109,12 @@ again:
   if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV)
   {
     navRead_PCI(&pci_pack, &pkt->avpkt->data[1]);
-    AVStream *pStream = m_pFormatContext->streams[pkt->avpkt->stream_index];
 
-    if(m_fix_time_stamps)
+    if(m_prev_pack_end != pci_pack.pci_gi.vobu_s_ptm)
     {
-        int64_t cell_start = ConvertTimestamp(pci_pack.pci_gi.vobu_s_ptm, pStream->time_base.den, pStream->time_base.num);
-        m_offset = m_prev_seek - cell_start;
-        m_fix_time_stamps = false;
-        printf("Setting offset after jump: %lld\n", m_offset);
-    }
-    else if(m_prev_pack_end != 0 && m_prev_pack_end != pci_pack.pci_gi.vobu_s_ptm)
-    {
-        int64_t diff = (int64_t)m_prev_pack_end - (int64_t)pci_pack.pci_gi.vobu_s_ptm;
-        m_offset += ConvertTimestamp(diff, pStream->time_base.den, pStream->time_base.num);
-        printf("Discontinuity offset: %lld\n", m_offset);
+        int diff = (int)m_prev_pack_end - (int)pci_pack.pci_gi.vobu_s_ptm;
+        m_offset += (int64_t)diff * 100 / 9;
+        printf("Offset: %lld\n", m_offset);
     }
 
     m_prev_pack_end = pci_pack.pci_gi.vobu_e_ptm;
@@ -161,9 +156,9 @@ int OMXReaderDvd::AddStream(int id, const char *lang)
   return m_steam_map[id];
 }
 
-enum SeekResult OMXReaderDvd::SeekTimeDelta(int delta, int64_t &cur_pts)
+enum SeekResult OMXReaderDvd::SeekTimeDelta(int64_t delta, int64_t &cur_pts)
 {
-  int64_t seek_pts = cur_pts + (int64_t)delta * AV_TIME_BASE;
+  int64_t seek_pts = cur_pts + delta;
   enum SeekResult r = SeekTime(seek_pts, delta < 0);
 
   if(r == SEEK_SUCCESS)
@@ -181,8 +176,12 @@ bool OMXReaderDvd::SeekByte(int seek_byte, bool backwords, const int64_t &new_pt
 
   if(av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) >= 0)
   {
-    m_prev_seek = new_pts;
-    m_fix_time_stamps = true;
+    m_offset = 0;
+    int64_t time = new_pts;
+    if(m_pFormatContext->start_time != AV_NOPTS_VALUE)
+      time += m_pFormatContext->start_time;
+
+    m_prev_pack_end = time * 9 / 100;
     m_eof = false;
     return true;
   }
@@ -362,7 +361,7 @@ int64_t OMXReaderDvd::DvdSeek(int new_pos, int whence)
   }
 }
 
-enum SeekResult OMXReaderDvd::SeekTime(int64_t seek_micro, bool backwards)
+enum SeekResult OMXReaderDvd::SeekTime(int64_t &seek_micro, bool backwards)
 {
   // save these in case they have to be restored later
   int old_pos = m_pos;

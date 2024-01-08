@@ -408,18 +408,18 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
 
   // do calculations in floats as they can easily overflow otherwise
   // we don't care for having a completly exact timestamp anyway
-  double timestamp = (double)pts * (double)num  / (double)den;
-  double starttime = 0.0f;
+  int64_t timestamp = (double)pts * (double)num * (double)AV_TIME_BASE  / (double)den;
+  int64_t starttime = 0;
 
   if (m_pFormatContext->start_time != AV_NOPTS_VALUE)
-    starttime = (double)m_pFormatContext->start_time / AV_TIME_BASE;
+    starttime = (double)m_pFormatContext->start_time;
 
   if(timestamp > starttime)
     timestamp -= starttime;
-  else if( timestamp + 0.1f > starttime )
+  else if( timestamp + 100000 > starttime )
     timestamp = 0;
 
-  return timestamp * AV_TIME_BASE;
+  return timestamp;
 }
 
 void OMXReader::SetSpeed(float iSpeed)

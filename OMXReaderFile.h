@@ -37,8 +37,8 @@ public:
 
   bool CanSeek() override;
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
-  enum SeekResult SeekTime(int64_t time, bool backwards) override;
-  enum SeekResult SeekTimeDelta(int delta, int64_t &cur_pts) override;
+  enum SeekResult SeekTime(int64_t &time, bool backwards) override;
+  enum SeekResult SeekTimeDelta(int64_t delta, int64_t &cur_pts) override;
 
 protected:
   void GetStreams() override;

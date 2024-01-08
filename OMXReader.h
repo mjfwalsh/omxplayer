@@ -61,8 +61,8 @@ public:
   OMXReader();
   virtual ~OMXReader();
 
-  virtual enum SeekResult SeekTime(int64_t time, bool backwards) = 0;
-  virtual enum SeekResult SeekTimeDelta(int delta_secs, int64_t &cur_pts) = 0;
+  virtual enum SeekResult SeekTime(int64_t &time, bool backwards) = 0;
+  virtual enum SeekResult SeekTimeDelta(int64_t delta_microsecs, int64_t &cur_pts) = 0;
   virtual OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();

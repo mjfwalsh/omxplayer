@@ -99,9 +99,9 @@ OMXReaderFile::OMXReaderFile(string &filename, bool live)
   GetChapters();
 }
 
-enum SeekResult OMXReaderFile::SeekTimeDelta(int delta, int64_t &cur_pts)
+enum SeekResult OMXReaderFile::SeekTimeDelta(int64_t delta, int64_t &cur_pts)
 {
-  int64_t seek_pts = cur_pts + (int64_t)delta * AV_TIME_BASE;
+  int64_t seek_pts = cur_pts + delta;
   enum SeekResult r = SeekTime(seek_pts, delta < 0);
 
   if(r == SEEK_SUCCESS)
@@ -110,7 +110,7 @@ enum SeekResult OMXReaderFile::SeekTimeDelta(int delta, int64_t &cur_pts)
   return r;
 }
 
-enum SeekResult OMXReaderFile::SeekTime(int64_t seek_pts, bool backwards)
+enum SeekResult OMXReaderFile::SeekTime(int64_t &seek_pts, bool backwards)
 {
   if(!CanSeek())
     return SEEK_FAIL;
