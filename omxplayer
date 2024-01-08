@@ -4,27 +4,24 @@
 #
 
 if [ -L "$0" ]; then
-    OMXPLAYER_BASH=`readlink $0`
-    OMXPLAYER_DIR=`dirname $OMXPLAYER_BASH`
+    OMXPLAYER_DIR=$(dirname $(readlink $0))
 else
-	OMXPLAYER_DIR=`dirname $0`
+	OMXPLAYER_DIR=$(dirname $0)
 fi
 
 OMXPLAYER_BIN="$OMXPLAYER_DIR/omxplayer.bin"
-OMXPLAYER_LIBS="/opt/vc/lib"
+OMXPLAYER_LIBS="/opt/vc/lib:/usr/local/lib/omxplayer"
 
 if [ -d "$OMXPLAYER_DIR/ffmpeg" ]; then
     OMXPLAYER_LIBS+=:$(echo $OMXPLAYER_DIR/ffmpeg/lib[as]* | tr ' ' ':')
-elif [ -d "/usr/lib/omxplayer" ]; then
-    OMXPLAYER_LIBS+=:"/usr/lib/omxplayer"
 fi
 
 refresh_regex='(|.* )(-[a-z]*r[a-z]*|--refresh)( .*|$)'
 audio_regex='.*\.(mp3|wav|wma|cda|ogg|ogm|aac|ac3|flac)( .*|$)'
 
-fbset_bin=`which fbset 2> /dev/null`
-xset_bin=`which xset 2> /dev/null`
-xrefresh_bin=`which xrefresh 2> /dev/null`
+fbset_bin=$(which fbset 2> /dev/null)
+xset_bin=$(which xset 2> /dev/null)
+xrefresh_bin=$(which xrefresh 2> /dev/null)
 
 do_refresh_fix=0
 if [ -z $NOREFRESH ] || [ "$NOREFRESH" == "0" ]; then
@@ -67,8 +64,8 @@ if [ ! -s "$OMXPLAYER_DBUS_PID" ] || ! pgrep -f "$DBUS_CMD" -F "$OMXPLAYER_DBUS_
 	done
 fi
 
-export DBUS_SESSION_BUS_ADDRESS=`cat $OMXPLAYER_DBUS_ADDR`
-export DBUS_SESSION_BUS_PID=`cat $OMXPLAYER_DBUS_PID`
+export DBUS_SESSION_BUS_ADDRESS=$(cat $OMXPLAYER_DBUS_ADDR)
+export DBUS_SESSION_BUS_PID=$(cat $OMXPLAYER_DBUS_PID)
 
 export LD_LIBRARY_PATH="$OMXPLAYER_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
@@ -80,7 +77,7 @@ $OMXPLAYER_BIN "$@"
 RESULT=$?
 
 if [ ! -z $fbset_bin ]; then
-    DEPTH2=`$fbset_bin | head -3 | tail -1 | cut -d " " -f 10`
+    DEPTH2=$($fbset_bin | head -3 | tail -1 | cut -d " " -f 10)
 
     if [ "$DEPTH2" == "8" ]; then
         DEPTH1=16

@@ -54,11 +54,11 @@ dist:
 	$(STRIP) omxplayer.bin
 	tar -cPf $(DIST).tgz \
 	--transform 's,^omxplayer$$,/usr/local/bin/omxplayer,S' \
-	--transform 's,^omxplayer.bin$$,/usr/local/bin/omxplayer.bin,S' \
+	--transform 's,^omxplayer\.bin$$,/usr/local/bin/omxplayer.bin,S' \
 	--transform 's,^COPYING$$,/usr/local/share/doc/omxplayer/COPYING,S' \
-	--transform 's,^README.md$$,/usr/local/share/doc/omxplayer/README,S' \
-	--transform 's,^omxplayer.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
-	--transform 's,^omxplayer.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
+	--transform 's,^README\.md$$,/usr/local/share/doc/omxplayer/README,S' \
+	--transform 's,^omxplayer\.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
+	--transform 's,^/opt/vc/lib/,/usr/local/lib/omxplayer/,S' \
 	omxplayer omxplayer.bin COPYING README.md omxplayer.1 \
 	/opt/vc/lib/libbrcmEGL.so /opt/vc/lib/libbrcmGLESv2.so /opt/vc/lib/libopenmaxil.so
 
