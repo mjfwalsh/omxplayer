@@ -20,6 +20,7 @@
  */
 
 #include "OMXReader.h"
+#include "OMXPacket.h"
 #include "OMXClock.h"
 #include "omxplayer.h"
 #include "utils/defs.h"
@@ -459,31 +460,6 @@ int OMXReader::GetStreamLengthSeconds()
 int64_t OMXReader::GetStreamLengthMicro()
 {
   return m_pFormatContext->duration;
-}
-
-double OMXReader::NormalizeFrameduration(double frameduration)
-{
-  //if the duration is within 20 microseconds of a common duration, use that
-  const double durations[] = {AV_TIME_BASE * 1.001 / 24.0, AV_TIME_BASE / 24.0, AV_TIME_BASE / 25.0,
-                              AV_TIME_BASE * 1.001 / 30.0, AV_TIME_BASE / 30.0, AV_TIME_BASE / 50.0,
-                              AV_TIME_BASE * 1.001 / 60.0, AV_TIME_BASE / 60.0};
-
-  double lowestdiff = AV_TIME_BASE;
-  int    selected   = -1;
-  for (size_t i = 0; i < sizeof(durations) / sizeof(durations[0]); i++)
-  {
-    double diff = fabs(frameduration - durations[i]);
-    if (diff < 20.0 && diff < lowestdiff)
-    {
-      selected = i;
-      lowestdiff = diff;
-    }
-  }
-
-  if (selected != -1)
-    return durations[selected];
-  else
-    return frameduration;
 }
 
 std::string OMXReader::GetStreamCodecName(AVStream *stream)

@@ -24,7 +24,7 @@ extern "C" {
 }
 
 #include "OMXAudioCodecOMX.h"
-#include "OMXReader.h"
+#include "OMXPacket.h"
 #include "utils/defs.h"
 #include "utils/log.h"
 #include "utils/PCMRemap.h"

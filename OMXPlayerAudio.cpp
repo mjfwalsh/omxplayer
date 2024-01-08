@@ -20,7 +20,7 @@
  */
 
 #include "OMXPlayerAudio.h"
-#include "OMXReader.h"
+#include "OMXPacket.h"
 #include "OMXAudioCodecOMX.h"
 #include "OMXClock.h"
 
@@ -62,11 +62,11 @@ void OMXPlayerAudio::UnLockDecoder()
 }
 
 OMXPlayerAudio::OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config,
-                               OMXReader *omx_reader, int active_stream)
+                               std::vector<std::string> &codecs, int active_stream)
 :
 m_av_clock(av_clock),
-m_omx_reader(omx_reader),
-m_stream_count(omx_reader->AudioStreamCount()),
+m_codecs(codecs),
+m_stream_count(codecs.size()),
 m_flush_requested(false),
 m_config(config)
 {
@@ -348,7 +348,7 @@ bool OMXPlayerAudio::OpenDecoder()
   if(m_passthrough)
     m_hw_decode = false;
 
-  std::string codec_name = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, m_stream_index);
+  std::string codec_name = m_codecs[m_stream_index];
 
   try {
     m_decoder = new COMXAudio(m_av_clock, m_config, m_pAudioCodec->GetChannelMap(), m_pAudioCodec->GetBitsPerSample());

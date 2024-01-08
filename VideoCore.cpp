@@ -22,7 +22,7 @@ extern "C" {
 }
 
 #include "OMXStreamInfo.h"
-#include "OMXReader.h"
+#include "OMXPlayerVideo.h"
 #include "utils/log.h"
 #include "VideoCore.h"
 
@@ -111,7 +111,7 @@ void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool Nativ
   uint32_t prefer_mode;
 
   if (hints->fpsrate && hints->fpsscale)
-    fps = AV_TIME_BASE / OMXReader::NormalizeFrameduration((double)AV_TIME_BASE * hints->fpsscale / hints->fpsrate);
+    fps = AV_TIME_BASE / OMXPlayerVideo::NormalizeFrameduration((double)AV_TIME_BASE * hints->fpsscale / hints->fpsrate);
 
   //Supported HDMI CEA/DMT resolutions, preferred resolution will be returned
   TV_SUPPORTED_MODE_NEW_T *supported_modes = NULL;

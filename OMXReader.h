@@ -37,17 +37,7 @@ extern "C" {
 
 #define MAX_VIDEO_STREAMS 1
 
-class OMXPacket
-{
-public:
-  OMXPacket();
-  ~OMXPacket();
-  
-  AVPacket *avpkt;
-  COMXStreamInfo hints;
-  enum AVMediaType codec_type;
-  int stream_type_index = -1;
-};
+class OMXPacket;
 
 enum OMXStreamType
 {
@@ -86,7 +76,6 @@ public:
   virtual SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) = 0;
   int GetStreamLengthSeconds();
   int64_t GetStreamLengthMicro();
-  static double NormalizeFrameduration(double frameduration);
   std::string GetCodecName(OMXStreamType type, unsigned int index);
   void GetMetaData(OMXStreamType type, std::vector<std::string> &list);
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);

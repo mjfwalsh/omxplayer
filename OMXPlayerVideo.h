@@ -68,6 +68,8 @@ public:
   void SetLayer(int layer);
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
+  static double NormalizeFrameduration(double frameduration);
+
 private:
   void Process() override;
   bool Decode(OMXPacket *pkt);

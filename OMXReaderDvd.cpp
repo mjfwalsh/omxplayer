@@ -21,6 +21,7 @@
 
 #include "OMXReader.h"
 #include "OMXReaderDvd.h"
+#include "OMXPacket.h"
 #include "OMXDvdPlayer.h"
 #include "utils/defs.h"
 #include "utils/log.h"

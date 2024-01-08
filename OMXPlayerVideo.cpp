@@ -28,7 +28,7 @@
 #include "utils/log.h"
 
 #include "OMXClock.h"
-#include "OMXReader.h"
+#include "OMXPacket.h"
 #include "OMXStreamInfo.h"
 
 class Rect;
@@ -46,7 +46,7 @@ m_config(config)
   pthread_mutex_init(&m_lock_decoder, NULL);
 
   if (m_config.hints.fpsrate && m_config.hints.fpsscale)
-    m_fps = AV_TIME_BASE / OMXReader::NormalizeFrameduration((double)AV_TIME_BASE * m_config.hints.fpsscale / m_config.hints.fpsrate);
+    m_fps = AV_TIME_BASE / NormalizeFrameduration((double)AV_TIME_BASE * m_config.hints.fpsscale / m_config.hints.fpsrate);
   else
     m_fps = 25.0;
 
@@ -279,3 +279,27 @@ bool OMXPlayerVideo::IsEOS()
   return m_packets.empty() && m_decoder->IsEOS();
 }
 
+double OMXPlayerVideo::NormalizeFrameduration(double frameduration)
+{
+  //if the duration is within 20 microseconds of a common duration, use that
+  const double durations[] = {AV_TIME_BASE * 1.001 / 24.0, AV_TIME_BASE / 24.0, AV_TIME_BASE / 25.0,
+                              AV_TIME_BASE * 1.001 / 30.0, AV_TIME_BASE / 30.0, AV_TIME_BASE / 50.0,
+                              AV_TIME_BASE * 1.001 / 60.0, AV_TIME_BASE / 60.0};
+
+  double lowestdiff = AV_TIME_BASE;
+  int    selected   = -1;
+  for (size_t i = 0; i < sizeof(durations) / sizeof(durations[0]); i++)
+  {
+    double diff = fabs(frameduration - durations[i]);
+    if (diff < 20.0 && diff < lowestdiff)
+    {
+      selected = i;
+      lowestdiff = diff;
+    }
+  }
+
+  if (selected != -1)
+    return durations[selected];
+  else
+    return frameduration;
+}

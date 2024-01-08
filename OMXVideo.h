@@ -96,7 +96,6 @@ protected:
   COMXCoreComponent m_omx_sched;
   COMXCoreComponent m_omx_image_fx;
   COMXCoreComponent *m_omx_clock = NULL;
-  OMXClock           *m_av_clock = NULL;
 
   COMXCoreTunel     m_omx_tunnel_decoder;
   COMXCoreTunel     m_omx_tunnel_clock;

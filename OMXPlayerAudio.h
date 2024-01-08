@@ -31,6 +31,7 @@ extern "C" {
 #include "OMXThread.h"
 
 #include <deque>
+#include <vector>
 #include <string>
 #include <atomic>
 #include <stdint.h>
@@ -48,7 +49,7 @@ protected:
   pthread_cond_t            m_packet_cond;
   pthread_mutex_t           m_lock_decoder;
   OMXClock                  *m_av_clock;
-  OMXReader                 *m_omx_reader;
+  std::vector<std::string>  m_codecs;
   COMXAudio                 *m_decoder           = NULL;
   std::atomic<int>          m_stream_index;
   int                       m_stream_count;
@@ -68,7 +69,9 @@ protected:
   void UnLockDecoder();
 private:
 public:
-  OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config, OMXReader *omx_reader, int active_stream);
+  OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config,
+    std::vector<std::string> &codecs, int active_stream);
+
   ~OMXPlayerAudio();
 
   void Flush();

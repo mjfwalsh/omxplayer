@@ -21,7 +21,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
-#include "OMXReader.h"
+#include "OMXPacket.h"
 #include "OMXClock.h"
 #include "OMXPlayerSubtitles.h"
 #include "SubtitleRenderer.h"

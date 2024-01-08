@@ -21,7 +21,7 @@
 
 #include "OMXVideo.h"
 #include "OMXClock.h"
-#include "OMXReader.h"
+#include "OMXPacket.h"
 
 #include "OMXStreamInfo.h"
 #include "utils/log.h"
@@ -487,8 +487,7 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
   if(clock == NULL)
     throw "invalid clock";
 
-  m_av_clock = clock;
-  m_omx_clock = m_av_clock->GetOMXClock();
+  m_omx_clock = clock->GetOMXClock();
 
   if(m_omx_clock->GetComponent() == NULL)
   {

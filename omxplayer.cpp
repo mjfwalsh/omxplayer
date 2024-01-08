@@ -32,6 +32,7 @@
 #include "OMXReader.h"
 #include "OMXReaderFile.h"
 #include "OMXReaderDvd.h"
+#include "OMXPacket.h"
 #include "OMXPlayerVideo.h"
 #include "OMXPlayerAudio.h"
 #include "OMXPlayerSubtitles.h"
@@ -1830,9 +1831,14 @@ int run_play_loop()
         m_config_audio.passthrough = false;
     }
 
+    // compile list if audio codecs
+    std::vector<std::string> audio_codecs(m_omx_reader->AudioStreamCount());
+    for(int i = 0; i < m_omx_reader->AudioStreamCount(); i++)
+      audio_codecs[i] = m_omx_reader->GetCodecName(OMXSTREAM_AUDIO, i);
+
     // start audio decoder encoder
     try {
-      m_player_audio = new OMXPlayerAudio(m_av_clock, m_config_audio, m_omx_reader, m_audio_index);
+      m_player_audio = new OMXPlayerAudio(m_av_clock, m_config_audio, audio_codecs, m_audio_index);
 
       // set volume
       m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
