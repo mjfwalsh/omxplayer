@@ -67,29 +67,23 @@ void RecentDVDStore::readStore()
 
 	string line;
 	while(getline(s, line)) { 
-		DVDInfo d;
-
 		vector<string> tokens = split(line);
 
-		if(tokens.size() >= 3) {
+		if(tokens.size() == 5) {
+			DVDInfo &d = store.emplace_back();
+
 			d.key = tokens[0];
 			d.track = atoi(tokens[1].c_str());
 			d.time = atoi(tokens[2].c_str());
-		}
-
-		if(tokens.size() == 5) {
 			d.audio = tokens[3];
 			d.subtitle = tokens[4];
 		}
-
-		if(tokens.size() >= 3)
-			store.push_back(move(d));
 	}
 	s.close();
 }
 
 
-void RecentDVDStore::setCurrentDVD(const string &key, int &track, int &time, char *audio, char *subtitle)
+void RecentDVDStore::retrieveRecentInfo(const string &key, int &track, int &time, char *audio, char *subtitle)
 {
 	if(!m_init) return;
 

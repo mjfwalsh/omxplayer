@@ -87,8 +87,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
 			continue;
 
 		// allocate new track
-		tracks.emplace_back();
-		auto &this_track = tracks.back();
+		auto &this_track = tracks.emplace_back();
 		this_track.length = track_length;
 
 		// some DVD tracks have dummy cells at the end, ignore them

@@ -24,7 +24,7 @@ class RecentDVDStore
 {
 public:
 	void readStore();
-	void setCurrentDVD(const std::string &key, int &track, int &time, char *audio, char *subtitle);
+	void retrieveRecentInfo(const std::string &key, int &track, int &time, char *audio, char *subtitle);
 	void remember(const int &track, const int &time, char *audio, char *subtitle);
 	void saveStore();
 

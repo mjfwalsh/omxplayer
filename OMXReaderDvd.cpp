@@ -174,22 +174,20 @@ bool OMXReaderDvd::SeekByte(int seek_byte, bool backwords, const int64_t &new_pt
   int flags = (backwords ? AVSEEK_FLAG_BACKWARD : 0) | AVSEEK_FLAG_BYTE;
   reset_timeout(1);
 
-  if(av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) >= 0)
-  {
-    m_offset = 0;
-    int64_t time = new_pts;
-    if(m_pFormatContext->start_time != AV_NOPTS_VALUE)
-      time += m_pFormatContext->start_time;
-
-    m_prev_pack_end = time * 9 / 100;
-    m_eof = false;
-    return true;
-  }
-  else
+  if(av_seek_frame(m_pFormatContext, -1, (int64_t)seek_byte * 2048, flags) < 0)
   {
     m_eof = true;
     return false;
   }
+
+  m_offset = 0;
+  int64_t time = new_pts;
+  if(m_pFormatContext->start_time != AV_NOPTS_VALUE)
+    time += m_pFormatContext->start_time;
+
+  m_prev_pack_end = time * 9 / 100;
+  m_eof = false;
+  return true;
 }
 
 
@@ -224,9 +222,7 @@ void OMXReaderDvd::GetStreams()
     const char *lang = OMXDvdPlayer::convertLangCode(subtitle_stream.lang);
     
     if(!AddStreamByHexId(hex_id, lang))
-    {
       AddMissingSubtitleStream(hex_id, lang);
-    }
   }
 }
 
@@ -262,9 +258,7 @@ SeekResult OMXReaderDvd::SeekChapter(int delta, int &result_ch, int64_t &cur_pts
 void OMXReaderDvd::AddMissingSubtitleStream(int hex_id, const char *lang)
 {
   m_pending_streams[hex_id]       = m_streams[OMXSTREAM_SUBTITLE].size();
-  m_streams[OMXSTREAM_SUBTITLE].emplace_back();
-
-  OMXStream &this_stream          = m_streams[OMXSTREAM_SUBTITLE].back();
+  OMXStream &this_stream          = m_streams[OMXSTREAM_SUBTITLE].emplace_back();
   this_stream.type                = OMXSTREAM_SUBTITLE;
   this_stream.codec_name          = "dvdsub";
   this_stream.hints.codec         = AV_CODEC_ID_DVD_SUBTITLE;

@@ -48,7 +48,7 @@ OMXReaderFile::OMXReaderFile(string &filename, bool live)
     // ffmpeg dislikes the useragent from AirPlay urls
     size_t idx = filename.find("|");
     if(idx != string::npos)
-      filename = filename.substr(0, idx);
+      filename.erase(idx);
 
     // Enable seeking if http, ftp
     if(!live && (filename.substr(0,7) == "http://" || filename.substr(0,8) == "https://" ||

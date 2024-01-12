@@ -153,11 +153,16 @@ OMXPacket *OMXReader::Read()
   AVStream *pStream = m_pFormatContext->streams[omx_pkt->avpkt->stream_index];
   omx_pkt->codec_type = pStream->codecpar->codec_type;
 
+  // let dvd nav streams through
+  if(pStream->codecpar->codec_id == AV_CODEC_ID_DVD_NAV)
+  {
+    omx_pkt->stream_type_index = -1;
+    return omx_pkt;
+  }
+
   try
   {
-    // let dvd nav streams through
-    if(pStream->codecpar->codec_id != AV_CODEC_ID_DVD_NAV)
-      omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
+    omx_pkt->stream_type_index = m_steam_map.at(omx_pkt->avpkt->stream_index);
   }
   catch(std::out_of_range const&)
   {
@@ -167,13 +172,16 @@ OMXPacket *OMXReader::Read()
     if(omx_pkt->codec_type == AVMEDIA_TYPE_SUBTITLE)
     {
       omx_pkt->stream_type_index = AddStream(omx_pkt->avpkt->stream_index);
-      if(m_dvd_subs_need_init)
+      if(omx_pkt->stream_type_index == -1)
+        pStream->discard = AVDISCARD_ALL;
+      else if(m_dvd_subs_need_init)
         initDVDSubs();
     }
-
-    // otherwise ignore it
-    if(omx_pkt->stream_type_index == -1)
+    else
+    {
+      // otherwise ignore it
       pStream->discard = AVDISCARD_ALL;
+    }
   }
 
   if(m_bMatroska && omx_pkt->codec_type == AVMEDIA_TYPE_VIDEO)
@@ -264,8 +272,7 @@ int OMXReader::AddStream(int id, const char *lang)
   }
 
   m_steam_map[id]          = m_streams[type].size();
-  m_streams[type].emplace_back();
-  this_stream              = &m_streams[type].back();
+  this_stream              = &m_streams[type].emplace_back();
   this_stream->type        = type;
 
   PopulateStream(id, lang, this_stream);
@@ -425,13 +432,10 @@ int64_t OMXReader::ConvertTimestamp(int64_t pts, int den, int num)
 void OMXReader::SetSpeed(float iSpeed)
 {
   if(m_speed != DVD_PLAYSPEED_PAUSE && iSpeed == DVD_PLAYSPEED_PAUSE)
-  {
     av_read_pause(m_pFormatContext);
-  }
   else if(m_speed == DVD_PLAYSPEED_PAUSE && iSpeed != DVD_PLAYSPEED_PAUSE)
-  {
     av_read_play(m_pFormatContext);
-  }
+
   m_speed = iSpeed;
 
   AVDiscard discard = AVDISCARD_NONE;
@@ -443,13 +447,9 @@ void OMXReader::SetSpeed(float iSpeed)
     discard = AVDISCARD_NONKEY;
 
   for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
-  {
-    if(m_pFormatContext->streams[i])
-    {
-      if(m_pFormatContext->streams[i]->discard != AVDISCARD_ALL)
-        m_pFormatContext->streams[i]->discard = discard;
-    }
-  }
+    if(m_pFormatContext->streams[i]
+        && m_pFormatContext->streams[i]->discard != AVDISCARD_ALL)
+      m_pFormatContext->streams[i]->discard = discard;
 }
 
 int OMXReader::GetStreamLengthSeconds()

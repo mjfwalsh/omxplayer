@@ -59,7 +59,7 @@ public:
                      OMXClock* clock);
 
   void AllocateInternalSubs(size_t stream_count);
-  bool AddExternalSubs(std::string &external_subtitle_path);
+  bool AddExternalSubs(const std::string &external_subtitle_path);
 
   void initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
 

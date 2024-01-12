@@ -71,7 +71,7 @@ void OMXPlayerSubtitles::AllocateInternalSubs(size_t internal_stream_count)
   m_subtitle_buffers.resize(internal_stream_count, circular_buffer<Subtitle>(32));
 }
 
-bool OMXPlayerSubtitles::AddExternalSubs(string &subtitle_path)
+bool OMXPlayerSubtitles::AddExternalSubs(const string &subtitle_path)
 {
   if(!ReadSrt(subtitle_path, m_external_subtitles))
     return false;

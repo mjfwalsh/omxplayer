@@ -565,7 +565,7 @@ int startup(int argc, char *argv[])
           if(colon >= 0)
           {
             m_config_audio.device = str.substr(0, colon);
-            m_config_audio.subdevice = str.substr(colon + 1, str.length() - colon);
+            m_config_audio.subdevice = str.substr(colon + 1);
           }
           else
           {
@@ -919,13 +919,15 @@ int startup(int argc, char *argv[])
 // we jump here when is provided with a new file
 int change_file()
 {
+  bool started_from_link = false;
+
+restart:
+
   // strip off file://
   if(m_filename.substr(0, 7) == "file://" )
     m_filename.erase(0, 7);
 
   bool is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
-
-  bool started_from_link = false;
   if(is_local_file)
   {
     if(!Exists(m_filename))
@@ -936,45 +938,29 @@ int change_file()
 
     // get realpath for file
     char *fp = realpath(m_filename.c_str(), NULL);
-    assert(fp != NULL);
+    if(!fp) abort();
     m_filename = fp;
     free(fp);
 
     // check if this is a link file
     // if it's a link file, rerun some file checks
-    if(m_file_store.checkIfLink(m_filename))
+    if(!started_from_link && m_file_store.checkIfLink(m_filename))
     {
       started_from_link = true;
       m_file_store.readlink(m_filename, m_track, m_incr,
                             &m_audio_lang[0], m_audio_index,
                             &m_subtitle_lang[0], m_subtitle_index);
-      
-      is_local_file = !IsURL(m_filename) && !IsPipe(m_filename);
-
-      if(is_local_file && !Exists(m_filename))
-      {
-        osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
-        return END_PLAY_WITH_ERROR;
-      }
+      goto restart;
     }
-  }
 
-  // m_filename may have changed
-  m_is_dvd_device = false;
-  if(is_local_file)
-  {
     // Are we dealing with a DVD VIDEO_TS folder or a device file
     CRegExp findvideots("^(.*?/VIDEO_TS|/dev/.*$)");
-    if(findvideots.RegFind(m_filename, 0) > -1)
-    {
-      m_is_dvd_device = true;
+    m_is_dvd_device = findvideots.RegFind(m_filename, 0) > -1;
+
+    if(m_is_dvd_device)
       m_filename = findvideots.GetMatch(1);
-    }
     else if(!m_dump_format_exit)
-    {
-      // make a playlist
       m_playlist.readPlaylist(m_filename);
-    }
   }
 
   // read the relevant recent files/dvd store
@@ -1019,9 +1005,11 @@ int change_playlist_item()
 
     // Was DVD played before?
     if(!m_dump_format_exit && m_is_dvd_device && m_playlist_enabled)
-    {
-      m_dvd_store.setCurrentDVD(m_DvdPlayer->GetID(), m_track, m_incr, &m_audio_lang[0], &m_subtitle_lang[0]);
-    }
+      m_dvd_store.retrieveRecentInfo(m_DvdPlayer->GetID(),
+                                     m_track,
+                                     m_incr,
+                                     &m_audio_lang[0],
+                                     &m_subtitle_lang[0]);
 
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)
@@ -1038,9 +1026,7 @@ int change_playlist_item()
       std::string subtitles_path = m_filename.substr(0, m_filename.find_last_of(".")) + ".srt";
 
       if(Exists(subtitles_path))
-      {
         m_external_subtitles_path = subtitles_path;
-      }
     }
   }
 
@@ -1145,7 +1131,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       }
 
       m_audio_index = m_player_audio->SetActiveStream(index);
-      m->respond_bool(m_audio_index == index ? 1 : 0);
+      m->respond_bool(m_audio_index == index);
     }
     else
     {
@@ -1209,7 +1195,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       }
 
       m_subtitle_index = m_player_subtitles->SetActiveStream(index);
-      m->respond_bool(m_subtitle_index == index ? 1 : 0);
+      m->respond_bool(m_subtitle_index == index);
     }
     else
     {
@@ -2180,6 +2166,14 @@ void end_of_play_loop()
   m_incr = 0;
 }
 
+int play_next(int next)
+{
+  m_firstfile = false;
+  m_next_prev_file = 0;
+  m_subtitle_index = -1;
+  m_audio_index = -1;
+  return next;
+}
 
 int playlist_control()
 {
@@ -2193,13 +2187,7 @@ int playlist_control()
       // if this is a DVD look for next track
       if(m_DvdPlayer) {
         if(m_DvdPlayer->CanChangeTrack(m_next_prev_file, m_track))
-        {
-          m_firstfile = false;
-          m_next_prev_file = 0;
-          m_subtitle_index = -1;
-          m_audio_index = -1;
-          return RUN_PLAY_LOOP;
-        }
+          return play_next(RUN_PLAY_LOOP);
 
         // no more tracks to play, exit DVD mode
         delete m_DvdPlayer;
@@ -2209,13 +2197,9 @@ int playlist_control()
       // Play next file in playlist if there is one...
       // 'Exists' checks if file is readable
       if(!m_is_dvd_device && m_playlist.ChangeFile(m_next_prev_file, m_filename)
-          && Exists(m_filename)) {
-        m_firstfile = false;
-        m_next_prev_file = 0;
-        m_subtitle_index = -1;
-        m_audio_index = -1;
-        return CHANGE_PLAYLIST_ITEM;
-      }
+           && Exists(m_filename))
+        return play_next(CHANGE_PLAYLIST_ITEM);
+
     } else if(!m_firstfile || t > 5) {
       if(m_is_dvd_device)
         m_dvd_store.remember(m_track, t, &m_audio_lang[0], &m_subtitle_lang[0]);

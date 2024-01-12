@@ -1,5 +1,5 @@
 CFLAGS+=-pipe -mfloat-abi=hard -mcpu=arm1176jzf-s -fomit-frame-pointer -mabi=aapcs-linux
-CFLAGS+=-mtune=arm1176jzf-s -mfpu=vfp -g -std=c++0x -D__STDC_CONSTANT_MACROS
+CFLAGS+=-mtune=arm1176jzf-s -mfpu=vfp -g -std=c++17 -D__STDC_CONSTANT_MACROS
 CFLAGS+=-D__STDC_LIMIT_MACROS -DTARGET_POSIX -DTARGET_LINUX -fPIC -DPIC -D_REENTRANT
 CFLAGS+=-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -DHAVE_CMAKE_CONFIG -D__VIDEOCORE4__
 CFLAGS+=-U_FORTIFY_SOURCE -Wall -DOMX_SKIP64BIT -ftree-vectorize

@@ -94,7 +94,7 @@ static int cmp_item(const void *a, const void *b)
   return strcmp(aa, bb->key);
 }
 
-struct lookup_item *search_table(const char *needle)
+static struct lookup_item *search_table(const char *needle)
 {
 	return static_cast<struct lookup_item*>(
 		bsearch(needle,
