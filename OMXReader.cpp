@@ -285,7 +285,7 @@ void OMXReader::PopulateStream(int id, const char *lang, OMXStream *this_stream)
 {
   AVStream *pStream = m_pFormatContext->streams[id];
 
-  this_stream->stream      = pStream;
+  this_stream->hex_id      = pStream->id;
   this_stream->codec_name  = GetStreamCodecName(pStream);
   this_stream->id          = id;
   SetHints(pStream, &this_stream->hints);
@@ -570,9 +570,9 @@ void OMXReader::info_dump(const std::string &filename)
     int i = 0;
     for(const auto &stream : m_streams[OMXSTREAM_VIDEO])
     {
-        printf("    %2d. 0x%x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
+        printf("    %2d. 0x%02x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
             ++i,
-            stream.stream->id,
+            stream.hex_id,
             stream.codec_name.c_str(),
             (float)stream.hints.fpsrate / (float)stream.hints.fpsscale,
             stream.hints.width, stream.hints.height,
@@ -582,9 +582,9 @@ void OMXReader::info_dump(const std::string &filename)
     i = 0;
     for(const auto &stream : m_streams[OMXSTREAM_AUDIO])
     {
-        printf("    %2d. 0x%x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
+        printf("    %2d. 0x%02x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
             ++i,
-            stream.stream->id,
+            stream.hex_id,
             stream.codec_name.c_str(),
             stream.language.c_str(),
             stream.hints.channels,
@@ -595,9 +595,9 @@ void OMXReader::info_dump(const std::string &filename)
     i = 0;
     for(const auto &stream : m_streams[OMXSTREAM_SUBTITLE])
     {
-        printf("    %2d. 0x%x: subtitle: %s (lang %s)\n",
+        printf("    %2d. 0x%02x: subtitle: %s (lang %s)\n",
             ++i,
-            stream.stream->id,
+            stream.hex_id,
             stream.codec_name.c_str(),
             stream.language.c_str());
     }

@@ -33,7 +33,7 @@
 class OMXReaderFile : public OMXReader
 {
 public:
-  OMXReaderFile(std::string &filename, bool live);
+  OMXReaderFile(std::string &filename, bool live, bool has_extern);
 
   bool CanSeek() override;
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
@@ -44,6 +44,7 @@ protected:
   void GetStreams() override;
   void GetChapters();
   uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
+  void AddExternalSubs();
 
   int64_t m_chapters[MAX_OMX_CHAPTERS];
   int m_chapter_count = 0;

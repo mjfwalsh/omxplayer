@@ -1206,7 +1206,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     if(m_subtitle_index == -1) {
       m_subtitle_lang[0] = '\0';
       osd_print("Subtitles Off");
-    } else if(m_subtitle_index == m_omx_reader->SubtitleStreamCount()) {
+    } else if(m_subtitle_index == m_player_subtitles->GetExternalSubIndex()) {
       m_subtitle_lang[0] = '\0';
       osd_print("Subtitle stream: External");
     } else {
@@ -1591,9 +1591,6 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       std::vector<std::string> sub_list;
       m_omx_reader->GetMetaData(OMXSTREAM_SUBTITLE, sub_list);
 
-      if(!m_external_subtitles_path.empty())
-        sub_list.push_back(std::to_string(sub_list.size()) + ":und:external:srt:");
-
       // mark one as active
       int active_stream = m_player_subtitles->GetActiveStream();
       if(active_stream > -1)
@@ -1684,7 +1681,8 @@ int run_play_loop()
     if(m_DvdPlayer)
       m_omx_reader = (OMXReader *)m_DvdPlayer->OpenTrack(m_track);
     else
-      m_omx_reader = (OMXReader *)new OMXReaderFile(m_filename, m_config_audio.is_live);
+      m_omx_reader = (OMXReader *)new OMXReaderFile(m_filename, m_config_audio.is_live,
+        !m_external_subtitles_path.empty());
   }
   catch(const char *msg)
   {
@@ -1859,7 +1857,11 @@ int run_play_loop()
 
   // set the number of internal subs
   // will be adjusted later if additional sub streams are found
-  m_player_subtitles->AllocateInternalSubs(m_omx_reader->SubtitleStreamCount());
+  int internal_subs = m_omx_reader->SubtitleStreamCount();
+  if(!m_external_subtitles_path.empty())
+    internal_subs--;
+
+  m_player_subtitles->AllocateInternalSubs(internal_subs);
 
   if(!m_external_subtitles_path.empty()
       && !m_player_subtitles->AddExternalSubs(m_external_subtitles_path))

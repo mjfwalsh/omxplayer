@@ -96,9 +96,9 @@ protected:
     std::string    language;
     std::string    name;
     std::string    codec_name;
-    AVStream       *stream     = NULL;
     OMXStreamType  type      = OMXSTREAM_NONE;
     int            id          = -1;
+    int            hex_id      = -1;
     void           *extradata  = NULL;
     unsigned int   extrasize  = 0;
     COMXStreamInfo hints;

@@ -89,6 +89,11 @@ public:
     return m_stream_count;
   }
 
+  int GetExternalSubIndex()
+  {
+    return m_external_subtitle_stream;
+  }
+
   void SetDelay(int value);
 
   int GetDelay()

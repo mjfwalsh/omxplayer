@@ -33,7 +33,7 @@ extern "C" {
 
 using namespace std;
 
-OMXReaderFile::OMXReaderFile(string &filename, bool live)
+OMXReaderFile::OMXReaderFile(string &filename, bool live, bool has_external_subs)
 {
   AVDictionary *d = NULL;
 
@@ -97,6 +97,10 @@ OMXReaderFile::OMXReaderFile(string &filename, bool live)
   // fill in rest of metadata
   GetStreams();
   GetChapters();
+
+  // add metsdata for external subtitles
+  if(has_external_subs)
+    AddExternalSubs();
 }
 
 enum SeekResult OMXReaderFile::SeekTimeDelta(int64_t delta, int64_t &cur_pts)
@@ -217,4 +221,16 @@ uint32_t *OMXReaderFile::getPalette(OMXStream *st, uint32_t *palette)
   }
 
   return palette;
+}
+
+void OMXReaderFile::AddExternalSubs()
+{
+  OMXStream &this_stream   = m_streams[OMXSTREAM_SUBTITLE].emplace_back();
+  this_stream.type         = OMXSTREAM_SUBTITLE;
+  this_stream.id           = -1;
+  this_stream.hex_id       = 0xFF;
+  this_stream.language     = "und";
+  this_stream.codec_name   = "srt";
+  this_stream.name         = "External";
+  this_stream.hints.codec  = AV_CODEC_ID_SRT;
 }
