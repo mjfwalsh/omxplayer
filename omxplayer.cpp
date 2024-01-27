@@ -1325,7 +1325,6 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case RAISE:
-    m->needs_response = false;
     break;
 
   case GET:

@@ -117,23 +117,17 @@ enum ControlFlow OMXControl::getEvent()
     return CONTINUE;
 
   enum Action action = dbus_find_method(method);
+  bool expects_response = !dbus_message_get_no_reply(m);
 
-  if(action < START_OF_DBUS_METHODS)
-  {
-    dbus_message_unref(m);
-    return handle_event(action, NULL);
-  }
-  else
-  {
-    DMessage message(m);
-    return handle_event(action, &message);
-  }
+  DMessage message(m, expects_response);
+  return handle_event(action, &message);
 }
 
 
-DMessage::DMessage(DBusMessage *message)
+DMessage::DMessage(DBusMessage *message, bool res)
 {
   m = message;
+  needs_response = res;
 }
 
 DMessage::~DMessage()
@@ -258,7 +252,8 @@ void DMessage::respond_double(double value)
 
 void DMessage::respond_bool(bool value)
 {
-  respond(DBUS_TYPE_BOOLEAN, &value);
+  int t = value ? 1 : 0;
+  respond(DBUS_TYPE_BOOLEAN, &t);
 }
 
 void DMessage::respond_string(const char *value)

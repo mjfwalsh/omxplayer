@@ -17,7 +17,7 @@ private:
   DBusMessageIter *m_args = NULL;
 
 public:
-  explicit DMessage(DBusMessage *message);
+  DMessage(DBusMessage *message, bool needs_response);
   ~DMessage();
 
   operator DBusMessage*() const { return m; }
@@ -40,13 +40,15 @@ public:
 
   void respond_array(std::vector<std::string> &list);
   void respond_array(const char *array[], int size);
-  bool needs_response = true;
 
   void send_metadata(const char *url, int64_t *duration);
+
 private:
   void respond(int type, void *value);
   bool get_arg(int type, void *value);
   void respond_error(const char *name, const char *msg);
+
+  bool needs_response;
 };
 
 
