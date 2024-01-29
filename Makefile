@@ -34,12 +34,14 @@ endif
 %.o: %.cpp
 	$(CXX) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-version.h:
+version_info.h:
 	perl gen_version.pl
 
-omxplayer.o: version.h
+version.o: version_info.h
 
+# regenerate version.o if version info has changed
 omxplayer.bin: $(OBJS)
+	perl gen_version.pl $(CXX) $(CFLAGS) $(INCLUDES) -c version.cpp -o version.o
 	$(CXX) -o omxplayer.bin $(OBJS) $(LDFLAGS) $(LDLIBS)
 
 omxplayer.1: omxplayer.pod
@@ -47,7 +49,7 @@ omxplayer.1: omxplayer.pod
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST).tgz version.h omxplayer.1
+	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST).tgz version_info.h omxplayer.1
 
 .PHONY: dist
 dist:

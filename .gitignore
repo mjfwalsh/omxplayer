@@ -12,4 +12,4 @@ MAN
 omxplayer-dist.tgz
 omxplayer-dist
 omxplayer.1
-version.h
+version_info.h

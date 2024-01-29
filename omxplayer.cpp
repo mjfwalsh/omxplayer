@@ -127,14 +127,6 @@ void print_usage()
   puts("usage: omxplayer [file|url]");
 }
 
-void print_version()
-{
-  printf("omxplayer - Commandline multimedia player for the Raspberry Pi\n");
-  printf("        Build date: %s\n", VERSION_DATE);
-  printf("        Version   : %s [%s]\n", VERSION_HASH, VERSION_BRANCH);
-  printf("        Repository: %s\n", VERSION_REPO);
-}
-
 #define UM_STDOUT 0b00000001
 #define UM_LONG   0b00000010
 #define UM_SLEEP  0b00000100
