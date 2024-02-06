@@ -157,6 +157,7 @@ OMXPacket *OMXReader::Read()
   if(pStream->codecpar->codec_id == AV_CODEC_ID_DVD_NAV)
   {
     omx_pkt->stream_type_index = -1;
+    omx_pkt->hints.codec = AV_CODEC_ID_DVD_NAV;
     return omx_pkt;
   }
 

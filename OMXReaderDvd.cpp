@@ -112,8 +112,8 @@ again:
 
     if(m_prev_pack_end != pci_pack.pci_gi.vobu_s_ptm)
     {
-        int diff = (int)m_prev_pack_end - (int)pci_pack.pci_gi.vobu_s_ptm;
-        m_offset += (int64_t)diff * 100 / 9;
+        int64_t diff = (int64_t)m_prev_pack_end - (int64_t)pci_pack.pci_gi.vobu_s_ptm;
+        m_offset += diff * 100 / 9;
         printf("Offset: %lld\n", m_offset);
     }
 
