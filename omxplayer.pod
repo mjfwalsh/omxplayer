@@ -158,6 +158,10 @@ Set video render layer number (higher numbers are on top)
 
 Set output speaker layout (e.g. 5.1)
 
+=item B<--limited-osd>
+
+Hide startup osd but show it for user commands
+
 =item B<--lines> I<n>
 
 Number of lines in the subtitle buffer (default: 3)

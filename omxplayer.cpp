@@ -55,11 +55,22 @@
 
 #include "version.h"
 
+#define OSD_STDOUT 0b00000001
+#define OSD_LONG   0b00000010
+#define OSD_SLEEP  0b00000100
+#define OSD_NORM   0b00001000
+#define OSD_EXTRA  0b00010000
+#define OSD_NONE   0b00000000
+
+// used for error messages
+#define OSD_ERROR  0b00001111
+
+
 volatile sig_atomic_t m_stopped           = false;
 long              m_Volume              = 0;
 long              m_Amplification       = 0;
 bool              m_NativeDeinterlace   = false;
-bool              m_osd                 = true;
+int               m_osd                 = OSD_EXTRA | OSD_NORM;
 std::string       m_external_subtitles_path;
 bool              m_cmd_line_subtitles  = false;
 bool              m_Pause               = false;
@@ -127,18 +138,12 @@ void print_usage()
   puts("usage: omxplayer [file|url]");
 }
 
-#define UM_STDOUT 0b00000001
-#define UM_LONG   0b00000010
-#define UM_SLEEP  0b00000100
-#define UM_NORM   0b00000000
-#define UM_ALL    0b00000111
-
 void osd_print(int options, const char *msg)
 {
-  if(m_osd)
-    m_player_subtitles->DisplayText(msg, (options & UM_LONG) ? 3000 : 1500, (options & UM_SLEEP));
+  if(options & m_osd)
+    m_player_subtitles->DisplayText(msg, (options & OSD_LONG) ? 3000 : 1500, (options & OSD_SLEEP));
 
-  if(options & UM_STDOUT)
+  if(options & OSD_STDOUT)
   {
     char *s = strdup(msg);
     if(s) {
@@ -156,7 +161,7 @@ void osd_print(int options, const char *msg)
 
 void osd_print(const char *msg)
 {
-  osd_print(UM_NORM, msg);
+  osd_print(OSD_NORM, msg);
 }
 
 #ifdef __GNUC__
@@ -177,7 +182,7 @@ void osd_printf(int options, const char* format, ...)
 void show_progress_message(const char *msg, int pos)
 {
   int dur = m_omx_reader->GetStreamLengthSeconds();
-  osd_printf(UM_STDOUT, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
+  osd_printf(OSD_NORM | OSD_STDOUT, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
                 msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
 
@@ -336,6 +341,7 @@ int startup(int argc, char *argv[])
   const int key_config_opt  = 0x10d;
   const int amp_opt         = 0x10e;
   const int no_osd_opt      = 0x202;
+  const int limited_osd_opt = 0x406;
   const int orientation_opt = 0x204;
   const int fps_opt         = 0x208;
   const int live_opt        = 0x205;
@@ -408,6 +414,7 @@ int startup(int argc, char *argv[])
     { "no-boost-on-downmix", no_argument, NULL,          no_boost_on_downmix_opt },
     { "key-config",   required_argument,  NULL,          key_config_opt },
     { "no-osd",       no_argument,        NULL,          no_osd_opt },
+    { "limited-osd",  no_argument,        NULL,          limited_osd_opt },
     { "no-keys",      no_argument,        NULL,          no_keys_opt },
     { "orientation",  required_argument,  NULL,          orientation_opt },
     { "fps",          required_argument,  NULL,          fps_opt },
@@ -576,7 +583,7 @@ int startup(int argc, char *argv[])
       case 'i':
         m_dump_format      = true;
         m_dump_format_exit = true;
-        m_osd              = false;
+        m_osd              = OSD_NONE;
         break;
       case 'I':
         m_dump_format = true;
@@ -619,7 +626,10 @@ int startup(int argc, char *argv[])
         m_playlist_enabled = false;
         break;
       case no_osd_opt:
-        m_osd = false;
+        m_osd = OSD_NONE;
+        break;
+      case limited_osd_opt:
+        m_osd = OSD_NORM;
         break;
       case no_keys_opt:
         use_key_ctrl = false;
@@ -860,7 +870,7 @@ int startup(int argc, char *argv[])
   static OMXPlayerSubtitles player_subs(&config_sub, m_av_clock);
   m_player_subtitles = &player_subs;
 
-  osd_print("Loading...");
+  osd_print(OSD_EXTRA, "Loading...");
 
   m_omxcontrol.connect(dbus_name);
 
@@ -924,7 +934,7 @@ restart:
   {
     if(!Exists(m_filename))
     {
-      osd_printf(UM_ALL, "File \"%s\" not found.", getShortFileName().c_str());
+      osd_printf(OSD_ERROR, "File \"%s\" not found.", getShortFileName().c_str());
       return END_PLAY_WITH_ERROR;
     }
 
@@ -1090,7 +1100,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
 
     SetSpeed(playspeeds[playspeed_current]);
-    osd_printf(UM_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]);
+    osd_printf(OSD_NORM | OSD_STDOUT, "Playspeed: %.3f", playspeeds[playspeed_current]);
     m_Pause = false;
     break;
 
@@ -1107,7 +1117,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case SET_AUDIO_STREAM:
     if(!m_player_audio)
     {
-      osd_print(UM_NORM, "Audio unavailable");
+      osd_print(OSD_ERROR, "Audio unavailable");
       if(search_key == SET_AUDIO_STREAM)
         m->respond_bool(false);
       break;
@@ -1133,9 +1143,9 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
     strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, m_audio_index).c_str());
     if(m_audio_lang[0] == '\0')
-      osd_printf(UM_NORM, "Audio stream: %d", m_audio_index + 1);
+      osd_printf(OSD_NORM, "Audio stream: %d", m_audio_index + 1);
     else
-      osd_printf(UM_NORM, "Audio stream: %d (%s)", m_audio_index + 1, m_audio_lang);
+      osd_printf(OSD_NORM, "Audio stream: %d (%s)", m_audio_index + 1, m_audio_lang);
     break;
 
   case ACTION_PREVIOUS_CHAPTER:
@@ -1148,7 +1158,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       switch(m_omx_reader->SeekChapter(delta, result_chapter, cur_pts))
       {
       case SEEK_SUCCESS:
-        osd_printf(UM_NORM, "Chapter %d", result_chapter + 1);
+        osd_printf(OSD_NORM, "Chapter %d", result_chapter + 1);
         FlushStreams(cur_pts);
         break;
       case SEEK_OUT_OF_BOUNDS:
@@ -1205,9 +1215,9 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
           m_subtitle_index).c_str());
       if(m_subtitle_lang[0] == '\0')
-        osd_printf(UM_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
+        osd_printf(OSD_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
       else
-        osd_printf(UM_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
+        osd_printf(OSD_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
     }
     PrintSubtitleInfo();
     break;
@@ -1231,7 +1241,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     if(m_player_subtitles->GetVisible())
     {
       int new_delay = m_player_subtitles->GetDelay() - 250;
-      osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
+      osd_printf(OSD_NORM, "Subtitle delay: %d ms", new_delay);
       m_player_subtitles->SetDelay(new_delay);
       PrintSubtitleInfo();
     }
@@ -1241,7 +1251,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     if(m_player_subtitles->GetVisible())
     {
       int new_delay = m_player_subtitles->GetDelay() + 250;
-      osd_printf(UM_NORM, "Subtitle delay: %d ms", new_delay);
+      osd_printf(OSD_NORM, "Subtitle delay: %d ms", new_delay);
       m_player_subtitles->SetDelay(new_delay);
       PrintSubtitleInfo();
     }
@@ -1304,7 +1314,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     {
       m_Volume += search_key == ACTION_INCREASE_VOLUME ? 50 : -50;
       m_player_audio->SetVolume(pow(10, m_Volume / 2000.0));
-      osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
+      osd_printf(OSD_NORM | OSD_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
     }
     break;
 
@@ -1422,7 +1432,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
         m->respond_double(volume);
         m_Volume = 2000 * log10(volume);
         m_player_audio->SetVolume(volume);
-        osd_printf(UM_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
+        osd_printf(OSD_NORM | OSD_STDOUT, "Volume: %.2f dB", m_Volume / 100.0f);
         break;
       }
       else
@@ -1678,7 +1688,7 @@ int run_play_loop()
   }
   catch(const char *msg)
   {
-    osd_printf(UM_ALL, "OMXReader error: %s", msg);
+    osd_printf(OSD_ERROR, "OMXReader error: %s", msg);
     m_omx_reader = NULL;
     return END_PLAY_WITH_ERROR;
   }
@@ -1726,13 +1736,13 @@ int run_play_loop()
   if(m_incr > 0)
   {
     int dur = m_omx_reader->GetStreamLengthSeconds();
-    osd_printf(UM_LONG, "%s\n%02d:%02d:%02d / %02d:%02d:%02d", display_name.c_str(),
+    osd_printf(OSD_EXTRA | OSD_LONG, "%s\n%02d:%02d:%02d / %02d:%02d:%02d", display_name.c_str(),
       (m_incr/3600), (m_incr/60)%60, m_incr%60, (dur/3600), (dur/60)%60, dur%60);
     m_incr = 0;
   }
   else
   {
-    osd_print(UM_LONG, display_name.c_str());
+    osd_print(OSD_EXTRA | OSD_LONG, display_name.c_str());
   }
   UpdateRaspicastMetaData(display_name);
 
@@ -1838,7 +1848,7 @@ int run_play_loop()
     catch(const char *msg)
     {
       puts(msg);
-      osd_printf(UM_ALL, "Audio unavailable");
+      osd_print(OSD_ERROR, "Audio unavailable");
       m_player_audio = NULL;
     }
   }
@@ -1858,7 +1868,7 @@ int run_play_loop()
   if(!m_external_subtitles_path.empty()
       && !m_player_subtitles->AddExternalSubs(m_external_subtitles_path))
   {
-    osd_printf(UM_ALL, "Failed to open subtitles");
+    osd_print(OSD_ERROR, "Failed to open subtitles");
     return END_PLAY_WITH_ERROR;
   }
 
@@ -1930,7 +1940,7 @@ int run_play_loop()
     /* player got in an error state */
     if(m_player_audio && m_player_audio->Error())
     {
-      osd_printf(UM_ALL, "Audio player error");
+      osd_print(OSD_ERROR, "Audio player error");
       return END_PLAY_WITH_ERROR;
     }
 
