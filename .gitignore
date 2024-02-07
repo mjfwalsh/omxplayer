@@ -1,15 +1,9 @@
 *.o
 deps.mak
-omxplayer.log
-omxplayer.old.log
+*.log
 omxplayer.bin
-ffmpeg_compiled
 ffmpeg
-help.h
-keys.h
-patch.flag
 MAN
-omxplayer-dist.tgz
-omxplayer-dist
+*.tar.gz
 omxplayer.1
 version_info.h

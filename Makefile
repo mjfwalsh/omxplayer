@@ -15,7 +15,7 @@ INCLUDES+=-isystem/usr/lib/arm-linux-gnueabihf/dbus-1.0/include
 INCLUDES+=-isystem/opt/vc/include -isystem/opt/vc/include/interface/vcos/pthreads
 INCLUDES+=-isystem/usr/include/freetype2
 
-DIST ?= omxplayer-dist
+DIST := omxplayer-$(shell lsb_release -sc).tar.gz
 STRIP ?= strip
 
 SRC=$(wildcard *.cpp linux/*.cpp utils/*.cpp)
@@ -41,7 +41,8 @@ version.o: version_info.h
 
 # regenerate version.o if version info has changed
 omxplayer.bin: $(OBJS)
-	perl gen_version.pl $(CXX) $(CFLAGS) $(INCLUDES) -c version.cpp -o version.o
+	@echo perl gen_version.pl
+	@perl gen_version.pl $(CXX) $(CFLAGS) $(INCLUDES) -c version.cpp -o version.o
 	$(CXX) -o omxplayer.bin $(OBJS) $(LDFLAGS) $(LDLIBS)
 
 omxplayer.1: omxplayer.pod
@@ -49,12 +50,12 @@ omxplayer.1: omxplayer.pod
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST).tgz version_info.h omxplayer.1
+	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST) version_info.h omxplayer.1
 
 .PHONY: dist
 dist:
 	$(STRIP) omxplayer.bin
-	tar -cPf $(DIST).tgz \
+	tar -cPf $(DIST) \
 	--transform 's,^omxplayer$$,/usr/local/bin/omxplayer,S' \
 	--transform 's,^omxplayer\.bin$$,/usr/local/bin/omxplayer.bin,S' \
 	--transform 's,^COPYING$$,/usr/local/share/doc/omxplayer/COPYING,S' \
