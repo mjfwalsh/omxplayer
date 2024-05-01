@@ -97,8 +97,6 @@ OMXReaderDvd::~OMXReaderDvd()
 
 OMXPacket *OMXReaderDvd::Read()
 {
-  pci_t pci_pack;
-
 again:
   OMXPacket *pkt = OMXReader::Read();
 
@@ -108,6 +106,8 @@ again:
   // check for dvd_nav_packets
   if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV)
   {
+    pci_t pci_pack;
+
     navRead_PCI(&pci_pack, &pkt->avpkt->data[1]);
 
     if(m_prev_pack_end != pci_pack.pci_gi.vobu_s_ptm)
