@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <getopt.h>
 #include <string.h>
+#include <sys/file.h>
 
 #include "utils/log.h"
 
@@ -841,6 +842,25 @@ int startup(int argc, char *argv[])
   if (optind >= argc) {
     print_usage();
     return EXIT_FAILURE;
+  }
+
+  // stop two instances of omxplayer running
+  {
+    char lock_path[30];
+    snprintf(lock_path, 29, "/dev/shm/.omx_display%d", m_config_video.display);
+    int fd = open(lock_path, O_WRONLY | O_CREAT, 0777);
+    if(fd == -1)
+    {
+      printf("Failed to open lockfile: %s\n", lock_path);
+      perror(NULL);
+      return EXIT_FAILURE;
+    }
+
+    if(flock(fd, LOCK_EX | LOCK_NB) != 0)
+    {
+      printf("Another instance of omxplayer is already running on screen %d\n", m_config_video.display);
+      return EXIT_FAILURE;
+    }
   }
 
   // get filename
