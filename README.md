@@ -42,7 +42,8 @@ also need the following packages:
 ### Development packages
 
 Bullseye no longer comes with the required firmware files but it should still be possible to
-get the required files by updating your firmware using `sudo rpi-update`.
+get the required files by compiling and installing RaspberryPi's
+[userland](https://github.com/raspberrypi/userland) repo (requires cmake).
 
 To compile omxplayer you will also need the following packages<sup>[*](#required-packages)</sup>:
 

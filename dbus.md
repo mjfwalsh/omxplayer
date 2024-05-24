@@ -271,7 +271,7 @@ Selects the subtitle at a given index.
    Params       |   Type    | Description
 :-------------: | ----------| ------------------------------------
  1              | `int32`   | Index of subtitle to select
- Return         | `boolean` | Returns `true` if subtitle was selected, `false otherwise
+ Return         | `boolean` | Returns `true` if subtitle was selected, `false` otherwise
 
 
 ##### SelectAudio
@@ -281,7 +281,7 @@ Selects the audio stream at a given index.
    Params       |   Type    | Description
 :-------------: | ----------| ------------------------------------
  1              | `int32`   | Index of audio stream to select
- Return         | `boolean` | Returns `true` if stream was selected, `false otherwise
+ Return         | `boolean` | Returns `true` if stream was selected, `false` otherwise
 
 ##### ShowSubtitles
 
