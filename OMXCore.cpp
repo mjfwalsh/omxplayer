@@ -152,7 +152,7 @@ OMX_ERRORTYPE COMXCoreTunel::Establish()
   if(m_src_component->GetComponent() && m_dst_component->GetComponent())
   {
     omx_err = OMX_SetupTunnel(m_src_component->GetComponent(), m_src_port, m_dst_component->GetComponent(), m_dst_port);
-    if(omx_err != OMX_ErrorNone) 
+    if(omx_err != OMX_ErrorNone)
     {
       CLogLog(LOGERROR, "COMXCoreTunel::Establish - could not setup tunnel src %s port %d dst %s port %d omx_err(0x%08x)",
           m_src_component->GetName(), m_src_port, m_dst_component->GetName(), m_dst_port, (int)omx_err);
@@ -464,7 +464,7 @@ OMX_ERRORTYPE COMXCoreComponent::AllocInputBuffers()
     buffer->nInputPortIndex = m_input_port;
     buffer->nFilledLen      = 0;
     buffer->nOffset         = 0;
-    buffer->pAppPrivate     = (void*)i;  
+    buffer->pAppPrivate     = (void*)i;
     m_omx_input_buffers.push_back(buffer);
     m_omx_input_avaliable.push(buffer);
   }
@@ -604,7 +604,7 @@ OMX_ERRORTYPE COMXCoreComponent::DisableAllPorts()
   OMX_INDEXTYPE idxTypes[] = {
     OMX_IndexParamAudioInit,
     OMX_IndexParamImageInit,
-    OMX_IndexParamVideoInit, 
+    OMX_IndexParamVideoInit,
     OMX_IndexParamOtherInit
   };
 
@@ -649,11 +649,11 @@ OMX_ERRORTYPE COMXCoreComponent::DisableAllPorts()
 
 void COMXCoreComponent::RemoveEvent(OMX_EVENTTYPE eEvent, OMX_U32 nData1, OMX_U32 nData2)
 {
-  for (std::vector<omx_event>::iterator it = m_omx_events.begin(); it != m_omx_events.end(); ) 
+  for (std::vector<omx_event>::iterator it = m_omx_events.begin(); it != m_omx_events.end(); )
   {
     omx_event event = *it;
 
-    if(event.eEvent == eEvent && event.nData1 == nData1 && event.nData2 == nData2) 
+    if(event.eEvent == eEvent && event.nData1 == nData1 && event.nData2 == nData2)
     {
       it = m_omx_events.erase(it);
       continue;
@@ -697,7 +697,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
   struct timespec endtime;
   clock_gettime(CLOCK_REALTIME, &endtime);
   add_timespecs(endtime, timeout);
-  while(true) 
+  while(true)
   {
     for (std::vector<omx_event>::iterator it = m_omx_events.begin(); it != m_omx_events.end(); ++it)
     {
@@ -719,13 +719,13 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
         pthread_mutex_unlock(&m_omx_event_mutex);
         return OMX_ErrorNone;
       }
-      else if(event.eEvent == OMX_EventError) 
+      else if(event.eEvent == OMX_EventError)
       {
         m_omx_events.erase(it);
         pthread_mutex_unlock(&m_omx_event_mutex);
         return (OMX_ERRORTYPE)event.nData1;
       }
-      else if(event.eEvent == eventType) 
+      else if(event.eEvent == eventType)
       {
 #ifdef OMX_DEBUG_EVENTS
         CLogLog(LOGDEBUG, "COMXCoreComponent::WaitForEvent %s remove event event.eEvent 0x%08x event.nData1 0x%08x event.nData2 %d",
@@ -741,7 +741,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForEvent(OMX_EVENTTYPE eventType, long time
     if (m_resource_error)
       break;
     int retcode = pthread_cond_timedwait(&m_omx_event_cond, &m_omx_event_mutex, &endtime);
-    if (retcode != 0) 
+    if (retcode != 0)
     {
       if (timeout > 0)
         CLogLog(LOGERROR, "COMXCoreComponent::WaitForEvent %s wait event 0x%08x timeout %ld",
@@ -766,7 +766,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
   struct timespec endtime;
   clock_gettime(CLOCK_REALTIME, &endtime);
   add_timespecs(endtime, timeout);
-  while(true) 
+  while(true)
   {
     for (std::vector<omx_event>::iterator it = m_omx_events.begin(); it != m_omx_events.end(); ++it)
     {
@@ -786,14 +786,14 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
         m_omx_events.erase(it);
         pthread_mutex_unlock(&m_omx_event_mutex);
         return OMX_ErrorNone;
-      } 
-      else if(event.eEvent == OMX_EventError) 
+      }
+      else if(event.eEvent == OMX_EventError)
       {
         m_omx_events.erase(it);
         pthread_mutex_unlock(&m_omx_event_mutex);
         return (OMX_ERRORTYPE)event.nData1;
-      } 
-      else if(event.eEvent == OMX_EventCmdComplete && event.nData1 == command && event.nData2 == nData2) 
+      }
+      else if(event.eEvent == OMX_EventCmdComplete && event.nData1 == command && event.nData2 == nData2)
       {
 
 #ifdef OMX_DEBUG_EVENTS
@@ -813,7 +813,7 @@ OMX_ERRORTYPE COMXCoreComponent::WaitForCommand(OMX_U32 command, OMX_U32 nData2,
     if (retcode != 0) {
       CLogLog(LOGERROR, "COMXCoreComponent::WaitForCommand %s wait timeout event.eEvent 0x%08x event.command 0x%08x event.nData2 %d",
         m_componentName, (int)OMX_EventCmdComplete, (int)command, (int)nData2);
-      
+
       pthread_mutex_unlock(&m_omx_event_mutex);
       return OMX_ErrorTimeout;
     }
@@ -848,7 +848,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetStateForComponent(OMX_STATETYPE state)
         m_componentName, omx_err);
     }
   }
-  else 
+  else
   {
     omx_err = WaitForCommand(OMX_CommandStateSet, state);
     if (omx_err != OMX_ErrorNone)
@@ -884,7 +884,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetParameter(OMX_INDEXTYPE paramIndex, OMX_PTR 
   OMX_ERRORTYPE omx_err;
 
   omx_err = OMX_SetParameter(m_handle, paramIndex, paramStruct);
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::SetParameter - %s failed with omx_err(0x%x)",
               m_componentName, omx_err);
@@ -900,7 +900,7 @@ OMX_ERRORTYPE COMXCoreComponent::GetParameter(OMX_INDEXTYPE paramIndex, OMX_PTR 
   OMX_ERRORTYPE omx_err;
 
   omx_err = OMX_GetParameter(m_handle, paramIndex, paramStruct);
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::GetParameter - %s failed with omx_err(0x%x)",
               m_componentName, omx_err);
@@ -916,7 +916,7 @@ OMX_ERRORTYPE COMXCoreComponent::SetConfig(OMX_INDEXTYPE configIndex, OMX_PTR co
   OMX_ERRORTYPE omx_err;
 
   omx_err = OMX_SetConfig(m_handle, configIndex, configStruct);
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::SetConfig - %s failed with omx_err(0x%x)",
               m_componentName, omx_err);
@@ -932,7 +932,7 @@ OMX_ERRORTYPE COMXCoreComponent::GetConfig(OMX_INDEXTYPE configIndex, OMX_PTR co
   OMX_ERRORTYPE omx_err;
 
   omx_err = OMX_GetConfig(m_handle, configIndex, configStruct);
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXCoreComponent::GetConfig - %s failed with omx_err(0x%x)",
               m_componentName, omx_err);
@@ -1038,7 +1038,7 @@ bool COMXCoreComponent::Initialize(const char *component_name, OMX_INDEXTYPE ind
   m_ignore_error = OMX_ErrorNone;
 
   m_componentName = component_name;
-  
+
   m_callbacks.EventHandler    = &COMXCoreComponent::DecoderEventHandlerCallback;
   m_callbacks.EmptyBufferDone = &COMXCoreComponent::DecoderEmptyBufferDoneCallback;
   m_callbacks.FillBufferDone  = &COMXCoreComponent::DecoderFillBufferDoneCallback;
@@ -1259,7 +1259,7 @@ OMX_ERRORTYPE COMXCoreComponent::DecoderEventHandler(
   switch (eEvent)
   {
     case OMX_EventCmdComplete:
-      
+
       switch(nData1)
       {
         case OMX_CommandStateSet:

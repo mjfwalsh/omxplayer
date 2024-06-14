@@ -24,32 +24,32 @@
 class RecentFileStore
 {
 public:
-	RecentFileStore();
-	bool readStore();
-	void forget(const std::string &key);
-	void remember(const std::string &url, const int &dvd_track, const int &pos, char *audio, const int &audio_track, char *subtitle, const int &subtitle_track);
-	void saveStore();
-	bool checkIfLink(std::string &filename);
-	void readlink(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &subtitle_track);
-	void retrieveRecentInfo(const std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track);
+  RecentFileStore();
+  bool readStore();
+  void forget(const std::string &key);
+  void remember(const std::string &url, const int &dvd_track, const int &pos, char *audio, const int &audio_track, char *subtitle, const int &subtitle_track);
+  void saveStore();
+  bool checkIfLink(std::string &filename);
+  void readlink(std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &subtitle_track);
+  void retrieveRecentInfo(const std::string &filename, int &track, int &pos, char *audio, int &audio_track, char *subtitle_lang, int &sub_track);
 
 private:
-	struct fileInfo {
-		std::string url;
-		int time = -1;
-		int dvd_track = -1;
-		char audio_lang[4] = "";
-		int audio_track = -1;
-		char subtitle_lang[4] = "";
-		int subtitle_track = -1;
-	};
+  struct fileInfo {
+    std::string url;
+    int time = -1;
+    int dvd_track = -1;
+    char audio_lang[4] = "";
+    int audio_track = -1;
+    char subtitle_lang[4] = "";
+    int subtitle_track = -1;
+  };
 
-	void readlink(fileInfo *f);
-	void getRecentFileList(std::vector<std::string> &recents);
-	void clearRecents();
-	void setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
+  void readlink(fileInfo *f);
+  void getRecentFileList(std::vector<std::string> &recents);
+  void clearRecents();
+  void setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track);
 
-	std::vector<fileInfo> store;
-	std::string recent_dir;
-	bool m_init = false;
+  std::vector<fileInfo> store;
+  std::string recent_dir;
+  bool m_init = false;
 };

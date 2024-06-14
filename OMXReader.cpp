@@ -55,7 +55,7 @@ stream_type_index(-1)
 {
   avpkt = av_packet_alloc();
   if(!avpkt) throw "Memory Error";
-  
+
   avpkt->duration = AV_NOPTS_VALUE;
   avpkt->size = 0;
   avpkt->data = NULL;
@@ -65,7 +65,7 @@ stream_type_index(-1)
 
 OMXPacket::~OMXPacket()
 {
-  	av_packet_free(&avpkt);
+  av_packet_free(&avpkt);
 }
 
 void OMXReader::reset_timeout(int x)
@@ -92,15 +92,15 @@ void OMXReader::SetDefaultTimeout(float timeout)
 
 void OMXReader::SetCookie(const char *cookie)
 {
-    if(s_cookie.empty())
-    {
-        s_cookie.assign(cookie);
-    }
-    else
-    {
-        s_cookie.push_back('\n');
-        s_cookie.append(cookie);
-    }
+  if(s_cookie.empty())
+  {
+    s_cookie.assign(cookie);
+  }
+  else
+  {
+    s_cookie.push_back('\n');
+    s_cookie.append(cookie);
+  }
 }
 
 OMXReader::OMXReader()
@@ -218,7 +218,7 @@ OMXPacket *OMXReader::Read()
     if(duration > pStream->duration)
     {
       pStream->duration = duration;
-      duration = av_rescale_rnd(pStream->duration, (int64_t)pStream->time_base.num * AV_TIME_BASE, 
+      duration = av_rescale_rnd(pStream->duration, (int64_t)pStream->time_base.num * AV_TIME_BASE,
                                             pStream->time_base.den, AV_ROUND_NEAR_INF);
       if (m_pFormatContext->duration == AV_NOPTS_VALUE || duration > m_pFormatContext->duration)
         m_pFormatContext->duration = duration;
@@ -566,46 +566,45 @@ bool OMXReader::FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uin
 
 void OMXReader::info_dump(const std::string &filename)
 {
-    printf("File: %s\n", filename.c_str());
-    printf("Video Streams: %u\n", m_streams[OMXSTREAM_VIDEO].size());
-    int i = 0;
-    for(const auto &stream : m_streams[OMXSTREAM_VIDEO])
-    {
-        printf("    %2d. 0x%02x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
-            ++i,
-            stream.hex_id,
-            stream.codec_name.c_str(),
-            (float)stream.hints.fpsrate / (float)stream.hints.fpsscale,
-            stream.hints.width, stream.hints.height,
-            stream.hints.aspect);
-    }
-    printf("Audio Streams: %u\n", m_streams[OMXSTREAM_AUDIO].size());
-    i = 0;
-    for(const auto &stream : m_streams[OMXSTREAM_AUDIO])
-    {
-        printf("    %2d. 0x%02x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
-            ++i,
-            stream.hex_id,
-            stream.codec_name.c_str(),
-            stream.language.c_str(),
-            stream.hints.channels,
-            stream.hints.samplerate,
-            stream.hints.bitspersample);
-    }
-    printf("Subtitle Streams: %u\n", m_streams[OMXSTREAM_SUBTITLE].size());
-    i = 0;
-    for(const auto &stream : m_streams[OMXSTREAM_SUBTITLE])
-    {
-        printf("    %2d. 0x%02x: subtitle: %s (lang %s)\n",
-            ++i,
-            stream.hex_id,
-            stream.codec_name.c_str(),
-            stream.language.c_str());
-    }
+  printf("File: %s\n", filename.c_str());
+  printf("Video Streams: %u\n", m_streams[OMXSTREAM_VIDEO].size());
+  int i = 0;
+  for(const auto &stream : m_streams[OMXSTREAM_VIDEO])
+  {
+    printf("    %2d. 0x%02x: video: %s (fps %0.2f, size %dx%d, aspect %0.2f)\n",
+        ++i,
+        stream.hex_id,
+        stream.codec_name.c_str(),
+        (float)stream.hints.fpsrate / (float)stream.hints.fpsscale,
+        stream.hints.width, stream.hints.height,
+        stream.hints.aspect);
+  }
+  printf("Audio Streams: %u\n", m_streams[OMXSTREAM_AUDIO].size());
+  i = 0;
+  for(const auto &stream : m_streams[OMXSTREAM_AUDIO])
+  {
+    printf("    %2d. 0x%02x: audio: %s (lang %s, ch %d, sr %d, b/s %d)\n",
+        ++i,
+        stream.hex_id,
+        stream.codec_name.c_str(),
+        stream.language.c_str(),
+        stream.hints.channels,
+        stream.hints.samplerate,
+        stream.hints.bitspersample);
+  }
+  printf("Subtitle Streams: %u\n", m_streams[OMXSTREAM_SUBTITLE].size());
+  i = 0;
+  for(const auto &stream : m_streams[OMXSTREAM_SUBTITLE])
+  {
+    printf("    %2d. 0x%02x: subtitle: %s (lang %s)\n",
+        ++i,
+        stream.hex_id,
+        stream.codec_name.c_str(),
+        stream.language.c_str());
+  }
 }
 
 bool OMXReader::SetAvDict(const char *ad)
 {
   return av_dict_parse_string(&s_avdict, ad, ":", ",", 0) >= 0;
 }
-

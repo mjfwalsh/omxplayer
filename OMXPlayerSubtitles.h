@@ -74,7 +74,7 @@ public:
   {
     return m_visible;
   }
-  
+
   int SetActiveStream(int index);
 
   int SetActiveStreamDelta(int index);

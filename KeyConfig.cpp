@@ -69,149 +69,149 @@ const int item_count = sizeof(table) / sizeof(const action_lookup);
 
 static int compare(const void *a, const void *b)
 {
-	const char *ia = (const char *)a;
-	const struct action_lookup *ib = (const struct action_lookup *)b;
+  const char *ia = (const char *)a;
+  const struct action_lookup *ib = (const struct action_lookup *)b;
 
-	return strcmp(ia, ib->k);
+  return strcmp(ia, ib->k);
 }
 
-/* Converts the action string from the config file into 
+/* Converts the action string from the config file into
  * the corresponding enum value
  */
 static int convertStringToAction(const string &str_action)
 {
-	struct action_lookup *result = (struct action_lookup *)
-			bsearch(str_action.c_str(), table, item_count, item_size, compare);
+  struct action_lookup *result = (struct action_lookup *)
+    bsearch(str_action.c_str(), table, item_count, item_size, compare);
 
-	return result == NULL ? -1 : result->v;
+  return result == NULL ? -1 : result->v;
 }
 /* Parses a line from the config file in the mode 'action:key'. Looks up
 the action in the relevant enum array. Returns true on success. */
 static bool getActionAndKeyFromString(string line, int &int_action, string &key)
 {
-    string str_action;
+  string str_action;
 
-    if(line[0] == '#')
-         return false;
+  if(line[0] == '#')
+    return false;
 
-    unsigned int colonIndex = line.find(":");
-    if(colonIndex == string::npos)
-        return false;
+  unsigned int colonIndex = line.find(":");
+  if(colonIndex == string::npos)
+    return false;
 
-    str_action = line.substr(0, colonIndex);
-    key = line.substr(colonIndex+1);
+  str_action = line.substr(0, colonIndex);
+  key = line.substr(colonIndex+1);
 
-    int_action = convertStringToAction(str_action);
+  int_action = convertStringToAction(str_action);
 
-    if(int_action == -1 || key.size() < 1)
-        return false;
+  if(int_action == -1 || key.size() < 1)
+    return false;
 
-    return true;
+  return true;
 }
 
 /* Returns a keymap consisting of the default
- *  keybinds specified with the -k option 
+ *  keybinds specified with the -k option
  */
 static void buildDefaultKeymap(unordered_map<int,int> &keymap)
 {
-    keymap['<'] = ACTION_DECREASE_SPEED;
-    keymap['>'] = ACTION_INCREASE_SPEED;
-    keymap[','] = ACTION_DECREASE_SPEED;
-    keymap['.'] = ACTION_INCREASE_SPEED;
-    keymap['j'] = ACTION_PREVIOUS_AUDIO;
-    keymap['k'] = ACTION_NEXT_AUDIO;
-    keymap['i'] = ACTION_PREVIOUS_CHAPTER;
-    keymap['o'] = ACTION_NEXT_CHAPTER;
-    keymap['9'] = ACTION_PREVIOUS_FILE;
-    keymap['0'] = ACTION_NEXT_FILE;
-    keymap['n'] = ACTION_PREVIOUS_SUBTITLE;
-    keymap['m'] = ACTION_NEXT_SUBTITLE;
-    keymap['s'] = ACTION_TOGGLE_SUBTITLE;
-    keymap['d'] = ACTION_DECREASE_SUBTITLE_DELAY;
-    keymap['f'] = ACTION_INCREASE_SUBTITLE_DELAY;
-    keymap['q'] = ACTION_EXIT;
-    keymap[KEY_ESC] = ACTION_EXIT;
-    keymap['p'] = ACTION_PLAYPAUSE;
-    keymap[' '] = ACTION_PLAYPAUSE;
-    keymap['-'] = ACTION_DECREASE_VOLUME;
-    keymap['+'] = ACTION_INCREASE_VOLUME;
-    keymap['='] = ACTION_INCREASE_VOLUME;
-    keymap[KEY_LEFT] = ACTION_SEEK_BACK_SMALL;
-    keymap[KEY_RIGHT] = ACTION_SEEK_FORWARD_SMALL;
-    keymap[KEY_DOWN] = ACTION_SEEK_BACK_LARGE;
-    keymap[KEY_UP] = ACTION_SEEK_FORWARD_LARGE;
-    keymap['v'] = ACTION_STEP;
-    keymap['w'] = ACTION_SHOW_SUBTITLES;
-    keymap['x'] = ACTION_HIDE_SUBTITLES;
+  keymap['<'] = ACTION_DECREASE_SPEED;
+  keymap['>'] = ACTION_INCREASE_SPEED;
+  keymap[','] = ACTION_DECREASE_SPEED;
+  keymap['.'] = ACTION_INCREASE_SPEED;
+  keymap['j'] = ACTION_PREVIOUS_AUDIO;
+  keymap['k'] = ACTION_NEXT_AUDIO;
+  keymap['i'] = ACTION_PREVIOUS_CHAPTER;
+  keymap['o'] = ACTION_NEXT_CHAPTER;
+  keymap['9'] = ACTION_PREVIOUS_FILE;
+  keymap['0'] = ACTION_NEXT_FILE;
+  keymap['n'] = ACTION_PREVIOUS_SUBTITLE;
+  keymap['m'] = ACTION_NEXT_SUBTITLE;
+  keymap['s'] = ACTION_TOGGLE_SUBTITLE;
+  keymap['d'] = ACTION_DECREASE_SUBTITLE_DELAY;
+  keymap['f'] = ACTION_INCREASE_SUBTITLE_DELAY;
+  keymap['q'] = ACTION_EXIT;
+  keymap[KEY_ESC] = ACTION_EXIT;
+  keymap['p'] = ACTION_PLAYPAUSE;
+  keymap[' '] = ACTION_PLAYPAUSE;
+  keymap['-'] = ACTION_DECREASE_VOLUME;
+  keymap['+'] = ACTION_INCREASE_VOLUME;
+  keymap['='] = ACTION_INCREASE_VOLUME;
+  keymap[KEY_LEFT] = ACTION_SEEK_BACK_SMALL;
+  keymap[KEY_RIGHT] = ACTION_SEEK_FORWARD_SMALL;
+  keymap[KEY_DOWN] = ACTION_SEEK_BACK_LARGE;
+  keymap[KEY_UP] = ACTION_SEEK_FORWARD_LARGE;
+  keymap['v'] = ACTION_STEP;
+  keymap['w'] = ACTION_SHOW_SUBTITLES;
+  keymap['x'] = ACTION_HIDE_SUBTITLES;
 }
 
 /* Parses the supplied config file and turns it into a map object.
  */
 static void parseConfigFile(const char *filepath, unordered_map<int, int> &keymap)
 {
-    ifstream config_file(filepath);
+  ifstream config_file(filepath);
 
-    if(!config_file.is_open())
+  if(!config_file.is_open())
+  {
+    cerr << "Failed to open key config file: " << filepath << endl;
+    buildDefaultKeymap(keymap);
+    return;
+  }
+
+  string line;
+  int key_action;
+  string key;
+
+  while(getline(config_file, line))
+  {
+    if(getActionAndKeyFromString(line, key_action, key))
     {
-        cerr << "Failed to open key config file: " << filepath << endl;
-        buildDefaultKeymap(keymap);
-        return;
-    }
-
-    string line;
-    int key_action;
-    string key;
-
-    while(getline(config_file, line))
-    {
-        if(getActionAndKeyFromString(line, key_action, key))
+      if(key.substr(0,4) == "left")
+      {
+        keymap[KEY_LEFT] = key_action;
+      }
+      else if(key.substr(0,5) == "right")
+      {
+        keymap[KEY_RIGHT] = key_action;
+      }
+      else if(key.substr(0,2) == "up")
+      {
+        keymap[KEY_UP] = key_action;
+      }
+      else if(key.substr(0,4) == "down")
+      {
+        keymap[KEY_DOWN] = key_action;
+      }
+      else if(key.substr(0,3) == "esc")
+      {
+        keymap[KEY_ESC] = key_action;
+      }
+      else if(key.substr(0,5) == "space")
+      {
+        keymap[' '] = key_action;
+      }
+      else if(key.substr(0,3) == "num" || key.substr(0,3) == "hex")
+      {
+        if(key.size() > 4)
         {
-            if(key.substr(0,4) == "left")
-            {
-                keymap[KEY_LEFT] = key_action;
-            }
-            else if(key.substr(0,5) == "right")
-            {
-                keymap[KEY_RIGHT] = key_action;
-            }
-            else if(key.substr(0,2) == "up")
-            {
-                keymap[KEY_UP] = key_action;
-            }
-            else if(key.substr(0,4) == "down")
-            {
-                keymap[KEY_DOWN] = key_action;
-            }
-            else if(key.substr(0,3) == "esc")
-            {
-                keymap[KEY_ESC] = key_action;
-            }
-            else if(key.substr(0,5) == "space")
-            {
-                keymap[' '] = key_action;
-            }
-            else if(key.substr(0,3) == "num" || key.substr(0,3) == "hex")
-            {
-              if(key.size() > 4)
-              {
-                int n = strtoul(key.substr(4).c_str(), 0, 0);
-                if (n > 0)
-                  keymap[n] = key_action;
-              }
-            }
-            else
-            {
-              // this deals with unicode chars
-              int len = std::min((int)key.length(), 4);
-              int k = key[0];
-
-              for(int i = 1; i < len; i++)
-                k = (k << 8) | key[i];
-
-              keymap[k] = key_action;
-            }
+        int n = strtoul(key.substr(4).c_str(), 0, 0);
+        if (n > 0)
+          keymap[n] = key_action;
         }
+      }
+      else
+      {
+        // this deals with unicode chars
+        int len = std::min((int)key.length(), 4);
+        int k = key[0];
+
+        for(int i = 1; i < len; i++)
+        k = (k << 8) | key[i];
+
+        keymap[k] = key_action;
+      }
     }
+  }
 }
 
 void buildKeymap(const char *filename, unordered_map<int, int> &map)

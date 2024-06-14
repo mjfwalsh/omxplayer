@@ -58,5 +58,3 @@ public:
 protected:
   CCriticalSection &m_section;
 };
-
-

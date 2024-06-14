@@ -1,5 +1,5 @@
 /*
- * 
+ *
  *      Copyright (C) 2012 Edgar Hucek
  *
  * This program is free software; you can redistribute it and/or modify
@@ -278,7 +278,7 @@ int get_approx_speed(double &new_speed)
 {
   const int arr_len = sizeof(playspeeds) / sizeof(int);
 
-  for(int i = 0; i < arr_len - 1; i++)  
+  for(int i = 0; i < arr_len - 1; i++)
   {
     float midpoint = (playspeeds[i] + playspeeds[i+1]) / 2.0;
     if(new_speed < midpoint)
@@ -391,7 +391,7 @@ int startup(int argc, char *argv[])
     { "refresh",      no_argument,        NULL,          'r' },
     { "genlog",       optional_argument,  NULL,          'g' },
     { "sid",          required_argument,  NULL,          't' },
-    { "pos",          required_argument,  NULL,          'l' },    
+    { "pos",          required_argument,  NULL,          'l' },
     { "blank",        optional_argument,  NULL,          'b' },
     { "no-playlist",  no_argument,        NULL,          'a' },
     { "font",         required_argument,  NULL,          font_opt },
@@ -449,7 +449,7 @@ int startup(int argc, char *argv[])
 
   while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, NULL)) != -1)
   {
-    switch (c) 
+    switch (c)
     {
       case 'r':
         m_refresh = true;
@@ -810,7 +810,7 @@ int startup(int argc, char *argv[])
         break;
       case http_user_agent_opt:
         OMXReader::SetUserAgent(optarg);
-        break;    
+        break;
       case lavfdopts_opt:
         OMXReader::SetLavDopts(optarg);
         break;
@@ -2205,7 +2205,7 @@ int playlist_control()
   if(m_playlist_enabled) {
     if(!m_stopped && m_send_eos && m_next_prev_file == 0)
       m_next_prev_file = 1;
-    
+
     if(m_next_prev_file != 0) {
       // if this is a DVD look for next track
       if(m_DvdPlayer) {

@@ -31,100 +31,100 @@ class Subtitle;
 class OMXSubConfig;
 
 class SubtitleRenderer {
-	public:
-		SubtitleRenderer(const SubtitleRenderer&) = delete;
-		SubtitleRenderer& operator=(const SubtitleRenderer&) = delete;
-		SubtitleRenderer(OMXSubConfig *config);
+public:
+  SubtitleRenderer(const SubtitleRenderer&) = delete;
+  SubtitleRenderer& operator=(const SubtitleRenderer&) = delete;
+  SubtitleRenderer(OMXSubConfig *config);
 
-		void setDVDSubtitleLayer(DispmanxLayer *dl);
+  void setDVDSubtitleLayer(DispmanxLayer *dl);
 
-		~SubtitleRenderer();
+  ~SubtitleRenderer();
 
-		void prepare(Subtitle &sub);
-		void prepare(std::string &lines);
-		void show_next();
-		void hide();
-		void unprepare();
-		void clear();
+  void prepare(Subtitle &sub);
+  void prepare(std::string &lines);
+  void show_next();
+  void hide();
+  void unprepare();
+  void clear();
 
-	private:
-		DispmanxLayer *subtitleLayer = NULL;
-		DispmanxLayer *dvdSubLayer = NULL;
+private:
+  DispmanxLayer *subtitleLayer = NULL;
+  DispmanxLayer *dvdSubLayer = NULL;
 
-		class SubtitleText
-		{
-			public:
-				std::string text;
-				int font;
-				unsigned int color;
+  class SubtitleText
+  {
+    public:
+      std::string text;
+      int font;
+      unsigned int color;
 
-				cairo_glyph_t *glyphs = NULL;
-				int num_glyphs = -1;
+      cairo_glyph_t *glyphs = NULL;
+      int num_glyphs = -1;
 
-				SubtitleText(const char *t, int l, int f, unsigned int c)
-				: font(f), color(c)
-				{
-				    text.assign(t, l);
-				};
+      SubtitleText(const char *t, int l, int f, unsigned int c)
+      : font(f), color(c)
+      {
+        text.assign(t, l);
+      };
 
-				~SubtitleText()
-				{
-					if(glyphs)
-						cairo_glyph_free(glyphs);
-				}
-		};
+      ~SubtitleText()
+      {
+        if(glyphs)
+          cairo_glyph_free(glyphs);
+      }
+  };
 
-		void parse_lines(const char *text, int lines_length);
-		void make_subtitle_image(std::vector<std::vector<SubtitleText> > &parsed_lines);
-		void make_subtitle_image(Subtitle &sub);
-		unsigned int hex2int(const char *hex);
+  void parse_lines(const char *text, int lines_length);
+  void make_subtitle_image(std::vector<std::vector<SubtitleText> > &parsed_lines);
+  void make_subtitle_image(Subtitle &sub);
+  unsigned int hex2int(const char *hex);
 
-		CRegExp *m_tags;
-		CRegExp *m_font_color_html;
-		CRegExp *m_font_color_curly;
+  CRegExp *m_tags;
+  CRegExp *m_font_color_html;
+  CRegExp *m_font_color_curly;
 
-		void set_font(int *old_font, int new_font);
-		void set_color(unsigned int *old_color, unsigned int new_color);
+  void set_font(int *old_font, int new_font);
+  void set_color(unsigned int *old_color, unsigned int new_color);
 
-		enum {
-			UNSET_FONT = -1,
-			NORMAL_FONT,
-			ITALIC_FONT,
-			BOLD_FONT,
-		};
+  enum {
+    UNSET_FONT = -1,
+    NORMAL_FONT,
+    ITALIC_FONT,
+    BOLD_FONT,
+  };
 
-		// use the upper 8 bits for these as user selected colours use the lower 24 bits
-		const unsigned int FC_NOT_SET   = 0x10000000;
-		const unsigned int FC_OFF_WHITE = 0x20000000;
-		const unsigned int FC_BLACK     = 0x30000000;
-		const unsigned int FC_GHOST     = 0x40000000;
+  // use the upper 8 bits for these as user selected colours use the lower 24 bits
+  const unsigned int FC_NOT_SET   = 0x10000000;
+  const unsigned int FC_OFF_WHITE = 0x20000000;
+  const unsigned int FC_BLACK     = 0x30000000;
+  const unsigned int FC_GHOST     = 0x40000000;
 
-		unsigned char *m_cairo_image_data = NULL;
-		unsigned char *m_bitmap_image_data = NULL;
+  unsigned char *m_cairo_image_data = NULL;
+  unsigned char *m_bitmap_image_data = NULL;
 
-		// cairo stuff
-		cairo_surface_t *m_surface;
-		cairo_t *m_cr;
+  // cairo stuff
+  cairo_surface_t *m_surface;
+  cairo_t *m_cr;
 
-		// fonts
-		FT_Library  m_ft_library;
+  // fonts
+  FT_Library  m_ft_library;
 
-		FT_Face     m_ft_face_normal;
-		FT_Face     m_ft_face_italic;
-		FT_Face     m_ft_face_bold;
+  FT_Face     m_ft_face_normal;
+  FT_Face     m_ft_face_italic;
+  FT_Face     m_ft_face_bold;
 
-		cairo_scaled_font_t *m_scaled_font[3];
+  cairo_scaled_font_t *m_scaled_font[3];
 
-		cairo_pattern_t *m_ghost_box_transparency;
-		cairo_pattern_t *m_default_font_color;
-		cairo_pattern_t *m_black_font_outline;
+  cairo_pattern_t *m_ghost_box_transparency;
+  cairo_pattern_t *m_default_font_color;
+  cairo_pattern_t *m_black_font_outline;
 
-		// positional elements
-		bool m_centered;
-		bool m_ghost_box;
-		int m_max_lines;
+  // positional elements
+  bool m_centered;
+  bool m_ghost_box;
+  int m_max_lines;
 
-		// font properties
-		int m_padding;
-		int m_font_size;
+  // font properties
+  int m_padding;
+  int m_font_size;
 };

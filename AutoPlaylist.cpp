@@ -31,70 +31,70 @@ using namespace std;
 
 void AutoPlaylist::readPlaylist(string &filename)
 {
-	// reset object
-	playlist_pos = -1;
-	playlist.clear();
-	dirname.clear();
+  // reset object
+  playlist_pos = -1;
+  playlist.clear();
+  dirname.clear();
 
-    int pos = filename.find_last_of('/');
-    dirname = filename.substr(0, pos+1); // including trailing slash
-    string basename = filename.substr(pos+1);
+  int pos = filename.find_last_of('/');
+  dirname = filename.substr(0, pos+1); // including trailing slash
+  string basename = filename.substr(pos+1);
 
-	DIR *dir = opendir(dirname.c_str());
-	if (!dir) {
-		puts("Failed to open playlist directory for reading");
-		return;
-	}
+  DIR *dir = opendir(dirname.c_str());
+  if (!dir) {
+    puts("Failed to open playlist directory for reading");
+    return;
+  }
 
-	// re for filename match
-	CRegExp fnameext_match("\\.(3g2|3gp|amv|asf|avi|drc|f4a|f4b|f4p|f4v|flv|"
-		"m2ts|m2v|m4p|m4v|mkv|mov|mp2|mp4|mpe|mpeg|mpg|mpv|mts|mxf|nsv|ogg|"
-		"ogv|qt|rm|rmvb|roq|svi|ts|vob|webm|wmv|yuv|iso|dmg)$");
+  // re for filename match
+  CRegExp fnameext_match("\\.(3g2|3gp|amv|asf|avi|drc|f4a|f4b|f4p|f4v|flv|"
+    "m2ts|m2v|m4p|m4v|mkv|mov|mp2|mp4|mpe|mpeg|mpg|mpv|mts|mxf|nsv|ogg|"
+    "ogv|qt|rm|rmvb|roq|svi|ts|vob|webm|wmv|yuv|iso|dmg)$");
 
-	// Quit if file being played doesn't have one of the above filename extensions
-	if(fnameext_match.RegFind(basename, 0) == -1) {
-		puts("Disabling playlist as filename extension not recognised");
-		return;
-	}
+  // Quit if file being played doesn't have one of the above filename extensions
+  if(fnameext_match.RegFind(basename, 0) == -1) {
+    puts("Disabling playlist as filename extension not recognised");
+    return;
+  }
 
-	struct dirent *ent;
-	while ((ent = readdir(dir))) {
-		if(ent->d_type != DT_DIR && ent->d_name[0] != '.' &&
-				fnameext_match.RegFind(ent->d_name, 0) > -1) {
+  struct dirent *ent;
+  while ((ent = readdir(dir))) {
+    if(ent->d_type != DT_DIR && ent->d_name[0] != '.' &&
+        fnameext_match.RegFind(ent->d_name, 0) > -1) {
 
-			playlist.push_back(ent->d_name);
-		}
-	}
-	closedir(dir);
+      playlist.push_back(ent->d_name);
+    }
+  }
+  closedir(dir);
 
-	// In English and most other European langauges, this should sort by lower case without
-	// regard to diacritics
-	const locale loc = locale("");
-	sort(playlist.begin(), playlist.end(), loc);
+  // In English and most other European langauges, this should sort by lower case without
+  // regard to diacritics
+  const locale loc = locale("");
+  sort(playlist.begin(), playlist.end(), loc);
 
-	// search for file we started with
-	for(uint i = 0; i < playlist.size(); i++) {
-		if(playlist[i] == basename) {
-			playlist_pos = i;
-			return;
-		}
-	}
+  // search for file we started with
+  for(uint i = 0; i < playlist.size(); i++) {
+    if(playlist[i] == basename) {
+      playlist_pos = i;
+      return;
+    }
+  }
 
-	// strange error
-	puts("Weird error");
-	playlist.clear();
+  // strange error
+  puts("Weird error");
+  playlist.clear();
 }
 
 bool AutoPlaylist::ChangeFile(int delta, string &filename)
 {
-	int npos = playlist_pos + delta;
-	int last_index = playlist.size() - 1;
+  int npos = playlist_pos + delta;
+  int last_index = playlist.size() - 1;
 
-	if(npos < 0 || npos > last_index)
-		return false;
+  if(npos < 0 || npos > last_index)
+    return false;
 
-	playlist_pos = npos;
+  playlist_pos = npos;
 
-	filename = dirname + playlist[playlist_pos];
-	return true;
+  filename = dirname + playlist[playlist_pos];
+  return true;
 }

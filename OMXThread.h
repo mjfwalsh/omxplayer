@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <atomic>
 
-class OMXThread 
+class OMXThread
 {
 protected:
   pthread_attr_t      m_tattr;

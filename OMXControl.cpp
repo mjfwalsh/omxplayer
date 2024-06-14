@@ -12,7 +12,7 @@
 
 DBusConnection     *bus = NULL;
 
-OMXControl::~OMXControl() 
+OMXControl::~OMXControl()
 {
   dbus_disconnect();
 }

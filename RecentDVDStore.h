@@ -23,22 +23,22 @@
 class RecentDVDStore
 {
 public:
-	void readStore();
-	void retrieveRecentInfo(const std::string &key, int &track, int &time, char *audio, char *subtitle);
-	void remember(const int &track, const int &time, char *audio, char *subtitle);
-	void saveStore();
+  void readStore();
+  void retrieveRecentInfo(const std::string &key, int &track, int &time, char *audio, char *subtitle);
+  void remember(const int &track, const int &time, char *audio, char *subtitle);
+  void saveStore();
 
 private:
-	struct DVDInfo {
-		std::string key;
-		int time = -1;
-		int track = -1;
-		std::string audio;
-		std::string subtitle;
-	};
+  struct DVDInfo {
+    std::string key;
+    int time = -1;
+    int track = -1;
+    std::string audio;
+    std::string subtitle;
+  };
 
-	std::vector<DVDInfo> store;
-	std::string recent_dvd_file;
-	std::string current_dvd;
-	bool m_init = false;
+  std::vector<DVDInfo> store;
+  std::string recent_dvd_file;
+  std::string current_dvd;
+  bool m_init = false;
 };

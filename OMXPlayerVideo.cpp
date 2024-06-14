@@ -103,7 +103,7 @@ void OMXPlayerVideo::Reset()
   // the start or a new position.  This replaces a combination of Close and then
   // Open calls but does away with the DLL unloading/loading, decoder reset, and
   // thread reset.
-  Flush();   
+  Flush();
   m_iCurrentPts       = AV_NOPTS_VALUE;
   m_flush             = false;
   m_flush_requested   = false;
@@ -219,7 +219,7 @@ void OMXPlayerVideo::Flush()
   m_flush = true;
   while (!m_packets.empty())
   {
-    OMXPacket *pkt = m_packets.front(); 
+    OMXPacket *pkt = m_packets.front();
     m_packets.pop_front();
     delete pkt;
   }

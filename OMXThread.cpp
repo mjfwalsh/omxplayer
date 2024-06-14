@@ -107,4 +107,3 @@ void OMXThread::UnLock()
 {
   pthread_mutex_unlock(&m_lock);
 }
-

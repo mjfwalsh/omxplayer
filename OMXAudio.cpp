@@ -521,7 +521,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   }
 
   omx_err = m_omx_decoder.AllocInputBuffers();
-  if(omx_err != OMX_ErrorNone) 
+  if(omx_err != OMX_ErrorNone)
   {
     CLogLog(LOGERROR, "COMXAudio::Initialize - Error alloc buffers 0x%08x", omx_err);
     throw "COMXAudio Error: AllocInputBuffers error";
@@ -557,27 +557,27 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
       m_omx_decoder.DecoderEmptyBufferDone(m_omx_decoder.GetComponent(), omx_buffer);
       throw "COMXAudio Error: OMX_EmptyThisBuffer error";
     }
-  } 
+  }
   else if(m_config.hwdecode)
   {
     // send decoder config
     if(m_config.hints.extrasize > 0 && m_config.hints.extradata != NULL)
     {
       OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer();
-  
+
       if(omx_buffer == NULL)
       {
         CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
         throw "COMXAudio Error: GetInputBuffer error";
       }
-  
+
       omx_buffer->nOffset = 0;
       omx_buffer->nFilledLen = std::min((OMX_U32)m_config.hints.extrasize, omx_buffer->nAllocLen);
 
       memset((unsigned char *)omx_buffer->pBuffer, 0x0, omx_buffer->nAllocLen);
       memcpy((unsigned char *)omx_buffer->pBuffer, m_config.hints.extradata, omx_buffer->nFilledLen);
       omx_buffer->nFlags = OMX_BUFFERFLAG_CODECCONFIG | OMX_BUFFERFLAG_ENDOFFRAME;
-  
+
       omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);
       if (omx_err != OMX_ErrorNone)
       {
@@ -674,7 +674,7 @@ void COMXAudio::Flush()
     m_omx_render_analog.FlushAll();
   if ( m_omx_render_hdmi.IsInitialized() )
     m_omx_render_hdmi.FlushAll();
-  
+
   while(!m_ampqueue.empty())
     m_ampqueue.pop_front();
 
@@ -716,7 +716,7 @@ void COMXAudio::SetVolume(float fVolume)
     UpdateAttenuation();
 }
 
-float COMXAudio::GetVolume() 
+float COMXAudio::GetVolume()
 {
   return m_Mute ? VOLUME_MINIMUM : m_CurrentVolume;
 }
@@ -1122,7 +1122,7 @@ bool COMXAudio::IsEOS()
 void COMXAudio::SetCodingType(AVCodecID codec)
 {
   switch(codec)
-  { 
+  {
     case AV_CODEC_ID_DTS:
       CLogLog(LOGDEBUG, "COMXAudio::SetCodingType OMX_AUDIO_CodingDTS");
       m_eEncoding = OMX_AUDIO_CodingDTS;
@@ -1136,13 +1136,13 @@ void COMXAudio::SetCodingType(AVCodecID codec)
       CLogLog(LOGDEBUG, "COMXAudio::SetCodingType OMX_AUDIO_CodingPCM");
       m_eEncoding = OMX_AUDIO_CodingPCM;
       break;
-  } 
+  }
 }
 
 bool COMXAudio::CanHWDecode(AVCodecID codec)
 {
   switch(codec)
-  { 
+  {
     /*
     case AV_CODEC_ID_VORBIS:
       CLogLog(LOGDEBUG, "COMXAudio::CanHWDecode OMX_AUDIO_CodingVORBIS");
@@ -1177,7 +1177,7 @@ bool COMXAudio::CanHWDecode(AVCodecID codec)
       m_eEncoding = OMX_AUDIO_CodingPCM;
       m_config.hwdecode = false;
       break;
-  } 
+  }
 
   return m_config.hwdecode;
 }
@@ -1187,7 +1187,7 @@ bool COMXAudio::HWDecode(AVCodecID codec)
   bool ret = false;
 
   switch(codec)
-  { 
+  {
     /*
     case AV_CODEC_ID_VORBIS:
       CLogLog(LOGDEBUG, "COMXAudio::HWDecode AV_CODEC_ID_VORBIS");
@@ -1215,7 +1215,7 @@ bool COMXAudio::HWDecode(AVCodecID codec)
     default:
       ret = false;
       break;
-  } 
+  }
 
   return ret;
 }
@@ -1328,7 +1328,7 @@ int COMXAudio::BuildChannelMapCEA(enum PCMChannels *channelMap, uint64_t layout)
   return num_channels;
 }
 
-void COMXAudio::BuildChannelMapOMX(enum OMX_AUDIO_CHANNELTYPE *	channelMap, uint64_t layout)
+void COMXAudio::BuildChannelMapOMX(enum OMX_AUDIO_CHANNELTYPE *  channelMap, uint64_t layout)
 {
   int index = 0;
 

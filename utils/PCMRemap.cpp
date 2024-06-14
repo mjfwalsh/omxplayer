@@ -75,7 +75,7 @@ static struct PCMMapInfo PCMDownmixTable[PCM_MAX_CH][PCM_MAX_MIX] =
       but due to horrible clipping when normalize
       is disabled we set this to 1.0
     */
-    {PCM_FRONT_LEFT           , 1.0},//3.5}, 
+    {PCM_FRONT_LEFT           , 1.0},//3.5},
     {PCM_FRONT_RIGHT          , 1.0},//3.5},
     {PCM_INVALID}
   },
@@ -212,7 +212,7 @@ void CPCMRemap::ResolveChannels()
 {
   bool hasSide = false;
   bool hasBack = false;
-  
+
   memset(m_useable, 0, sizeof(m_useable));
 
   /* figure out what channels we have and can use */
@@ -259,7 +259,7 @@ void CPCMRemap::ResolveChannels()
     CLogLog(LOGDEBUG, "CPCMRemap: Forcing side channel map to back channels");
     for(unsigned int in_ch = 0; in_ch < m_inChannels; ++in_ch)
            if (m_inMap[in_ch] == PCM_SIDE_LEFT ) m_inMap[in_ch] = PCM_BACK_LEFT;
-      else if (m_inMap[in_ch] == PCM_SIDE_RIGHT) m_inMap[in_ch] = PCM_BACK_RIGHT;   
+      else if (m_inMap[in_ch] == PCM_SIDE_RIGHT) m_inMap[in_ch] = PCM_BACK_RIGHT;
   }
 
   /* resolve all the channels */
@@ -325,7 +325,7 @@ void CPCMRemap::BuildMap()
     dst = m_lookupMap[m_outMap[out_ch]];
     if (count == 1 && dst->level > 0.99 && dst->level < 1.01)
       dst->copy = true;
-    
+
     /* normalize the levels if it is turned on */
     if (!m_dontnormalize)
       for(dst = m_lookupMap[m_outMap[out_ch]]; dst->channel != PCM_INVALID; ++dst)
@@ -339,7 +339,7 @@ void CPCMRemap::BuildMap()
         }
       }
   }
-  
+
   /* adjust the channels that are too loud */
   for(unsigned int out_ch = 0; out_ch < m_outChannels; ++out_ch)
   {

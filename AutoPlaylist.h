@@ -24,11 +24,11 @@
 class AutoPlaylist
 {
 public:
-	void readPlaylist(std::string &indexfilepath);
-	bool ChangeFile(int delta, std::string &filename);
+  void readPlaylist(std::string &indexfilepath);
+  bool ChangeFile(int delta, std::string &filename);
 
 private:
-	std::vector<std::string> playlist;
-	int playlist_pos = -1;
-	std::string dirname;
+  std::vector<std::string> playlist;
+  int playlist_pos = -1;
+  std::string dirname;
 };

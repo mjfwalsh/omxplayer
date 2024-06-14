@@ -99,7 +99,7 @@ void OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32
   AVCONST AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
   if(!dvd_codec)
     throw "Failed to find DVD codec";
-  
+
   m_dvd_codec_context = avcodec_alloc_context3(dvd_codec);
   if(!m_dvd_codec_context)
     throw "Failed to allocate DVD codec";
@@ -137,7 +137,7 @@ void OMXPlayerSubtitles::Close()
 
   m_external_subtitles.clear();
   m_subtitle_buffers.clear();
-  
+
   m_stream_count = 0;
   m_external_subtitle_stream = -1;
 

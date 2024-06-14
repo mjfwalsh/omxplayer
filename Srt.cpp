@@ -32,7 +32,7 @@
 
 static int timecode_to_milliseconds(unsigned h, unsigned m, unsigned s, unsigned f)
 {
-    return (h * 3600000) + (m * 60000) + (s * 1000) + f;
+  return (h * 3600000) + (m * 60000) + (s * 1000) + f;
 }
 
 bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
@@ -79,8 +79,8 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
 
     if(text_lines.empty()) continue;
 
-	text_lines.pop_back(); // remove trailing new line
-	text_lines.shrink_to_fit();
+    text_lines.pop_back(); // remove trailing new line
+    text_lines.shrink_to_fit();
 
     // deduct one to delete the training newline
     subtitles.emplace_back(start, stop, text_lines);

@@ -27,69 +27,69 @@ class OMXReaderDvd;
 
 class OMXDvdPlayer
 {
-  public:
-	explicit OMXDvdPlayer(const std::string &filename);
-	~OMXDvdPlayer();
+public:
+  explicit OMXDvdPlayer(const std::string &filename);
+  ~OMXDvdPlayer();
 
-	OMXDvdPlayer(const OMXDvdPlayer&) = delete;
-	OMXDvdPlayer& operator=(const OMXDvdPlayer&) = delete;
+  OMXDvdPlayer(const OMXDvdPlayer&) = delete;
+  OMXDvdPlayer& operator=(const OMXDvdPlayer&) = delete;
 
-	bool CanChangeTrack(int delta, int &t);
-	OMXReaderDvd *OpenTrack(int ct);
+  bool CanChangeTrack(int delta, int &t);
+  OMXReaderDvd *OpenTrack(int ct);
 
-	std::string GetID() const { return disc_checksum; }
-	std::string GetTitle() const { return disc_title; }
-	void removeCompositeTracks();
+  std::string GetID() const { return disc_checksum; }
+  std::string GetTitle() const { return disc_title; }
+  void removeCompositeTracks();
 
-	void info_dump();
-	static int dvdtime2msec(dvd_time_t *dt);
-	static const char* convertLangCode(uint16_t lang);
+  void info_dump();
+  static int dvdtime2msec(dvd_time_t *dt);
+  static const char* convertLangCode(uint16_t lang);
 
-	typedef struct {
-		unsigned int first_sector;
-		int blocks;
-	} part_info;
+  typedef struct {
+    unsigned int first_sector;
+    int blocks;
+  } part_info;
 
-	typedef struct {
-		int id; // as in the hex number in "Stream #0:2[0x85]:"
-		uint16_t lang; // lang code
-	} stream_info;
+  typedef struct {
+    int id; // as in the hex number in "Stream #0:2[0x85]:"
+    uint16_t lang; // lang code
+  } stream_info;
 
-	typedef struct {
-		int title_num;
-		std::vector<stream_info> audio_streams;
-		std::vector<stream_info> subtitle_streams;
-		uint32_t palette[16];
-	} title_info;
+  typedef struct {
+    int title_num;
+    std::vector<stream_info> audio_streams;
+    std::vector<stream_info> subtitle_streams;
+    uint32_t palette[16];
+  } title_info;
 
-	typedef struct {
-		int cell;
-		int time;
-		bool is_chapter;
-	} cell_info;
+  typedef struct {
+    int cell;
+    int time;
+    bool is_chapter;
+  } cell_info;
 
-	typedef struct {
-		std::shared_ptr<title_info> title;
-		int length;
-		std::vector<cell_info> cells;
-		std::vector<part_info> parts;
-	} track_info;
+  typedef struct {
+    std::shared_ptr<title_info> title;
+    int length;
+    std::vector<cell_info> cells;
+    std::vector<part_info> parts;
+  } track_info;
 
-  private:
-	std::vector<track_info> tracks;
+private:
+  std::vector<track_info> tracks;
 
-	void read_title_name();
-	void read_disc_checksum();
-	void read_disc_serial_number();
+  void read_title_name();
+  void read_disc_checksum();
+  void read_disc_serial_number();
 
-	dvd_reader_t *dvd_device;
-	dvd_file_t *dvd_track = NULL;
+  dvd_reader_t *dvd_device;
+  dvd_file_t *dvd_track = NULL;
 
-    int track_no = -1;
+  int track_no = -1;
 
-	std::string device_path;
-	std::string disc_title;
-	std::string disc_checksum;
+  std::string device_path;
+  std::string disc_title;
+  std::string disc_checksum;
 
-	int yvu2rgb(int c);
+  int yvu2rgb(int c);
 };

@@ -100,7 +100,7 @@ private:
   unsigned int  m_InputChannels;
   unsigned int  m_OutputChannels;
   unsigned int  m_BitsPerSample;
-  float		m_maxLevel;
+  float    m_maxLevel;
   float         m_amplification;
   float         m_attenuation;
   float         m_submitted;
@@ -142,4 +142,3 @@ protected:
   CCriticalSection m_critSection;
 };
 #endif
-

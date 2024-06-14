@@ -33,7 +33,7 @@ class OMXPacket
 public:
   OMXPacket();
   ~OMXPacket();
-  
+
   AVPacket *avpkt;
   COMXStreamInfo hints;
   enum AVMediaType codec_type;

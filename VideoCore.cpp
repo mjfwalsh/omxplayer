@@ -289,4 +289,3 @@ bool VideoCore::canPassThroughDTS()
 {
   return vc_tv_hdmi_audio_supported(EDID_AudioFormat_eDTS, 2, EDID_AudioSampleRate_e44KHz, EDID_AudioSampleSize_16bit) != 0;
 }
-

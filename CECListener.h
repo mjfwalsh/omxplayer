@@ -1,7 +1,7 @@
 #pragma once
 /*
  *
- *			Copyright (C) 2022 Michael Walsh
+ *      Copyright (C) 2022 Michael Walsh
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -10,7 +10,7 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
@@ -24,14 +24,14 @@ enum Action;
 
 class CECListener
 {
- protected:
-	std::atomic<int> m_action{-1};
+protected:
+  std::atomic<int> m_action{-1};
 
- public:
-	CECListener();
-	enum Action getEvent();
+public:
+  CECListener();
+  enum Action getEvent();
 
- private:
-	static void InitCallback(void *object, uint32_t reason, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4);
-	static void ActionCallback(void *object, uint32_t reason, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4);
+private:
+  static void InitCallback(void *object, uint32_t reason, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4);
+  static void ActionCallback(void *object, uint32_t reason, uint32_t param1, uint32_t param2, uint32_t param3, uint32_t param4);
 };

@@ -123,7 +123,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
     return true;
 
   if(m_stream_index != pkt->stream_type_index)
-    return true; 
+    return true;
 
   int channels = pkt->hints.channels;
 
@@ -244,7 +244,7 @@ void OMXPlayerAudio::Process()
       m_packets.pop_front();
     }
     UnLock();
-    
+
     LockDecoder();
     if(m_flush && omx_pkt)
     {
@@ -275,7 +275,7 @@ void OMXPlayerAudio::Flush()
   m_flush = true;
   while (!m_packets.empty())
   {
-    OMXPacket *pkt = m_packets.front(); 
+    OMXPacket *pkt = m_packets.front();
     m_packets.pop_front();
     delete pkt;
   }
@@ -355,7 +355,7 @@ bool OMXPlayerAudio::OpenDecoder()
   }
   catch(const char *msg)
   {
-	puts(msg);
+  puts(msg);
     m_decoder = NULL;
     return false;
   }
@@ -429,4 +429,3 @@ bool OMXPlayerAudio::IsEOS()
 {
   return m_packets.empty() && (!m_decoder || m_decoder->IsEOS());
 }
-

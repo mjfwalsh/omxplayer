@@ -35,36 +35,36 @@
 class DispmanxLayer
 {
 public:
-	DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
-		uint32_t *palette = NULL);
-	~DispmanxLayer();
+  DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
+    uint32_t *palette = NULL);
+  ~DispmanxLayer();
 
-	void hideElement();
-	void clearImage();
-	void setImageData(void *image_data, bool show = true);
+  void hideElement();
+  void clearImage();
+  void setImageData(void *image_data, bool show = true);
 
-	const int& getSourceWidth();
-	const int& getSourceHeight();
+  const int& getSourceWidth();
+  const int& getSourceHeight();
 
-	static void openDisplay(int display_num, int layer, Rect rect);
-	static Rect getScreenDimensions();
-	static Rect GetVideoPort(float video_aspect_ratio, int aspect_mode);
-	static void closeDisplay();
+  static void openDisplay(int display_num, int layer, Rect rect);
+  static Rect getScreenDimensions();
+  static Rect GetVideoPort(float video_aspect_ratio, int aspect_mode);
+  static void closeDisplay();
 
 private:
-	void changeImageLayer(int new_layer);
-	void showElement();
+  void changeImageLayer(int new_layer);
+  void showElement();
 
-	VC_RECT_T m_bmpRect;
-	int m_image_pitch;
-	DISPMANX_RESOURCE_HANDLE_T m_resource;
-	DISPMANX_ELEMENT_HANDLE_T m_element;
-	DISPMANX_UPDATE_HANDLE_T m_update;
+  VC_RECT_T m_bmpRect;
+  int m_image_pitch;
+  DISPMANX_RESOURCE_HANDLE_T m_resource;
+  DISPMANX_ELEMENT_HANDLE_T m_element;
+  DISPMANX_UPDATE_HANDLE_T m_update;
 
-	bool m_element_is_hidden = true;
+  bool m_element_is_hidden = true;
 
-	static int s_layer;
-	static DISPMANX_DISPLAY_HANDLE_T s_display;
-	static Rect s_screen_rect;
-	static bool s_is_fullscreen;
+  static int s_layer;
+  static DISPMANX_DISPLAY_HANDLE_T s_display;
+  static Rect s_screen_rect;
+  static bool s_is_fullscreen;
 };

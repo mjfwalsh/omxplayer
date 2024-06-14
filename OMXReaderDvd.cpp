@@ -214,13 +214,13 @@ void OMXReaderDvd::GetStreams()
   // audio streams
   for(auto audio_stream : m_current_track.title->audio_streams)
     AddStreamByHexId(audio_stream.id, OMXDvdPlayer::convertLangCode(audio_stream.lang));
-  
+
   // subtitle streams
   for(auto subtitle_stream : m_current_track.title->subtitle_streams)
   {
     int hex_id = subtitle_stream.id;
     const char *lang = OMXDvdPlayer::convertLangCode(subtitle_stream.lang);
-    
+
     if(!AddStreamByHexId(hex_id, lang))
       AddMissingSubtitleStream(hex_id, lang);
   }
@@ -393,7 +393,7 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t &seek_micro, bool backwards)
     cur_time_seeking_pos = OMXDvdPlayer::dvdtime2msec(&dsi_pack.dsi_gi.c_eltm);
 
     int diff = seek_within_cell - cur_time_seeking_pos;
-    
+
     int lower = 0;
     int higher = 7;
 

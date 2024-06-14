@@ -75,7 +75,7 @@ bool COMXVideo::SendDecoderConfig()
     memset((unsigned char *)omx_buffer->pBuffer, 0x0, omx_buffer->nAllocLen);
     memcpy((unsigned char *)omx_buffer->pBuffer, m_config.hints.extradata, omx_buffer->nFilledLen);
     omx_buffer->nFlags = OMX_BUFFERFLAG_CODECCONFIG | OMX_BUFFERFLAG_ENDOFFRAME;
-  
+
     omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);
     if (omx_err != OMX_ErrorNone)
     {
@@ -99,7 +99,7 @@ bool COMXVideo::NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata
         return true;
     default: break;
   }
-  return false;    
+  return false;
 }
 
 void COMXVideo::PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode)
@@ -474,7 +474,7 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
       decoder_name = OMX_VC1_DECODER;
       m_codingType = OMX_VIDEO_CodingWMV;
       m_video_codec_name = "omx-vc1";
-      break;    
+      break;
     default:
       printf("Unsupported video codec: %s\n", avcodec_get_name(m_config.hints.codec));
       throw "Unsupported video codec";
@@ -518,7 +518,7 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
   omx_err = m_omx_decoder.SetParameter(OMX_IndexParamVideoPortFormat, &formatType);
   if(omx_err != OMX_ErrorNone)
     throw "SetParameter OMX_IndexParamVideoPortFormat failed";
-  
+
   OMX_PARAM_PORTDEFINITIONTYPE portParam;
   OMX_INIT_STRUCTURE(portParam);
   portParam.nPortIndex = m_omx_decoder.GetInputPort();
@@ -742,7 +742,7 @@ bool COMXVideo::Decode(OMXPacket *pkt)
     }
     return true;
   }
-  
+
   return false;
 }
 
@@ -878,20 +878,20 @@ void COMXVideo::SubmitEOS()
 
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(1000);
-  
+
   if(omx_buffer == NULL)
   {
     CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
     m_failed_eos = true;
     return;
   }
-  
+
   omx_buffer->nOffset     = 0;
   omx_buffer->nFilledLen  = 0;
   omx_buffer->nTimeStamp  = ToOMXTime(0LL);
 
   omx_buffer->nFlags = OMX_BUFFERFLAG_ENDOFFRAME | OMX_BUFFERFLAG_EOS | OMX_BUFFERFLAG_TIME_UNKNOWN;
-  
+
   omx_err = m_omx_decoder.EmptyThisBuffer(omx_buffer);
   if (omx_err != OMX_ErrorNone)
   {
@@ -914,4 +914,3 @@ bool COMXVideo::IsEOS()
   }
   return true;
 }
-

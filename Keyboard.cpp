@@ -33,7 +33,7 @@ Keyboard::Keyboard(const char *filename)
   // setKeymap
   KeyConfig::buildKeymap(filename, m_keymap);
 
-  if (isatty(STDIN_FILENO)) 
+  if (isatty(STDIN_FILENO))
   {
     struct termios new_termios;
 
@@ -47,9 +47,9 @@ Keyboard::Keyboard(const char *filename)
 
     orig_fl = fcntl(STDIN_FILENO, F_GETFL);
     fcntl(STDIN_FILENO, F_SETFL, FNDELAY);
-  } 
-  else 
-  {    
+  }
+  else
+  {
     orig_fl = fcntl(STDIN_FILENO, F_GETFL);
     fcntl(STDIN_FILENO, F_SETFL, orig_fl | O_NONBLOCK);
   }
@@ -65,12 +65,12 @@ Keyboard::~Keyboard()
     StopThread();
   }
 
-  if (isatty(STDIN_FILENO)) 
+  if (isatty(STDIN_FILENO))
   {
     tcsetattr(STDIN_FILENO, TCSANOW, &orig_termios);
     fcntl(STDIN_FILENO, F_SETFL, orig_fl);
-  } 
-  else 
+  }
+  else
   {
     fcntl(STDIN_FILENO, F_SETFL, orig_fl);
   }
@@ -85,7 +85,7 @@ void Keyboard::Sleep(unsigned int dwMilliSeconds)
   while ( nanosleep(&req, &req) == -1 && errno == EINTR && (req.tv_nsec > 0 || req.tv_sec > 0));
 }
 
-void Keyboard::Process() 
+void Keyboard::Process()
 {
   while(!m_bAbort)
   {
