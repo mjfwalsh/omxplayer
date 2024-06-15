@@ -26,7 +26,9 @@
 
 #include "Srt.h"
 #include "Subtitle.h"
+#include "utils/utf8.h"
 
+#include <iostream>
 #include <istream>
 #include <fstream>
 
@@ -82,8 +84,11 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
     text_lines.pop_back(); // remove trailing new line
     text_lines.shrink_to_fit();
 
-    // deduct one to delete the training newline
-    subtitles.emplace_back(start, stop, text_lines);
+    // validate utf8
+    if(isValidUtf8(text_lines))
+      subtitles.emplace_back(start, stop, text_lines);
+    else
+      std::cerr << "Invalid utf8 found in subtitles\n";
   }
 
   subtitles.shrink_to_fit();

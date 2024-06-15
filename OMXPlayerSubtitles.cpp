@@ -28,6 +28,7 @@ extern "C" {
 #include "Subtitle.h"
 #include "utils/defs.h"
 #include "utils/log.h"
+#include "utils/utf8.h"
 #include "Srt.h"
 #include "DispmanxLayer.h"
 
@@ -558,7 +559,12 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
 
   sub.text[w++] = '\0';
 
-  return true;
+  // check text is valid utf8
+  if(isValidUtf8(sub.text))
+    return true;
+
+  puts("Invalid utf8 found in subtitles");
+  return false;
 }
 
 bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
