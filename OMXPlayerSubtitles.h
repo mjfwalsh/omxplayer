@@ -68,6 +68,8 @@ public:
   void Resume();
   void Pause();
 
+  void PrintInfo();
+
   int SetVisible(bool visible);
 
   int ToggleVisible()
@@ -87,11 +89,6 @@ public:
   int GetActiveStream()
   {
     return m_visible ? m_active_index : -1;
-  }
-
-  int GetStreamCount()
-  {
-    return m_stream_count;
   }
 
   int GetExternalSubIndex()

@@ -208,15 +208,6 @@ static void UpdateRaspicastMetaData(const std::string &msg)
   fclose(fp);
 }
 
-static void PrintSubtitleInfo()
-{
-  printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
-         m_player_subtitles->GetStreamCount(),
-         m_player_subtitles->GetVisible() ? " on" : "off",
-         m_player_subtitles->GetActiveStream()+1,
-         m_player_subtitles->GetDelay());
-}
-
 static void printSubtitleOsd()
 {
   if(m_subtitle_index == -1) {
@@ -230,7 +221,7 @@ static void printSubtitleOsd()
     else
       osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
   }
-  PrintSubtitleInfo();
+  m_player_subtitles->PrintInfo();
 }
 
 static void SetSpeed(float iSpeed)
@@ -1266,7 +1257,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       int new_delay = m_player_subtitles->GetDelay() - 250;
       osd_printf(OSD_NORM, "Subtitle delay: %d ms", new_delay);
       m_player_subtitles->SetDelay(new_delay);
-      PrintSubtitleInfo();
+      m_player_subtitles->PrintInfo();
     }
     break;
 
@@ -1276,7 +1267,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       int new_delay = m_player_subtitles->GetDelay() + 250;
       osd_printf(OSD_NORM, "Subtitle delay: %d ms", new_delay);
       m_player_subtitles->SetDelay(new_delay);
-      PrintSubtitleInfo();
+      m_player_subtitles->PrintInfo();
     }
     break;
 
@@ -1912,7 +1903,7 @@ int run_play_loop()
 
   initDVDSubs();
 
-  PrintSubtitleInfo();
+  m_player_subtitles->PrintInfo();
 
   /* -------------------------------------------------------
                          Clock Setup

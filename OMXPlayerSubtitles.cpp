@@ -439,6 +439,15 @@ void OMXPlayerSubtitles::Pause()
   SendToRenderer(new Mailbox::SetPaused(true));
 }
 
+void OMXPlayerSubtitles::PrintInfo()
+{
+  printf("Subtitle count: %d, state: %s, index: %d, delay: %d\n",
+         m_stream_count.load(),
+         m_visible ? " on" : "off",
+         GetActiveStream() + 1,
+         m_delay);
+}
+
 void OMXPlayerSubtitles::SetDelay(int value)
 {
   m_delay = value;
