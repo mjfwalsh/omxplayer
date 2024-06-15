@@ -2187,8 +2187,6 @@ int play_next(int next)
 {
   m_firstfile = false;
   m_next_prev_file = 0;
-  m_subtitle_index = -1;
-  m_audio_index = -1;
   return next;
 }
 
