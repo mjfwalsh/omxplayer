@@ -445,14 +445,10 @@ void OMXPlayerSubtitles::SetDelay(int value)
   SendToRenderer(new Mailbox::SetDelay(value));
 }
 
-void OMXPlayerSubtitles::SetVisible(bool visible)
+int OMXPlayerSubtitles::SetVisible(bool visible)
 {
-  if(m_stream_count == 0 || visible == m_visible)
-    return;
-
-  SetActiveStream(visible ? m_active_index : -1);
+  return SetActiveStream(visible ? m_active_index : -1);
 }
-
 
 int OMXPlayerSubtitles::SetActiveStreamDelta(int delta)
 {
@@ -501,7 +497,6 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index)
     m_visible = true;
     return m_active_index;
   }
-
   else
   {
     // set new index and set visible to true

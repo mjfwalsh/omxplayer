@@ -68,7 +68,12 @@ public:
   void Resume();
   void Pause();
 
-  void SetVisible(bool visible);
+  int SetVisible(bool visible);
+
+  int ToggleVisible()
+  {
+    return SetVisible(!m_visible);
+  }
 
   bool GetVisible()
   {

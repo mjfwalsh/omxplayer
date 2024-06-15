@@ -217,6 +217,22 @@ static void PrintSubtitleInfo()
          m_player_subtitles->GetDelay());
 }
 
+static void printSubtitleOsd()
+{
+  if(m_subtitle_index == -1) {
+    m_subtitle_lang[0] = '\0';
+    osd_print("Subtitles Off");
+  } else {
+    strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
+        m_subtitle_index).c_str());
+    if(m_subtitle_lang[0] == '\0')
+      osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d", m_subtitle_index + 1);
+    else
+      osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
+  }
+  PrintSubtitleInfo();
+}
+
 static void SetSpeed(float iSpeed)
 {
   m_omx_reader->SetSpeed(iSpeed);
@@ -1205,9 +1221,16 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case ACTION_PREVIOUS_SUBTITLE:
+    m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(-1);
+    printSubtitleOsd();
+    break;
+
   case ACTION_NEXT_SUBTITLE:
+    m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(1);
+    printSubtitleOsd();
+    break;
+
   case SET_SUBTITLE_STREAM:
-    if(search_key == SET_SUBTITLE_STREAM)
     {
       int index;
       if(!m->get_arg_int(&index))
@@ -1218,43 +1241,23 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
       m_subtitle_index = m_player_subtitles->SetActiveStream(index);
       m->respond_bool(m_subtitle_index == index);
+      printSubtitleOsd();
     }
-    else
-    {
-      int delta = search_key == ACTION_PREVIOUS_SUBTITLE ? -1 : 1;
-      m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(delta);
-    }
-
-    if(m_subtitle_index == -1) {
-      m_subtitle_lang[0] = '\0';
-      osd_print("Subtitles Off");
-    } else if(m_subtitle_index == m_player_subtitles->GetExternalSubIndex()) {
-      m_subtitle_lang[0] = '\0';
-      osd_print("Subtitle stream: External");
-    } else {
-      strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
-          m_subtitle_index).c_str());
-      if(m_subtitle_lang[0] == '\0')
-        osd_printf(OSD_NORM, "Subtitle stream: %d", m_subtitle_index + 1);
-      else
-        osd_printf(OSD_NORM, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
-    }
-    PrintSubtitleInfo();
     break;
 
   case ACTION_TOGGLE_SUBTITLE:
-  case ACTION_HIDE_SUBTITLES:
-  case ACTION_SHOW_SUBTITLES:
-    {
-      bool new_visible = search_key == ACTION_TOGGLE_SUBTITLE ?
-        !m_player_subtitles->GetVisible()
-          :
-        search_key == ACTION_SHOW_SUBTITLES;
+    m_subtitle_index = m_player_subtitles->ToggleVisible();
+    printSubtitleOsd();
+    break;
 
-      m_player_subtitles->SetVisible(new_visible);
-      osd_print(new_visible ? "Subtitles On" : "Subtitles Off");
-      PrintSubtitleInfo();
-    }
+  case ACTION_HIDE_SUBTITLES:
+    m_subtitle_index = m_player_subtitles->SetVisible(false);
+    printSubtitleOsd();
+    break;
+
+  case ACTION_SHOW_SUBTITLES:
+    m_subtitle_index = m_player_subtitles->SetVisible(true);
+    printSubtitleOsd();
     break;
 
   case ACTION_DECREASE_SUBTITLE_DELAY:

@@ -229,7 +229,7 @@ void OMXReaderFile::AddExternalSubs()
   this_stream.type         = OMXSTREAM_SUBTITLE;
   this_stream.id           = -1;
   this_stream.hex_id       = 0xFF;
-  this_stream.language     = "und";
+  this_stream.language     = "ext";
   this_stream.codec_name   = "srt";
   this_stream.name         = "External";
   this_stream.hints.codec  = AV_CODEC_ID_SRT;
