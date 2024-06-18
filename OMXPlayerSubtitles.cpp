@@ -141,6 +141,8 @@ void OMXPlayerSubtitles::Close()
 
   m_stream_count = 0;
   m_external_subtitle_stream = -1;
+  m_visible = false;
+  m_active_index = 0;
 
   if(m_dvd_codec_context)
     avcodec_free_context(&m_dvd_codec_context);
@@ -477,46 +479,40 @@ int OMXPlayerSubtitles::SetActiveStreamDelta(int delta)
 
 int OMXPlayerSubtitles::SetActiveStream(int new_index)
 {
-  if(new_index < 0 || new_index >= m_stream_count) new_index = -1;
-
   // no subs so nothing to do
   if(m_stream_count == 0)
     return -1;
 
+  // switch out-of-range to -1 (hide)
+  if(new_index < 0 || new_index >= m_stream_count)
+    new_index = -1;
+
   // this subtitle stream is already active
-  else if(m_visible && new_index == m_active_index)
+  if(m_visible && new_index == m_active_index)
     return m_active_index;
 
   // subtitles are already hidden
-  else if(!m_visible && new_index == -1)
+  if(!m_visible && new_index == -1)
     return -1;
 
   // user has selected a sub out of range, so hide the subs
-  else if(new_index == -1) {
+  if(new_index == -1) {
     SendToRenderer(Mailbox::HIDE_SUBS);
     m_visible = false;
     return -1;
   }
 
-  // we're going from internal subs to external subs
-  else if(new_index == m_external_subtitle_stream)
-  {
-    SendToRenderer(Mailbox::USE_EXTERNAL_SUBS);
-    m_active_index = m_external_subtitle_stream;
-    m_visible = true;
-    return m_active_index;
-  }
-  else
-  {
-    // set new index and set visible to true
-    m_active_index = new_index;
-    m_visible = true;
+  // set new index and set visible to true
+  m_active_index = new_index;
+  m_visible = true;
 
-    // Send internal subtitle buffer to renderer
+  // we're going from internal subs to external subs
+  if(new_index == m_external_subtitle_stream)
+    SendToRenderer(Mailbox::USE_EXTERNAL_SUBS);
+  else
     SendToRenderer(new Mailbox::UseInternalSubs(m_active_index));
 
-    return m_active_index;
-  }
+  return m_active_index;
 }
 
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
