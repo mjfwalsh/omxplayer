@@ -63,26 +63,23 @@ m_av_clock(clock)
 }
 
 
-void OMXPlayerSubtitles::AllocateInternalSubs(size_t internal_stream_count)
+bool OMXPlayerSubtitles::Open(size_t stream_count, const string &subtitle_path)
 {
-  m_stream_count = internal_stream_count;
-  if(m_external_subtitle_stream != -1)
-    m_stream_count++;
+  int internal_stream_count = m_stream_count = stream_count;
+
+  if(!subtitle_path.empty())
+  {
+    if(!ReadSrt(subtitle_path, m_external_subtitles))
+      return false;
+
+    internal_stream_count--;
+    m_external_subtitle_stream = internal_stream_count;
+  }
 
   m_subtitle_buffers.resize(internal_stream_count, circular_buffer<Subtitle>(32));
-}
-
-bool OMXPlayerSubtitles::AddExternalSubs(const string &subtitle_path)
-{
-  if(!ReadSrt(subtitle_path, m_external_subtitles))
-    return false;
-
-  m_external_subtitle_stream = m_stream_count;
-  m_stream_count++;
 
   return true;
 }
-
 
 void OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette)
 {

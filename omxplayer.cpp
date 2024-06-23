@@ -682,6 +682,7 @@ int startup(int argc, char *argv[])
       case subtitles_opt:
         m_external_subtitles_path = optarg;
         m_cmd_line_subtitles = true;
+        strcpy(m_subtitle_lang, "ext");
 
         // check if command line provided subtitles file exists
         if(!Exists(m_external_subtitles_path))
@@ -1871,16 +1872,7 @@ int run_play_loop()
                          Subtitle Setup
      ------------------------------------------------------- */
 
-  // set the number of internal subs
-  // will be adjusted later if additional sub streams are found
-  int internal_subs = m_omx_reader->SubtitleStreamCount();
-  if(!m_external_subtitles_path.empty())
-    internal_subs--;
-
-  m_player_subtitles->AllocateInternalSubs(internal_subs);
-
-  if(!m_external_subtitles_path.empty()
-      && !m_player_subtitles->AddExternalSubs(m_external_subtitles_path))
+  if(!m_player_subtitles->Open(m_omx_reader->SubtitleStreamCount(), m_external_subtitles_path))
   {
     osd_print(OSD_ERROR, "Failed to open subtitles");
     return END_PLAY_WITH_ERROR;
@@ -1894,9 +1886,7 @@ int run_play_loop()
   }
 
   // set subtitle stream
-  if(m_cmd_line_subtitles && m_subtitle_index == -1)
-    m_subtitle_index = m_omx_reader->SubtitleStreamCount() - 1;
-  else if(m_subtitle_lang[0] != '\0')
+  if(m_subtitle_lang[0] != '\0')
     m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
   m_player_subtitles->SetActiveStream(m_subtitle_index);

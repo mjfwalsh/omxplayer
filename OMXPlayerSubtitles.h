@@ -58,8 +58,7 @@ public:
   OMXPlayerSubtitles(OMXSubConfig *config,
                      OMXClock* clock);
 
-  void AllocateInternalSubs(size_t stream_count);
-  bool AddExternalSubs(const std::string &external_subtitle_path);
+  bool Open(size_t stream_count, const std::string &subtitle_path);
 
   void initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
 
