@@ -557,11 +557,9 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
   sub.text[w++] = '\0';
 
   // check text is valid utf8
-  if(isValidUtf8(sub.text))
-    return true;
+  checkAndRescueUtf8Strings(sub.text);
 
-  puts("Invalid utf8 found in subtitles");
-  return false;
+  return true;
 }
 
 bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)

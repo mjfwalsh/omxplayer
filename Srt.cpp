@@ -85,10 +85,9 @@ bool ReadSrt(const std::string& filename, std::vector<Subtitle>& subtitles) {
     text_lines.shrink_to_fit();
 
     // validate utf8
-    if(isValidUtf8(text_lines))
-      subtitles.emplace_back(start, stop, text_lines);
-    else
-      std::cerr << "Invalid utf8 found in subtitles\n";
+    checkAndRescueUtf8Strings(text_lines);
+
+    subtitles.emplace_back(start, stop, text_lines);
   }
 
   subtitles.shrink_to_fit();

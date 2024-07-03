@@ -1,7 +1,7 @@
 #include <string>
 
 // http://www.zedwood.com/article/cpp-is-valid-utf8-string-function
-bool isValidUtf8(const std::string &string)
+static bool isValidUtf8(const std::string &string)
 {
     for(int i = 0, ix = string.length(); i < ix; i++)
     {
@@ -22,3 +22,17 @@ bool isValidUtf8(const std::string &string)
     return true;
 }
 
+
+void checkAndRescueUtf8Strings(std::string &string)
+{
+    // if it's valid utf8, do nothing
+    if(isValidUtf8(string))
+      return;
+
+    // otherwise rescue string by removing non-ascii chars
+    for(auto &c : string)
+    {
+        if(c < '\x00' || c > '\x7f')
+            c = '?';
+    }
+}

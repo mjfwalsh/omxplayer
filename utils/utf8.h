@@ -2,5 +2,5 @@
 
 #include <string>
 
-bool isValidUtf8(const std::string &string);
+void checkAndRescueUtf8Strings(std::string &string);
 
