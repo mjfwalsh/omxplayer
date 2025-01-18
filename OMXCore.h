@@ -19,7 +19,7 @@
  *
  */
 
-#include <queue>
+#include <list>
 #include <string.h>
 #include <vector>
 #include <pthread.h>
@@ -153,7 +153,7 @@ private:
 
   // OMXCore input buffers (demuxer packets)
   pthread_mutex_t   m_omx_input_mutex;
-  std::queue<OMX_BUFFERHEADERTYPE*> m_omx_input_avaliable;
+  std::list<OMX_BUFFERHEADERTYPE*> m_omx_input_avaliable;
   std::vector<OMX_BUFFERHEADERTYPE*> m_omx_input_buffers;
   unsigned int  m_input_alignment = 0;
   unsigned int  m_input_buffer_size = 0;
@@ -161,7 +161,7 @@ private:
 
   // OMXCore output buffers (video frames)
   pthread_mutex_t   m_omx_output_mutex;
-  std::queue<OMX_BUFFERHEADERTYPE*> m_omx_output_available;
+  std::list<OMX_BUFFERHEADERTYPE*> m_omx_output_available;
   std::vector<OMX_BUFFERHEADERTYPE*> m_omx_output_buffers;
   unsigned int  m_output_alignment = 0;
   unsigned int  m_output_buffer_count = 0;

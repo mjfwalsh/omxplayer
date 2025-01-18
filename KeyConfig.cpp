@@ -87,7 +87,7 @@ static int convertStringToAction(const string &str_action)
 }
 /* Parses a line from the config file in the mode 'action:key'. Looks up
 the action in the relevant enum array. Returns true on success. */
-static bool getActionAndKeyFromString(string line, int &int_action, string &key)
+static bool getActionAndKeyFromString(const string &line, int &int_action, string &key)
 {
   string str_action;
 

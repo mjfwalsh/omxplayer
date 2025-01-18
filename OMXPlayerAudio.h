@@ -30,7 +30,7 @@ extern "C" {
 #include "OMXAudio.h"
 #include "OMXThread.h"
 
-#include <deque>
+#include <list>
 #include <vector>
 #include <string>
 #include <atomic>
@@ -44,7 +44,7 @@ class OMXReader;
 class OMXPlayerAudio : public OMXThread
 {
 protected:
-  std::deque<OMXPacket *>   m_packets;
+  std::list<OMXPacket *>    m_packets;
   int64_t                   m_iCurrentPts        = AV_NOPTS_VALUE;
   pthread_cond_t            m_packet_cond;
   pthread_mutex_t           m_lock_decoder;
@@ -72,7 +72,7 @@ public:
   OMXPlayerAudio(OMXClock *av_clock, const OMXAudioConfig &config,
     std::vector<std::string> &codecs, int active_stream);
 
-  ~OMXPlayerAudio();
+  ~OMXPlayerAudio() override;
 
   void Flush();
   int GetActiveStream();

@@ -35,7 +35,7 @@ class Keyboard : public OMXThread
   std::unordered_map<int,int> m_keymap;
  public:
   explicit Keyboard(const char *filename);
-  ~Keyboard();
+  ~Keyboard() override;
   void Process() override;
   void Sleep(unsigned int dwMilliSeconds);
   enum Action getEvent();

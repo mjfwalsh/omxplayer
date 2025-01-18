@@ -41,7 +41,7 @@ public:
   ~SubtitleRenderer();
 
   void prepare(Subtitle &sub);
-  void prepare(std::string &lines);
+  void prepare(const std::string &lines);
   void show_next();
   void hide();
   void unprepare();

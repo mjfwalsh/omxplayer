@@ -30,7 +30,7 @@
 #include <string>
 
 #include "PCMRemap.h"
-#include "utils/log.h"
+#include "log.h"
 
 static enum PCMChannels PCMLayoutMap[PCM_MAX_LAYOUT][PCM_MAX_CH + 1] =
 {
@@ -362,7 +362,7 @@ void CPCMRemap::BuildMap()
   }
 }
 
-void CPCMRemap::DumpMap(const char *type, unsigned int channels, enum PCMChannels *channelMap)
+void CPCMRemap::DumpMap(const char *type, unsigned int channels, const enum PCMChannels *channelMap)
 {
   if(!g_logging_enabled) return;
 
@@ -372,13 +372,14 @@ void CPCMRemap::DumpMap(const char *type, unsigned int channels, enum PCMChannel
     mapping += PCMChannelStr(channelMap[i]);
     mapping += ",";
   }
-  mapping.pop_back();
+  if(!mapping.empty())
+    mapping.pop_back();
 
   _CLogLog(LOGINFO, "CPCMRemap: %s channel map: %s", type, mapping.c_str());
 }
 
 /* sets the input format, and returns the requested channel layout */
-CPCMRemap::CPCMRemap(unsigned int inChannels, enum PCMChannels *inChannelMap, unsigned int outChannels, enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize)
+CPCMRemap::CPCMRemap(unsigned int inChannels, const enum PCMChannels *inChannelMap, unsigned int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize)
 :
   m_channelLayout(channelLayout),
   m_inChannels(inChannels),

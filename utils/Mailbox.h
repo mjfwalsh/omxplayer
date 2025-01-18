@@ -66,7 +66,7 @@ public:
       sem(w)
     {};
 
-    ~Close()
+    ~Close() override
     {
       sem_post(sem);
     };

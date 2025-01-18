@@ -125,7 +125,6 @@ protected:
   static int64_t timeout_duration;
 
   std::string GetStreamCodecName(AVStream *stream);
-  virtual void GetStreams() = 0;
   virtual int AddStream(int id, const char* lang = NULL);
   void PopulateStream(int id, const char *lang, OMXStream *this_stream);
   double SelectAspect(AVStream* st, bool& forced);

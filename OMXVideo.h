@@ -82,7 +82,7 @@ public:
 
 private:
   bool SendDecoderConfig();
-  bool NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize);
+  bool NaluFormatStartCodes(enum AVCodecID codec, const uint8_t *in_extradata, int in_extrasize);
   bool PortSettingsChanged();
   void PortSettingsChangedLogger(OMX_PARAM_PORTDEFINITIONTYPE port_image, int interlaceEMode);
   void SetVideoRect();

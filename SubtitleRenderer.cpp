@@ -50,7 +50,7 @@ SubtitleRenderer::SubtitleRenderer(OMXSubConfig *config)
   m_font_color_curly = new CRegExp("^\\{\\\\c&h([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})&\\}$");
 
   // Determine screen size
-  Rect screen = DispmanxLayer::getScreenDimensions();
+  const Rect &screen = DispmanxLayer::getScreenDimensions();
 
   /*    *    *    *     *    *    *    *    *    *    *    *
    * Set up layer for text subtitles and on screen display *
@@ -182,7 +182,7 @@ void SubtitleRenderer::prepare(Subtitle &sub)
     parse_lines(sub.text.data(), sub.text.length());
 }
 
-void SubtitleRenderer::prepare(string &lines)
+void SubtitleRenderer::prepare(const string &lines)
 {
   unprepare();
 
@@ -230,6 +230,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
           &parsed_lines[i][j].num_glyphs,
           NULL, NULL, NULL) != CAIRO_STATUS_SUCCESS)
       {
+        printf("Failed: %s\n", parsed_lines[i][j].text.c_str());
         throw "cairo_scaled_font_text_to_glyphs failed";
       }
 
@@ -305,7 +306,7 @@ void SubtitleRenderer::make_subtitle_image(Subtitle &sub)
 
   auto mem_set = [&p](int num_pixels)
   {
-    memset(p, '\0', num_pixels);
+    memset(p, 0, num_pixels);
     p += num_pixels;
   };
 

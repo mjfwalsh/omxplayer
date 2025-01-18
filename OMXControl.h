@@ -38,7 +38,7 @@ public:
   void respond_bool(bool value);
   void respond_string(const char *value);
 
-  void respond_array(std::vector<std::string> &list);
+  void respond_array(const std::vector<std::string> &list);
   void respond_array(const char *array[], int size);
 
   void send_metadata(const char *url, int64_t *duration);

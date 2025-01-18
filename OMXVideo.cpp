@@ -87,7 +87,7 @@ bool COMXVideo::SendDecoderConfig()
   return true;
 }
 
-bool COMXVideo::NaluFormatStartCodes(enum AVCodecID codec, uint8_t *in_extradata, int in_extrasize)
+bool COMXVideo::NaluFormatStartCodes(enum AVCodecID codec, const uint8_t *in_extradata, int in_extrasize)
 {
   switch(codec)
   {

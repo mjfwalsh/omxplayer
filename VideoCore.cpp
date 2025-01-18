@@ -102,7 +102,7 @@ static void CallbackTvServiceCallback(void *userdata, uint32_t reason, uint32_t 
   }
 }
 
-void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace)
+void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace)
 {
   int32_t num_modes = 0;
   HDMI_RES_GROUP_T prefer_group;
@@ -141,8 +141,6 @@ void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool Nativ
     {
       TV_SUPPORTED_MODE_NEW_T *tv = supported_modes + i;
       uint32_t score = 0;
-      uint32_t w = tv->width;
-      uint32_t h = tv->height;
       uint32_t r = tv->frame_rate;
 
       /* Check if frame rate match (equal or exact multiple) */
@@ -156,6 +154,9 @@ void VideoCore::SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool Nativ
       /* Check size too, only choose, bigger resolutions */
       if(hints->width && hints->height)
       {
+				uint32_t w = tv->width;
+				uint32_t h = tv->height;
+
         /* cost of too small a resolution is high */
         score += max((int)(hints->width - w), 0) * (1<<16);
         score += max((int)(hints->height - h), 0) * (1<<16);

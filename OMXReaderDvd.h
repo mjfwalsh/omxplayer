@@ -32,7 +32,7 @@ class OMXReaderDvd : public OMXReader
 {
 public:
   OMXReaderDvd(dvd_file_t *dt, OMXDvdPlayer::track_info &ct, int tn);
-  ~OMXReaderDvd();
+  ~OMXReaderDvd() override;
 
   OMXPacket *Read() override;
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
@@ -45,11 +45,10 @@ protected:
   static int64_t dvd_seek(void *h, int64_t new_pos, int whence);
   bool SeekByte(int seek_byte, bool backwords, const int64_t &new_pts);
   void AddMissingSubtitleStream(int id, const char *lang);
-  void GetStreams() override;
+  void GetStreams();
   int AddStream(int id, const char* lang = NULL) override;
   int DvdRead(unsigned char *lpBuf, int no_blocks);
   int64_t DvdSeek(int blocks, int whence = SEEK_SET);
-  bool IsEOF();
   int GetCell(int ms);
   uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
 

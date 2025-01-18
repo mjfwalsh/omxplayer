@@ -24,6 +24,7 @@
 #define __OPENMAXAUDIORENDER_H__
 
 #include <string>
+#include <list>
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -84,7 +85,7 @@ private:
   bool ApplyVolume();
   void SetCodingType(AVCodecID codec);
   bool CanHWDecode(AVCodecID codec);
-  void PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[]);
+  void PrintChannels(const OMX_AUDIO_CHANNELTYPE eChannelMapping[]);
   void PrintPCM(OMX_AUDIO_PARAM_PCMMODETYPE *pcm, const char *direction);
   void UpdateAttenuation();
   void BuildChannelMap(enum PCMChannels *channelMap, uint64_t layout);
@@ -120,11 +121,14 @@ private:
   OMX_AUDIO_PARAM_PCMMODETYPE m_pcm_input;
   OMX_AUDIO_PARAM_DTSTYPE     m_dtsParam;
   WAVEFORMATEXTENSIBLE        m_wave_header;
-  typedef struct {
+  class amplitudes_t {
+		public:
+    amplitudes_t(int64_t p, float l) : pts(p), level(l) {}
+
     int64_t pts;
     float level;
-  } amplitudes_t;
-  std::deque<amplitudes_t> m_ampqueue;
+  };
+  std::list<amplitudes_t> m_ampqueue;
   float m_downmix_matrix[OMX_AUDIO_MAXCHANNELS*OMX_AUDIO_MAXCHANNELS];
 
 protected:

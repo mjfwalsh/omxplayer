@@ -675,8 +675,7 @@ void COMXAudio::Flush()
   if ( m_omx_render_hdmi.IsInitialized() )
     m_omx_render_hdmi.FlushAll();
 
-  while(!m_ampqueue.empty())
-    m_ampqueue.pop_front();
+  m_ampqueue.clear();
 
   if( m_omx_render_analog.IsInitialized() )
     m_omx_render_analog.ResetEos();
@@ -841,7 +840,7 @@ bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int6
     else
     {
        uint8_t *dst = omx_buffer->pBuffer;
-       uint8_t *src = demuxer_content + demuxer_samples_sent * pitch;
+       const uint8_t *src = demuxer_content + demuxer_samples_sent * pitch;
        memcpy(dst, src, omx_buffer->nFilledLen);
     }
 
@@ -913,25 +912,21 @@ void COMXAudio::UpdateAttenuation()
   float level = GetMaxLevel(level_pts);
   if (level_pts != 0)
   {
-    amplitudes_t v;
-    v.level = level;
-    v.pts = level_pts;
-    m_ampqueue.push_back(v);
+    m_ampqueue.emplace_back(level_pts, level);
   }
   int64_t stamp = m_av_clock->GetMediaTime();
   // discard too old data
   while(!m_ampqueue.empty())
   {
-    amplitudes_t &v = m_ampqueue.front();
+    const amplitudes_t &v = m_ampqueue.front();
     /* we'll also consume if queue gets unexpectedly long to avoid filling memory */
     if (v.pts == AV_NOPTS_VALUE || v.pts < stamp || v.pts - stamp > 15000000)
       m_ampqueue.pop_front();
     else break;
   }
   float maxlevel = 0.0f, imminent_maxlevel = 0.0f;
-  for (int i=0; i < (int)m_ampqueue.size(); i++)
+  for(const amplitudes_t &v : m_ampqueue)
   {
-    amplitudes_t &v = m_ampqueue[i];
     maxlevel = std::max(maxlevel, v.level);
     // check for maximum volume in next 200ms
     if (v.pts != AV_NOPTS_VALUE && v.pts < stamp + 200000)
@@ -942,19 +937,26 @@ void COMXAudio::UpdateAttenuation()
   {
     float m_limiterHold = 0.025f;
     float m_limiterRelease = 0.100f;
-    float alpha_h = -1.0f/(0.025f*log10f(0.999f));
-    float alpha_r = -1.0f/(0.100f*log10f(0.900f));
-    float decay  = powf(10.0f, -1.0f / (alpha_h * m_limiterHold));
-    float attack = powf(10.0f, -1.0f / (alpha_r * m_limiterRelease));
+
     // if we are going to clip imminently then deal with it now
     if (imminent_maxlevel > m_maxLevel)
+    {
       m_maxLevel = imminent_maxlevel;
     // clip but not imminently can ramp up more slowly
+    }
     else if (maxlevel > m_maxLevel)
+    {
+      float alpha_r = -1.0f/(0.100f*log10f(0.900f));
+      float attack = powf(10.0f, -1.0f / (alpha_r * m_limiterRelease));
       m_maxLevel = attack * m_maxLevel + (1.0f-attack) * maxlevel;
     // not clipping, decay more slowly
+    }
     else
+    {
+      float alpha_h = -1.0f/(0.025f*log10f(0.999f));
+      float decay  = powf(10.0f, -1.0f / (alpha_h * m_limiterHold));
       m_maxLevel = decay  * m_maxLevel + (1.0f-decay ) * maxlevel;
+    }
 
     // want m_maxLevel * amp -> 1.0
     float amp = m_amplification * m_attenuation;
@@ -1220,7 +1222,7 @@ bool COMXAudio::HWDecode(AVCodecID codec)
   return ret;
 }
 
-void COMXAudio::PrintChannels(OMX_AUDIO_CHANNELTYPE eChannelMapping[])
+void COMXAudio::PrintChannels(const OMX_AUDIO_CHANNELTYPE eChannelMapping[])
 {
   for(int i = 0; i < OMX_AUDIO_MAXCHANNELS; i++)
   {

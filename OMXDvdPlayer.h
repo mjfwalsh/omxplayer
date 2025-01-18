@@ -37,8 +37,8 @@ public:
   bool CanChangeTrack(int delta, int &t);
   OMXReaderDvd *OpenTrack(int ct);
 
-  std::string GetID() const { return disc_checksum; }
-  std::string GetTitle() const { return disc_title; }
+  const std::string &GetID() const { return disc_checksum; }
+  const std::string &GetTitle() const { return disc_title; }
   void removeCompositeTracks();
 
   void info_dump();

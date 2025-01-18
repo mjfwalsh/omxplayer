@@ -25,7 +25,7 @@
 #include "OMXVideo.h"
 #include "OMXThread.h"
 
-#include <deque>
+#include <list>
 #include <atomic>
 
 class OMXClock;
@@ -35,7 +35,7 @@ struct AVStream;
 class OMXPlayerVideo : public OMXThread
 {
 protected:
-  std::deque<OMXPacket *>   m_packets;
+  std::list<OMXPacket *>    m_packets;
   int64_t                   m_iCurrentPts = 0;
   pthread_cond_t            m_packet_cond;
   pthread_mutex_t           m_lock_decoder;
@@ -51,7 +51,7 @@ protected:
   void UnLockDecoder();
 public:
   OMXPlayerVideo(OMXClock *av_clock, const OMXVideoConfig &config);
-  ~OMXPlayerVideo();
+  ~OMXPlayerVideo() override;
   void Reset();
 
   void Flush();
@@ -72,7 +72,7 @@ public:
 
 private:
   void Process() override;
-  bool Decode(OMXPacket *pkt);
+  void Decode(OMXPacket *pkt);
   void SubmitEOSInternal();
   OMXPlayerVideo(const OMXPlayerVideo&) = delete;
   OMXPlayerVideo& operator=(const OMXPlayerVideo&) = delete;

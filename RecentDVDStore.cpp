@@ -26,7 +26,7 @@
 
 using namespace std;
 
-static vector<string> split(string text)
+static vector<string> split(const string &text)
 {
   int start = 0;
   vector<string> tokens;

@@ -37,7 +37,7 @@ int DispmanxLayer::s_layer;
 Rect DispmanxLayer::s_screen_rect;
 bool DispmanxLayer::s_is_fullscreen;
 
-void DispmanxLayer::openDisplay(int display_num, int layer, Rect screen_rect)
+void DispmanxLayer::openDisplay(int display_num, int layer, const Rect &screen_rect)
 {
   // Open display
   s_display = vc_dispmanx_display_open(display_num);
@@ -69,7 +69,7 @@ void DispmanxLayer::openDisplay(int display_num, int layer, Rect screen_rect)
   atexit(DispmanxLayer::closeDisplay);
 }
 
-Rect DispmanxLayer::getScreenDimensions()
+const Rect &DispmanxLayer::getScreenDimensions()
 {
   return s_screen_rect;
 }
@@ -108,7 +108,7 @@ void DispmanxLayer::closeDisplay()
 }
 
 DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image,
-    uint32_t *palette)
+    const uint32_t *palette)
 {
   // image type
   VC_IMAGE_TYPE_T imagetype;

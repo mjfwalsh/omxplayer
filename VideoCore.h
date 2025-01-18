@@ -36,7 +36,7 @@ public:
   ~VideoCore();
 
   int get_mem_gpu();
-  void SetVideoMode(COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace);
+  void SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool NativeDeinterlace);
   bool blank_background(uint32_t rgba, int layer, int video_display);
   void saveTVState();
 

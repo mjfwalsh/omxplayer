@@ -80,7 +80,7 @@ static void gomxq_init(GOMX_QUEUE *q, ptrdiff_t offset)
   q->num = 0;
 }
 
-static void **gomxq_nextptr(GOMX_QUEUE *q, void *item)
+static void **gomxq_nextptr(const GOMX_QUEUE *q, void *item)
 {
   return (void**) ((uint8_t*)item + q->offset);
 }
@@ -173,7 +173,7 @@ OMX_ERRORTYPE gomx_get_component_version(
 static OMX_ERRORTYPE gomx_get_parameter(OMX_HANDLETYPE hComponent, OMX_INDEXTYPE nParamIndex, OMX_PTR pComponentParameterStructure)
 {
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  GOMX_PORT *port;
+  const GOMX_PORT *port;
   OMX_PORT_PARAM_TYPE *ppt;
   OMX_PARAM_PORTDEFINITIONTYPE *pdt;
   OMX_ERRORTYPE r;
@@ -221,7 +221,7 @@ static OMX_ERRORTYPE gomx_get_parameter(OMX_HANDLETYPE hComponent, OMX_INDEXTYPE
 
 static OMX_ERRORTYPE gomx_get_state(OMX_HANDLETYPE hComponent, OMX_STATETYPE *pState)
 {
-  GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
+  const GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
   *pState = comp->state;
   return OMX_ErrorNone;
 }
@@ -668,7 +668,7 @@ err:
   return r;
 }
 
-static OMX_ERRORTYPE gomx_do_port_command(GOMX_COMPONENT *comp, GOMX_PORT *port, GOMX_COMMAND *cmd)
+static OMX_ERRORTYPE gomx_do_port_command(GOMX_COMPONENT *comp, GOMX_PORT *port, const GOMX_COMMAND *cmd)
 {
   OMX_ERRORTYPE r = OMX_ErrorNone;
 
@@ -896,7 +896,7 @@ static OMX_ERRORTYPE omxalsasink_set_parameter(OMX_HANDLETYPE hComponent, OMX_IN
   };
   OMX_ALSASINK *sink = (OMX_ALSASINK *) hComponent;
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  GOMX_PORT *port;
+  const GOMX_PORT *port;
   OMX_AUDIO_PARAM_PCMMODETYPE *pmt;
   OMX_ERRORTYPE r;
   snd_pcm_format_t pcm_format = SND_PCM_FORMAT_UNKNOWN;
@@ -914,12 +914,12 @@ static OMX_ERRORTYPE omxalsasink_set_parameter(OMX_HANDLETYPE hComponent, OMX_IN
     if (comp->state != OMX_StateLoaded && port->def.bEnabled)
       return OMX_ErrorIncorrectStateOperation;
 
-    for (size_t i = 0; i < ARRAY_SIZE(fmtmap); i++) {
-      if (fmtmap[i].pcm_mode == pmt->ePCMMode &&
-          fmtmap[i].bits_per_sample == pmt->nBitPerSample &&
-          fmtmap[i].numerical_data == pmt->eNumData &&
-          fmtmap[i].endianess == pmt->eEndian) {
-        pcm_format = fmtmap[i].fmt;
+    for (const auto &fm : fmtmap) {
+      if (fm.pcm_mode == pmt->ePCMMode &&
+          fm.bits_per_sample == pmt->nBitPerSample &&
+          fm.numerical_data == pmt->eNumData &&
+          fm.endianess == pmt->eEndian) {
+        pcm_format = fm.fmt;
         break;
       }
     }
@@ -939,7 +939,7 @@ static OMX_ERRORTYPE omxalsasink_set_parameter(OMX_HANDLETYPE hComponent, OMX_IN
 static OMX_ERRORTYPE omxalsasink_get_config(OMX_HANDLETYPE hComponent, OMX_INDEXTYPE nIndex, OMX_PTR pComponentConfigStructure)
 {
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  OMX_ALSASINK *sink = (OMX_ALSASINK *) hComponent;
+  const OMX_ALSASINK *sink = (OMX_ALSASINK *) hComponent;
   OMX_PARAM_U32TYPE *u32param;
   OMX_ERRORTYPE r;
 

@@ -181,7 +181,7 @@ void OMXReaderFile::GetChapters()
   m_chapter_count = (m_pFormatContext->nb_chapters > MAX_OMX_CHAPTERS) ? MAX_OMX_CHAPTERS : m_pFormatContext->nb_chapters;
   for(int i = 0; i < m_chapter_count; i++)
   {
-    AVChapter *chapter = m_pFormatContext->chapters[i];
+    const AVChapter *chapter = m_pFormatContext->chapters[i];
     if(!chapter)
     {
       m_chapter_count = i;

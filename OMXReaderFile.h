@@ -41,7 +41,7 @@ public:
   enum SeekResult SeekTimeDelta(int64_t delta, int64_t &cur_pts) override;
 
 protected:
-  void GetStreams() override;
+  void GetStreams();
   void GetChapters();
   uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
   void AddExternalSubs();

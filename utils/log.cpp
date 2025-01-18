@@ -62,7 +62,7 @@ void _CLogLog(int loglevel, const char *format, ... )
 
   struct timeval now;
   gettimeofday(&now, NULL);
-  struct tm *time = localtime( &now.tv_sec );
+  const struct tm *time = localtime( &now.tv_sec );
   uint64_t stamp = now.tv_usec + now.tv_sec * 1000000;
 
   fprintf(m_stream, "%02d:%02d:%02d T:%llu %7s: ", time->tm_hour, time->tm_min, time->tm_sec, stamp, levelNames[loglevel]);

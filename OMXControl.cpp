@@ -276,14 +276,14 @@ void DMessage::respond(int type, void *value)
   needs_response = false;
 }
 
-void DMessage::respond_array(std::vector<std::string> &list)
+void DMessage::respond_array(const std::vector<std::string> &list)
 {
-  std::vector<const char*> char_list(list.size());
+  const char *char_list[list.size()];
 
   for(uint i = 0; i < list.size(); i++)
     char_list[i] = &list[i][0];
 
-  respond_array(char_list.data(), list.size());
+  respond_array(char_list, list.size());
 }
 
 void DMessage::respond_array(const char *array[], int size)

@@ -192,8 +192,8 @@ std::string getShortFileName()
   int lastSlash = m_filename.find_last_of('/');
   std::string short_filename = m_filename.substr(lastSlash + 1);
   uri_unescape(short_filename);
-  for(unsigned int i = 0; i < short_filename.length(); i++)
-    if(short_filename[i] == '_') short_filename[i] = ' ';
+  for(auto &c : short_filename)
+    if(c == '_') c = ' ';
   return short_filename;
 }
 
@@ -1443,7 +1443,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       double volume;
       if(m->get_arg_double(&volume))
       {
-        if(volume < 0.0) volume = 0.0;
+        if(volume < 1.0) volume = 1.0;
         m->respond_double(volume);
         m_Volume = 2000 * log10(volume);
         m_player_audio->SetVolume(volume);

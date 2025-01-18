@@ -173,7 +173,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
     {
       if ((pgc->audio_control[i] & 0x8000) == 0) continue;
 
-      audio_attr_t *audio_attr = &vtsi_mat->vts_audio_attr[i];
+      const audio_attr_t *audio_attr = &vtsi_mat->vts_audio_attr[i];
 
       this_track.title->audio_streams.push_back({
         .id = audio_id[audio_attr->audio_format] + (pgc->audio_control[i] >> 8 & 7),
@@ -187,7 +187,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
     {
       if ((pgc->subp_control[i] & 0x80000000) == 0) continue;
 
-      subp_attr_t *subp_attr = &vtsi_mat->vts_subp_attr[i];
+      const subp_attr_t *subp_attr = &vtsi_mat->vts_subp_attr[i];
 
       this_track.title->subtitle_streams.push_back({
         .id = (int)((pgc->subp_control[i] >> x) & 0x1f) + 0x20,
@@ -384,8 +384,8 @@ void OMXDvdPlayer::removeCompositeTracks()
 
   // all the tracks should be in the same title set (VOB file)
   int title_set = tracks[lt[0]].title->title_num;
-  for(uint i = 1; i < lt.size(); i++)
-    if(tracks[lt[i]].title->title_num != title_set)
+  for(const uint &i : lt)
+    if(tracks[i].title->title_num != title_set)
       return;
 
   // find the longer of the first and last tracks
@@ -405,7 +405,7 @@ void OMXDvdPlayer::removeCompositeTracks()
 
   // get the length of the remaining tracks within the subset
   int length_of_other_tracks = 0;
-  for(uint &i : lt)
+  for(const uint &i : lt)
     length_of_other_tracks += tracks[i].length;
 
   // compare lengths - allow a margin of two seconds

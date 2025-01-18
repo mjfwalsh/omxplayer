@@ -53,14 +53,14 @@ public:
   OMXPlayerSubtitles(const OMXPlayerSubtitles&) = delete;
   OMXPlayerSubtitles& operator=(const OMXPlayerSubtitles&) = delete;
 
-  ~OMXPlayerSubtitles();
+  ~OMXPlayerSubtitles() override;
 
   OMXPlayerSubtitles(OMXSubConfig *config,
                      OMXClock* clock);
 
   bool Open(size_t stream_count, const std::string &subtitle_path);
 
-  void initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette);
+  void initDVDSubs(const Rect &view_port, const Dimension &sub_dim, const uint32_t *palette);
 
   void Close();
   void Flush();
@@ -88,11 +88,6 @@ public:
   int GetActiveStream()
   {
     return m_visible ? m_active_index : -1;
-  }
-
-  int GetExternalSubIndex()
-  {
-    return m_external_subtitle_stream;
   }
 
   void SetDelay(int value);

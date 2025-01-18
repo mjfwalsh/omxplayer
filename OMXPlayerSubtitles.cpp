@@ -81,7 +81,7 @@ bool OMXPlayerSubtitles::Open(size_t stream_count, const string &subtitle_path)
   return true;
 }
 
-void OMXPlayerSubtitles::initDVDSubs(Rect &view_port, Dimension &sub_dim, uint32_t *palette)
+void OMXPlayerSubtitles::initDVDSubs(const Rect &view_port, const Dimension &sub_dim, const uint32_t *palette)
 {
   if(palette) {
     if(!m_palette)
@@ -311,11 +311,11 @@ void OMXPlayerSubtitles::RenderLoop()
           break;
         case Mailbox::USE_INTERNAL_SUBS:
           {
-            Mailbox::UseInternalSubs *a = (Mailbox::UseInternalSubs *)args;
+            const Mailbox::UseInternalSubs *a = (Mailbox::UseInternalSubs *)args;
 
             internal_subtitles.clear();
             subtitles = &internal_subtitles;
-            for(Subtitle &s : m_subtitle_buffers[a->active_stream])
+            for(const Subtitle &s : m_subtitle_buffers[a->active_stream])
               internal_subtitles.push_back(s);
           }
           prev_now = INT_MAX;
@@ -337,13 +337,13 @@ void OMXPlayerSubtitles::RenderLoop()
           break;
         case Mailbox::SET_PAUSED:
           {
-            Mailbox::SetPaused *a = (Mailbox::SetPaused *)args;
+            const Mailbox::SetPaused *a = (Mailbox::SetPaused *)args;
             paused = a->value;
           }
           break;
         case Mailbox::SET_DELAY:
           {
-            Mailbox::SetDelay *a = (Mailbox::SetDelay *)args;
+            const Mailbox::SetDelay *a = (Mailbox::SetDelay *)args;
             delay = a->value;
             prev_now = INT_MAX;
           }
@@ -514,9 +514,8 @@ int OMXPlayerSubtitles::SetActiveStream(int new_index)
 
 bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
 {
-  char *start, *end;
-  start = (char*)pkt->avpkt->data;
-  end   = (char*)pkt->avpkt->data + pkt->avpkt->size;
+  const char *start = (char*)pkt->avpkt->data;
+  const char *end = (char*)pkt->avpkt->data + pkt->avpkt->size;
 
   // set time
   sub.start = static_cast<int>(pkt->avpkt->pts/1000);
@@ -535,7 +534,7 @@ bool OMXPlayerSubtitles::GetTextLines(OMXPacket *pkt, Subtitle &sub)
   sub.text.resize(pkt->avpkt->size);
 
   // replace literal '\N' with newlines, ignore form feeds
-  char *r = start;
+  const char *r = start;
   int w = 0;
 
   while (r < end - 1)

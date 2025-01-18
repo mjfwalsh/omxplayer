@@ -23,7 +23,6 @@
 #include "OMXPacket.h"
 #include "OMXClock.h"
 #include "omxplayer.h"
-#include "utils/defs.h"
 #include "utils/log.h"
 
 #include <stdio.h>
@@ -297,12 +296,12 @@ void OMXReader::PopulateStream(int id, const char *lang, OMXStream *this_stream)
   }
   else
   {
-    AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
+    const AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
     if (langTag)
       this_stream->language = langTag->value;
   }
 
-  AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata, "title", NULL, 0);
+  const AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata, "title", NULL, 0);
   if (titleTag)
     this_stream->name = titleTag->value;
 
@@ -387,7 +386,7 @@ bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
 
     hints->aspect = SelectAspect(stream, hints->forced_aspect) * stream->codecpar->width / stream->codecpar->height;
 
-    AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", NULL, 0);
+    const AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", NULL, 0);
     if (rtag)
       hints->orientation = atoi(rtag->value);
     m_aspect = hints->aspect;
@@ -501,7 +500,7 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
   }
 #endif
 
-  AVCONST AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
+  const AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
 
   if (codec)
     strStreamName = codec->name;

@@ -79,7 +79,7 @@ bool RecentFileStore::readStore()
   return true;
 }
 
-bool RecentFileStore::checkIfLink(string &filename)
+bool RecentFileStore::checkIfLink(const string &filename)
 {
   int start_point = filename.length() - 4;
   if(start_point > 0 && filename.substr(start_point) == ".url") {
@@ -94,7 +94,7 @@ bool RecentFileStore::checkIfLink(string &filename)
   return false;
 }
 
-static bool split(string &line, string &key, string &val)
+static bool split(const string &line, string &key, string &val)
 {
   string::size_type n = line.find("=");
   if(n == string::npos)
@@ -115,7 +115,7 @@ void RecentFileStore::retrieveRecentInfo(const string &filename, int &track, int
   }
 }
 
-void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
+void RecentFileStore::setDataFromStruct(const fileInfo *store_item, int &dvd_track, int &pos, char *audio, int &audio_track, char *subtitle, int &subtitle_track)
 {
   if(dvd_track == -1)
     dvd_track = store_item->dvd_track;
@@ -134,7 +134,7 @@ void RecentFileStore::setDataFromStruct(fileInfo *store_item, int &dvd_track, in
   }
 }
 
-static bool is_valid_link_url(std::string &url)
+static bool is_valid_link_url(const string &url)
 {
   if(url[0] == '/')
     return true;
@@ -233,7 +233,7 @@ void RecentFileStore::forget(const string &key)
   }
 }
 
-void RecentFileStore::remember(const string &url, const int &dvd_track, const int &pos, char *audio, const int &audio_track, char *subtitle, const int &subtitle_track)
+void RecentFileStore::remember(const string &url, const int &dvd_track, const int &pos, const char *audio, const int &audio_track, const char *subtitle, const int &subtitle_track)
 {
   if(!m_init) return;
 
@@ -264,8 +264,9 @@ void RecentFileStore::clearRecents()
   vector<string> old_recents;
   getRecentFileList(old_recents);
 
-  for(uint i=0; i < old_recents.size(); i++)
-    std::remove(old_recents[i].c_str());
+  // delete the old recent files
+  for(const string &recent : old_recents)
+    std::remove(recent.c_str());
 }
 
 void RecentFileStore::saveStore()

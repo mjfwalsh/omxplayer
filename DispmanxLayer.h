@@ -36,7 +36,7 @@ class DispmanxLayer
 {
 public:
   DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
-    uint32_t *palette = NULL);
+    const uint32_t *palette = NULL);
   ~DispmanxLayer();
 
   void hideElement();
@@ -46,8 +46,8 @@ public:
   const int& getSourceWidth();
   const int& getSourceHeight();
 
-  static void openDisplay(int display_num, int layer, Rect rect);
-  static Rect getScreenDimensions();
+  static void openDisplay(int display_num, int layer, const Rect &rect);
+  static const Rect &getScreenDimensions();
   static Rect GetVideoPort(float video_aspect_ratio, int aspect_mode);
   static void closeDisplay();
 

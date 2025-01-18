@@ -131,7 +131,7 @@ void OMXPlayerVideo::SetVideoRect(int aspectMode)
   m_decoder->SetVideoRect(aspectMode);
 }
 
-bool OMXPlayerVideo::Decode(OMXPacket *pkt)
+void OMXPlayerVideo::Decode(OMXPacket *pkt)
 {
   if (pkt->avpkt->dts != AV_NOPTS_VALUE)
     pkt->avpkt->dts += m_iVideoDelay;
@@ -145,12 +145,11 @@ bool OMXPlayerVideo::Decode(OMXPacket *pkt)
   while((int) m_decoder->GetFreeSpace() < pkt->avpkt->size)
   {
     OMXClock::Sleep(10);
-    if(m_flush_requested) return true;
+    if(m_flush_requested) return;
   }
 
   CLogLog(LOGINFO, "CDVDPlayerVideo::Decode dts:%lld pts:%lld cur:%lld, size:%d", pkt->avpkt->dts, pkt->avpkt->pts, m_iCurrentPts, pkt->avpkt->size);
   m_decoder->Decode(pkt);
-  return true;
 }
 
 void OMXPlayerVideo::Process()
@@ -198,8 +197,9 @@ void OMXPlayerVideo::Process()
       omx_pkt = NULL;
       m_flush = false;
     }
-    else if(omx_pkt && Decode(omx_pkt))
+    else if(omx_pkt)
     {
+      Decode(omx_pkt);
       delete omx_pkt;
       omx_pkt = NULL;
     }

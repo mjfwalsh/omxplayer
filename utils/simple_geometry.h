@@ -23,7 +23,7 @@ public:
   Rect() : x(0), y(0), width(0), height(0) {}
   Rect(int xp, int yp, int w, int h) : x(xp), y(yp), width(w), height(h) {}
 
-  void set(Rect src)
+  void set(const Rect &src)
   {
     x = src.x;
     y = src.y;

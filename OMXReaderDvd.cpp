@@ -134,7 +134,7 @@ again:
 
 int OMXReaderDvd::AddStream(int id, const char *lang)
 {
-  AVStream *pStream = m_pFormatContext->streams[id];
+  const AVStream *pStream = m_pFormatContext->streams[id];
 
   // check to see if we are waiting for this stream
   int idx;
@@ -364,7 +364,7 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t &seek_micro, bool backwards)
   int seek_ms = seek_micro / 1000;
   dsi_t dsi_pack;
   unsigned char data[DVD_VIDEO_LB_LEN];
-  int list[] = {0, 500, 8000, 10000, 30000, 60000, 120000};
+  const int list[] = {0, 500, 8000, 10000, 30000, 60000, 120000};
 
   int ch = GetCell(seek_ms);
   if(ch == -1)
@@ -473,15 +473,4 @@ int OMXReaderDvd::GetCell(int needle)
   }
 
   return l;
-}
-
-
-bool OMXReaderDvd::IsEOF()
-{
-  int last_part = m_current_track.parts.size() - 1;
-
-  if(m_current_part == last_part)
-    return m_pos >= m_current_track.parts[m_current_part].blocks;
-  else
-    return m_current_part > last_part;
 }

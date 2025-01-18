@@ -35,18 +35,8 @@ public:
   ~CRegExp();
 
   int RegFind(const char *str, int startoffset = 0, int len = -1);
-  int RegFind(const std::string& str, int startoffset = 0) { return RegFind(str.c_str(), startoffset, str.length()); }
-  int RegFind(const std::string& str, int startoffset, int len) { return RegFind(str.c_str(), startoffset, len); }
-  int GetFindLen()
-  {
-    if (!m_re || !m_bMatched)
-      return 0;
-
-    return (m_iOvector[1] - m_iOvector[0]);
-  };
-  int GetSubCount() { return m_iMatchCount - 1; } // PCRE returns the number of sub-patterns + 1
-  int GetSubStart(int iSub) { return m_iOvector[iSub*2]; } // normalized to match old engine
-  int GetSubLength(int iSub) { return (m_iOvector[(iSub*2)+1] - m_iOvector[(iSub*2)]); } // correct spelling
+  inline int RegFind(const std::string& str, int startoffset = 0) { return RegFind(str.c_str(), startoffset, str.length()); }
+  inline int RegFind(const std::string& str, int startoffset, int len) { return RegFind(str.c_str(), startoffset, len); }
   std::string GetMatch(int iSub = 0);
 
 private:

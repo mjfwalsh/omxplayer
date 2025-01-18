@@ -102,12 +102,12 @@ protected:
   struct PCMMapInfo* ResolveChannel(enum PCMChannels channel, float level, bool ifExists, std::vector<enum PCMChannels> path, struct PCMMapInfo *tablePtr);
   void               ResolveChannels();
   void               BuildMap();
-  void               DumpMap(const char *type, unsigned int channels, enum PCMChannels *channelMap);
+  void               DumpMap(const char *type, unsigned int channels, const enum PCMChannels *channelMap);
   const char*        PCMChannelStr(enum PCMChannels ename);
   const char*        PCMLayoutStr(enum PCMLayout ename);
 
 public:
-  CPCMRemap(unsigned int inChannels, enum PCMChannels *inChannelMap, unsigned int outChannels, enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize);
+  CPCMRemap(unsigned int inChannels, const enum PCMChannels *inChannelMap, unsigned int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize);
   void GetDownmixMatrix(float *downmix);
 };
 
