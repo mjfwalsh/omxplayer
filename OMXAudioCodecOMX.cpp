@@ -96,7 +96,7 @@ COMXAudioCodecOMX::~COMXAudioCodecOMX()
     av_free(m_pBufferOutput);
 
   if (m_pFrame1)
-    av_free(m_pFrame1);
+    av_frame_free(&m_pFrame1);
 
   if (m_pConvert)
     swr_free(&m_pConvert);
