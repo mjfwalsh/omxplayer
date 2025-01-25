@@ -159,6 +159,8 @@ int OMXReaderDvd::AddStream(int id, const char *lang)
 enum SeekResult OMXReaderDvd::SeekTimeDelta(int64_t delta, int64_t &cur_pts)
 {
   int64_t seek_pts = cur_pts + delta;
+  if(seek_pts < 0) return SEEK_OUT_OF_BOUNDS;
+
   enum SeekResult r = SeekTime(seek_pts, delta < 0);
 
   if(r == SEEK_SUCCESS)
