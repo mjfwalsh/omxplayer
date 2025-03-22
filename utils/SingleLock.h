@@ -26,7 +26,9 @@
 
 #include <pthread.h>
 
-class CCriticalSection
+#include "NoMoveCopy.h"
+
+class CCriticalSection : NoMoveCopy
 {
 public:
   inline CCriticalSection()
@@ -40,16 +42,12 @@ public:
   inline void Lock()         { pthread_mutex_lock(&m_lock); }
   inline void Unlock()       { pthread_mutex_unlock(&m_lock); }
 
-private:
-  CCriticalSection(CCriticalSection &other) = delete;
-  CCriticalSection& operator=(const CCriticalSection&) = delete;
-
 protected:
   pthread_mutex_t m_lock;
 };
 
 
-class CSingleLock
+class CSingleLock : NoMoveCopy
 {
 public:
   explicit inline CSingleLock(CCriticalSection& cs) : m_section(cs) { m_section.Lock(); }

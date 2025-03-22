@@ -7,10 +7,12 @@
 #include <vector>
 #include <string>
 
+#include "utils/NoMoveCopy.h"
+
 struct DBusMessage;
 struct DBusMessageIter;
 
-class DMessage
+class DMessage : NoMoveCopy
 {
 private:
   DBusMessage *m;
@@ -52,7 +54,7 @@ private:
 };
 
 
-class OMXControl
+class OMXControl : NoMoveCopy
 {
 public:
   ~OMXControl();

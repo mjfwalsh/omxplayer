@@ -27,7 +27,9 @@ namespace PCRE {
 #include <pcre2.h>
 }
 
-class CRegExp
+#include "NoMoveCopy.h"
+
+class CRegExp : NoMoveCopy
 {
 public:
   explicit CRegExp(const char *re, bool casesensitive = false);

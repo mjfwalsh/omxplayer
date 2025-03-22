@@ -30,6 +30,8 @@
 #include <condition_variable>
 #include <semaphore.h>
 
+#include "NoMoveCopy.h"
+
 class DispmanxLayer;
 class OMXPacket;
 
@@ -49,7 +51,7 @@ public:
     EXIT,
   };
 
-  class Item {
+  class Item : NoMoveCopy {
     public:
     explicit Item(const enum Type &t) : type(t) {};
     virtual ~Item() {};

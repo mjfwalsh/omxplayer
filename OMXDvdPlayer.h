@@ -23,16 +23,15 @@
 #include <string>
 #include <memory>
 
+#include "utils/NoMoveCopy.h"
+
 class OMXReaderDvd;
 
-class OMXDvdPlayer
+class OMXDvdPlayer : NoMoveCopy
 {
 public:
   explicit OMXDvdPlayer(const std::string &filename);
   ~OMXDvdPlayer();
-
-  OMXDvdPlayer(const OMXDvdPlayer&) = delete;
-  OMXDvdPlayer& operator=(const OMXDvdPlayer&) = delete;
 
   bool CanChangeTrack(int delta, int &t);
   OMXReaderDvd *OpenTrack(int ct);

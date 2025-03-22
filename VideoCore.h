@@ -22,6 +22,8 @@ extern "C" {
 #include <bcm_host.h>
 }
 
+#include "utils/NoMoveCopy.h"
+
 typedef enum {
   CONF_FLAGS_FORMAT_NONE,
   CONF_FLAGS_FORMAT_SBS,
@@ -29,7 +31,7 @@ typedef enum {
   CONF_FLAGS_FORMAT_FP
 } FORMAT_3D_T;
 
-class VideoCore
+class VideoCore : NoMoveCopy
 {
 public:
   VideoCore();

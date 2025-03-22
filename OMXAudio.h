@@ -35,6 +35,7 @@ extern "C" {
 #include "OMXCore.h"
 #include "OMXStreamInfo.h"
 #include "utils/SingleLock.h"
+#include "utils/NoMoveCopy.h"
 
 class OMXClock;
 
@@ -55,7 +56,7 @@ public:
   float fifo_size = 2.0f;
 };
 
-class COMXAudio
+class COMXAudio : NoMoveCopy
 {
 public:
   int64_t GetDelay();

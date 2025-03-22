@@ -27,8 +27,9 @@ extern "C" {
 }
 
 #include "OMXStreamInfo.h"
+#include "utils/NoMoveCopy.h"
 
-class OMXPacket
+class OMXPacket : NoMoveCopy
 {
 public:
   OMXPacket();

@@ -27,11 +27,12 @@ extern "C" {
 }
 
 #include "utils/PCMRemap.h"
+#include "utils/NoMoveCopy.h"
 
 class COMXStreamInfo;
 class OMXPacket;
 
-class COMXAudioCodecOMX
+class COMXAudioCodecOMX : NoMoveCopy
 {
 public:
   COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layout);

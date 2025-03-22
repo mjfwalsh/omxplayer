@@ -25,15 +25,16 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "utils/NoMoveCopy.h"
+
 class CRegExp;
 class DispmanxLayer;
 class Subtitle;
 class OMXSubConfig;
 
-class SubtitleRenderer {
+class SubtitleRenderer : NoMoveCopy
+{
 public:
-  SubtitleRenderer(const SubtitleRenderer&) = delete;
-  SubtitleRenderer& operator=(const SubtitleRenderer&) = delete;
   SubtitleRenderer(OMXSubConfig *config);
 
   void setDVDSubtitleLayer(DispmanxLayer *dl);
@@ -51,7 +52,7 @@ private:
   DispmanxLayer *subtitleLayer = NULL;
   DispmanxLayer *dvdSubLayer = NULL;
 
-  class SubtitleText
+  class SubtitleText : NoMoveCopy
   {
     public:
       std::string text;
@@ -69,8 +70,13 @@ private:
 
       ~SubtitleText()
       {
-        if(glyphs)
-          cairo_glyph_free(glyphs);
+        cairo_glyph_free(glyphs);
+      }
+
+      SubtitleText(SubtitleText &&o) noexcept
+      : text(o.text), font(o.font), color(o.color), glyphs(o.glyphs), num_glyphs(o.num_glyphs)
+      {
+        o.glyphs = NULL;
       }
   };
 

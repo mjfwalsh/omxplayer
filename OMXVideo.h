@@ -22,6 +22,7 @@
 
 #include "OMXCore.h"
 #include "OMXStreamInfo.h"
+#include "utils/NoMoveCopy.h"
 
 #include <IL/OMX_Video.h>
 
@@ -62,7 +63,7 @@ public:
   float fifo_size = (float)80*1024*60 / (1024*1024);
 };
 
-class COMXVideo
+class COMXVideo : NoMoveCopy
 {
 public:
   COMXVideo(OMXClock *clock, const OMXVideoConfig &config);

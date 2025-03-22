@@ -31,6 +31,8 @@
 #include <IL/OMX_Video.h>
 #include <IL/OMX_Broadcom.h>
 
+#include "utils/NoMoveCopy.h"
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 // debug spew defines
 
@@ -52,7 +54,7 @@ typedef struct omx_event {
 
 class COMXCoreComponent;
 
-class COMXCoreTunel
+class COMXCoreTunel : NoMoveCopy
 {
 public:
   void Initialize(COMXCoreComponent *src_component, unsigned int src_port, COMXCoreComponent *dst_component, unsigned int dst_port);
@@ -67,7 +69,7 @@ private:
   bool              m_tunnel_set     = false;
 };
 
-class COMXCoreComponent
+class COMXCoreComponent : NoMoveCopy
 {
 public:
   COMXCoreComponent();
@@ -176,7 +178,7 @@ private:
   bool          m_resource_error = false;
 };
 
-class COMXCore
+class COMXCore : NoMoveCopy
 {
 public:
   COMXCore();

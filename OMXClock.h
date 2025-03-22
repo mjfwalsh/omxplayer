@@ -24,6 +24,7 @@
 
 #include "OMXCore.h"
 #include "utils/SingleLock.h"
+#include "utils/NoMoveCopy.h"
 
 #define DVD_PLAYSPEED_PAUSE       0.0
 #define DVD_PLAYSPEED_NORMAL      1.0
@@ -41,7 +42,7 @@ static inline int64_t FromOMXTime(OMX_TICKS ticks)
   return pts;
 }
 
-class OMXClock
+class OMXClock : NoMoveCopy
 {
 protected:
   bool              m_pause;

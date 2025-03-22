@@ -29,6 +29,7 @@ extern "C" {
 #include "OMXStreamInfo.h"
 #include "OMXClock.h"
 #include "utils/simple_geometry.h"
+#include "utils/NoMoveCopy.h"
 
 #include <stdint.h>
 #include <vector>
@@ -55,7 +56,7 @@ enum SeekResult {
   SEEK_NO_CHAPTERS = -4,
 };
 
-class OMXReader
+class OMXReader : NoMoveCopy
 {
 public:
   OMXReader();

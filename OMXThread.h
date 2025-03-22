@@ -25,7 +25,9 @@
 #include <pthread.h>
 #include <atomic>
 
-class OMXThread
+#include "utils/NoMoveCopy.h"
+
+class OMXThread : NoMoveCopy
 {
 protected:
   pthread_attr_t      m_tattr;

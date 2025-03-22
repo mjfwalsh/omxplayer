@@ -31,8 +31,9 @@
 #include <bcm_host.h>
 
 #include "utils/simple_geometry.h"
+#include "utils/NoMoveCopy.h"
 
-class DispmanxLayer
+class DispmanxLayer : NoMoveCopy
 {
 public:
   DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
