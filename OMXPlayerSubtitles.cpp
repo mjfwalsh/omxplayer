@@ -305,8 +305,6 @@ void OMXPlayerSubtitles::RenderLoop()
               if(a->currently_showing)
                 internal_subtitles.push_back(sub);
             }
-
-            delete pkt;
           }
           break;
         case Mailbox::USE_INTERNAL_SUBS:

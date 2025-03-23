@@ -31,9 +31,9 @@
 #include <semaphore.h>
 
 #include "NoMoveCopy.h"
+#include "OMXPacket.h"
 
 class DispmanxLayer;
-class OMXPacket;
 
 class Mailbox {
 public:
@@ -87,6 +87,11 @@ public:
   {
     public:
     Push(OMXPacket *p, bool s) : Item(PUSH), pkt(p), currently_showing(s) {};
+
+    ~Push() override
+    {
+      delete pkt;
+    }
 
     OMXPacket *pkt;
     bool currently_showing;
