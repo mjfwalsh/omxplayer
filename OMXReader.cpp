@@ -19,12 +19,6 @@
  *
  */
 
-#include "OMXReader.h"
-#include "OMXPacket.h"
-#include "OMXClock.h"
-#include "omxplayer.h"
-#include "utils/log.h"
-
 #include <stdio.h>
 #include <unordered_map>
 #include <vector>
@@ -35,6 +29,13 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
 }
+
+#include "OMXReader.h"
+#include "OMXPacket.h"
+#include "OMXClock.h"
+#include "omxplayer.h"
+#include "utils/log.h"
+#include "utils/simple_geometry.h"
 
 using namespace std;
 

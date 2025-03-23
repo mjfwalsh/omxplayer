@@ -19,17 +19,17 @@
  *
  */
 
-#include "OMXReader.h"
-#include "OMXReaderFile.h"
-#include "utils/misc.h"
-#include "utils/log.h"
-
 #include <string>
 
 extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/opt.h>
 }
+
+#include "OMXReader.h"
+#include "OMXReaderFile.h"
+#include "utils/misc.h"
+#include "utils/log.h"
 
 using namespace std;
 

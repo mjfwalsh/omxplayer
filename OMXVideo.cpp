@@ -19,16 +19,15 @@
  *
  */
 
-#include "OMXVideo.h"
-#include "OMXClock.h"
-#include "OMXPacket.h"
-
-#include "OMXStreamInfo.h"
-#include "utils/log.h"
-
 extern "C" {
 #include <libavutil/avutil.h>
 }
+
+#include "OMXVideo.h"
+#include "OMXClock.h"
+#include "OMXPacket.h"
+#include "OMXStreamInfo.h"
+#include "utils/log.h"
 
 #ifdef CLASSNAME
 #undef CLASSNAME

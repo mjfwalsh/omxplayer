@@ -18,16 +18,17 @@
 * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-#include "OMXAudio.h"
-#include "utils/log.h"
-#include "OMXClock.h"
-
 #include <assert.h>
 #include <algorithm>
 
 extern "C" {
 #include <libavutil/channel_layout.h>
 }
+
+#include "OMXAudio.h"
+#include "utils/log.h"
+#include "utils/PCMRemap.h"
+#include "OMXClock.h"
 
 #define CLASSNAME "COMXAudio"
 

@@ -19,13 +19,6 @@
  *
  */
 
-#include "OMXReader.h"
-#include "OMXReaderDvd.h"
-#include "OMXPacket.h"
-#include "OMXDvdPlayer.h"
-#include "utils/defs.h"
-#include "utils/log.h"
-
 #include <string>
 #include <limits.h>
 #include <stdexcept>
@@ -41,6 +34,13 @@ extern "C" {
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
 #include <dvdread/nav_read.h>
+
+#include "OMXReader.h"
+#include "OMXReaderDvd.h"
+#include "OMXPacket.h"
+#include "OMXDvdPlayer.h"
+#include "utils/defs.h"
+#include "utils/log.h"
 
 #define FFMPEG_FILE_BUFFER_SIZE   32768 // default reading size for ffmpeg
 #define PCI_SIZE  980

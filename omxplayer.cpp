@@ -51,9 +51,6 @@
 #include "omxplayer.h"
 #include "DispmanxLayer.h"
 #include "CECListener.h"
-
-#include <string>
-
 #include "version.h"
 
 #define OSD_STDOUT 0b00000001

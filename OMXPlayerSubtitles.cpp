@@ -21,6 +21,9 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 }
 
+#include <signal.h>
+#include <stdint.h>
+
 #include "OMXPacket.h"
 #include "OMXClock.h"
 #include "OMXPlayerSubtitles.h"
@@ -32,8 +35,6 @@ extern "C" {
 #include "Srt.h"
 #include "DispmanxLayer.h"
 
-#include <signal.h>
-#include <stdint.h>
 
 using namespace std;
 using namespace boost;

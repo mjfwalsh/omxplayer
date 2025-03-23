@@ -21,7 +21,6 @@
 #include <vector>
 #include <algorithm>
 #include <locale>
-
 #include <dirent.h>
 
 #include "utils/RegExp.h"

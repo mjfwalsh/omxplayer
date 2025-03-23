@@ -24,13 +24,13 @@
 // ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 // DEALINGS IN THE SOFTWARE.
 
-#include "Srt.h"
-#include "Subtitle.h"
-#include "utils/utf8.h"
-
 #include <iostream>
 #include <istream>
 #include <fstream>
+
+#include "Srt.h"
+#include "Subtitle.h"
+#include "utils/utf8.h"
 
 static int timecode_to_milliseconds(unsigned h, unsigned m, unsigned s, unsigned f)
 {

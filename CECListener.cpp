@@ -17,13 +17,12 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "KeyConfig.h"
-#include "CECListener.h"
-
 extern "C" {
 #include <bcm_host.h>
 };
 
+#include "KeyConfig.h"
+#include "CECListener.h"
 
 CECListener::CECListener()
 {

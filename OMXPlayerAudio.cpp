@@ -19,14 +19,13 @@
  *
  */
 
+#include <stdio.h>
+#include <assert.h>
+
 #include "OMXPlayerAudio.h"
 #include "OMXPacket.h"
 #include "OMXAudioCodecOMX.h"
 #include "OMXClock.h"
-
-#include <stdio.h>
-#include <assert.h>
-
 #include "utils/log.h"
 
 OMXPlayerAudio::~OMXPlayerAudio()

@@ -19,14 +19,12 @@
  *
  */
 
-#include "OMXPlayerVideo.h"
-
 #include <stdio.h>
 #include <string>
 #include <assert.h>
 
+#include "OMXPlayerVideo.h"
 #include "utils/log.h"
-
 #include "OMXClock.h"
 #include "OMXPacket.h"
 #include "OMXStreamInfo.h"

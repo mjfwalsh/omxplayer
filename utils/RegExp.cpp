@@ -21,6 +21,7 @@
 
 #include <string>
 #include <string.h>
+
 #include "RegExp.h"
 #include "log.h"
 

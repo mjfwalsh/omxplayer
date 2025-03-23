@@ -18,14 +18,14 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "OMXThread.h"
-#include "utils/Mailbox.h"
-#include "SubtitleRenderer.h"
-
 #include <boost/circular_buffer.hpp>
 #include <string>
 #include <vector>
 #include <atomic>
+
+#include "OMXThread.h"
+#include "utils/Mailbox.h"
+#include "SubtitleRenderer.h"
 
 class OMXClock;
 class OMXPacket;

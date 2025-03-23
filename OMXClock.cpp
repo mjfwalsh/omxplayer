@@ -18,11 +18,11 @@
  *
  */
 
+#include <errno.h>
+
 #include "OMXClock.h"
 #include "utils/log.h"
 #include "utils/SingleLock.h"
-
-#include <errno.h>
 
 #define OMX_PRE_ROLL 200
 
