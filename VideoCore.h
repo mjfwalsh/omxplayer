@@ -50,5 +50,5 @@ public:
 
 private:
   bool m_native_interlace_active = false;
-  TV_DISPLAY_STATE_T *tv_state = NULL;
+  TV_DISPLAY_STATE_T *tv_state = nullptr;
 };

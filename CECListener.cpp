@@ -19,7 +19,7 @@
 
 extern "C" {
 #include <bcm_host.h>
-};
+}
 
 #include "KeyConfig.h"
 #include "CECListener.h"

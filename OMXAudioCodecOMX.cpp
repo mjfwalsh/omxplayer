@@ -21,6 +21,7 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include <libswresample/swresample.h>
 }
 
 #include "OMXAudioCodecOMX.h"
@@ -39,7 +40,7 @@ extern "C" {
 #define AUDIO_DECODE_OUTPUT_BUFFER (32*1024)
 static const char rounded_up_channels_shift[] = {0,0,1,2,2,3,3,3,3};
 
-COMXAudioCodecOMX::COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layout)
+COMXAudioCodecOMX::COMXAudioCodecOMX(COMXStreamInfo &hints)
 {
   AVCONST AVCodec* pCodec;
 
@@ -78,7 +79,7 @@ COMXAudioCodecOMX::COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layou
     memcpy(m_pCodecContext->extradata, hints.extradata, hints.extrasize);
   }
 
-  if (avcodec_open2(m_pCodecContext, pCodec, NULL) < 0)
+  if (avcodec_open2(m_pCodecContext, pCodec, nullptr) < 0)
   {
     CLogLog(LOGDEBUG,"COMXAudioCodecOMX::Open() Unable to open codec");
     avcodec_free_context(&m_pCodecContext);
@@ -203,12 +204,12 @@ int COMXAudioCodecOMX::GetData(unsigned char** dst, int64_t &dts, int64_t &pts)
       m_iSampleFormat = m_pCodecContext->sample_fmt;
 
 #if LIBAVCODEC_VERSION_MAJOR < 59
-      m_pConvert = swr_alloc_set_opts(NULL,
+      m_pConvert = swr_alloc_set_opts(nullptr,
                       av_get_default_channel_layout(m_pCodecContext->channels),
                       m_desiredSampleFormat, m_pCodecContext->sample_rate,
                       av_get_default_channel_layout(m_pCodecContext->channels),
                       m_pCodecContext->sample_fmt, m_pCodecContext->sample_rate,
-                      0, NULL);
+                      0, nullptr);
 #else
       av_channel_layout_default(&m_pCodecContext->ch_layout, m_pCodecContext->NB_CHANNELS);
       swr_alloc_set_opts2(&m_pConvert,
@@ -216,7 +217,7 @@ int COMXAudioCodecOMX::GetData(unsigned char** dst, int64_t &dts, int64_t &pts)
                       m_desiredSampleFormat, m_pCodecContext->sample_rate,
                       &m_pCodecContext->ch_layout,
                       m_pCodecContext->sample_fmt, m_pCodecContext->sample_rate,
-                      0, NULL);
+                      0, nullptr);
 #endif
 
       if(!m_pConvert || swr_init(m_pConvert) < 0)
@@ -228,7 +229,7 @@ int COMXAudioCodecOMX::GetData(unsigned char** dst, int64_t &dts, int64_t &pts)
 
     /* use unaligned flag to keep output packed */
     uint8_t *out_planes[m_pCodecContext->NB_CHANNELS];
-    if(av_samples_fill_arrays(out_planes, NULL, m_pBufferOutput + m_iBufferOutputUsed, m_pCodecContext->NB_CHANNELS, m_pFrame1->nb_samples, m_desiredSampleFormat, 1) < 0 ||
+    if(av_samples_fill_arrays(out_planes, nullptr, m_pBufferOutput + m_iBufferOutputUsed, m_pCodecContext->NB_CHANNELS, m_pFrame1->nb_samples, m_desiredSampleFormat, 1) < 0 ||
        swr_convert(m_pConvert, out_planes, m_pFrame1->nb_samples, (const uint8_t **)m_pFrame1->data, m_pFrame1->nb_samples) < 0)
     {
       CLogLog(LOGERROR, "COMXAudioCodecOMX::Decode - Unable to convert format %d to %d", (int)m_pCodecContext->sample_fmt, m_desiredSampleFormat);
@@ -239,7 +240,7 @@ int COMXAudioCodecOMX::GetData(unsigned char** dst, int64_t &dts, int64_t &pts)
   {
     /* copy to a contiguous buffer */
     uint8_t *out_planes[m_pCodecContext->NB_CHANNELS];
-    if (av_samples_fill_arrays(out_planes, NULL, m_pBufferOutput + m_iBufferOutputUsed, m_pCodecContext->NB_CHANNELS, m_pFrame1->nb_samples, m_desiredSampleFormat, 1) < 0 ||
+    if (av_samples_fill_arrays(out_planes, nullptr, m_pBufferOutput + m_iBufferOutputUsed, m_pCodecContext->NB_CHANNELS, m_pFrame1->nb_samples, m_desiredSampleFormat, 1) < 0 ||
       av_samples_copy(out_planes, m_pFrame1->data, 0, 0, m_pFrame1->nb_samples, m_pCodecContext->NB_CHANNELS, m_desiredSampleFormat) < 0 )
     {
       outputSize = 0;
@@ -268,19 +269,11 @@ int COMXAudioCodecOMX::GetBitsPerSample()
   return m_pCodecContext->sample_fmt == AV_SAMPLE_FMT_S16 ? 16 : 32;
 }
 
-static unsigned count_bits(int64_t value)
-{
-  unsigned bits = 0;
-  for(;value;++bits)
-    value &= value - 1;
-  return bits;
-}
-
 #if LIBAVCODEC_VERSION_MAJOR < 59
 uint64_t COMXAudioCodecOMX::GetChannelMap()
 {
   uint64_t layout;
-  int bits = count_bits(m_pCodecContext->channel_layout);
+  int bits = CPCMRemap::CountBits(m_pCodecContext->channel_layout);
   if (bits == m_pCodecContext->channels)
   {
     layout = m_pCodecContext->channel_layout;
@@ -303,7 +296,7 @@ uint64_t COMXAudioCodecOMX::GetChannelMap()
   if(m_pCodecContext->ch_layout.order == AV_CHANNEL_ORDER_NATIVE
       || m_pCodecContext->ch_layout.order == AV_CHANNEL_ORDER_AMBISONIC)
   {
-    bits = count_bits(m_pCodecContext->ch_layout.u.mask);
+    bits = CPCMRemap::CountBits(m_pCodecContext->ch_layout.u.mask);
     if (bits == m_pCodecContext->ch_layout.nb_channels)
     {
       return m_pCodecContext->ch_layout.u.mask;

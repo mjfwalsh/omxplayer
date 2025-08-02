@@ -42,7 +42,7 @@ using namespace std;
 std::string OMXReader::s_cookie;
 std::string OMXReader::s_user_agent;
 std::string OMXReader::s_lavfdopts;
-AVDictionary *OMXReader::s_avdict = NULL;
+AVDictionary *OMXReader::s_avdict = nullptr;
 
 int64_t OMXReader::timeout_start;
 int64_t OMXReader::timeout_default_duration = (int64_t)1e10; // amount of time file/network operation can stall for before timing out
@@ -58,7 +58,7 @@ stream_type_index(-1)
 
   avpkt->duration = AV_NOPTS_VALUE;
   avpkt->size = 0;
-  avpkt->data = NULL;
+  avpkt->data = nullptr;
   avpkt->stream_index = -1;
 }
 
@@ -110,14 +110,14 @@ OMXReader::OMXReader()
   avformat_network_init();
 
   m_pFormatContext     = avformat_alloc_context();
-  if(m_pFormatContext == NULL)
+  if(m_pFormatContext == nullptr)
     throw "avformat_alloc_context failed";
 
   if (av_set_options_string(m_pFormatContext, s_lavfdopts.c_str(), ":", ",") < 0)
     throw "Invalid lavfdopts";
 
   // set the interrupt callback, appeared in libavformat 53.15.0
-  m_pFormatContext->interrupt_callback = { interrupt_cb, NULL };
+  m_pFormatContext->interrupt_callback = { interrupt_cb, nullptr };
 
   // if format can be nonblocking, let's use that
   m_pFormatContext->flags |= AVFMT_FLAG_NONBLOCK;
@@ -132,7 +132,7 @@ OMXReader::~OMXReader()
 OMXPacket *OMXReader::Read()
 {
   if(m_eof)
-    return NULL;
+    return nullptr;
 
   // assume we are not eof
   if(m_pFormatContext->pb)
@@ -147,7 +147,7 @@ OMXPacket *OMXReader::Read()
   {
     delete omx_pkt;
     m_eof = true;
-    return NULL;
+    return nullptr;
   }
 
   AVStream *pStream = m_pFormatContext->streams[omx_pkt->avpkt->stream_index];
@@ -297,12 +297,12 @@ void OMXReader::PopulateStream(int id, const char *lang, OMXStream *this_stream)
   }
   else
   {
-    const AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", NULL, 0);
+    const AVDictionaryEntry *langTag = av_dict_get(pStream->metadata, "language", nullptr, 0);
     if (langTag)
       this_stream->language = langTag->value;
   }
 
-  const AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata, "title", NULL, 0);
+  const AVDictionaryEntry *titleTag = av_dict_get(pStream->metadata, "title", nullptr, 0);
   if (titleTag)
     this_stream->name = titleTag->value;
 
@@ -387,7 +387,7 @@ bool OMXReader::SetHints(AVStream *stream, COMXStreamInfo *hints)
 
     hints->aspect = SelectAspect(stream, hints->forced_aspect) * stream->codecpar->width / stream->codecpar->height;
 
-    const AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", NULL, 0);
+    const AVDictionaryEntry *rtag = av_dict_get(stream->metadata, "rotate", nullptr, 0);
     if (rtag)
       hints->orientation = atoi(rtag->value);
     m_aspect = hints->aspect;
@@ -465,26 +465,18 @@ int64_t OMXReader::GetStreamLengthMicro()
 
 std::string OMXReader::GetStreamCodecName(AVStream *stream)
 {
-  std::string strStreamName;
-
   if(!stream)
-    return strStreamName;
+    return "";
 
-  unsigned int in = stream->codecpar->codec_tag;
   // FourCC codes are only valid on video streams, audio codecs in AVI/WAV
   // are 2 bytes and audio codecs in transport streams have subtle variation
   // e.g AC-3 instead of ac3
-  if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO && in != 0)
+  if (stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO)
   {
-    char fourcc[5];
-    memcpy(fourcc, &in, 4);
-    fourcc[4] = 0;
-    // fourccs have to be 4 characters
-    if (strlen(fourcc) == 4)
-    {
-      strStreamName = fourcc;
-      return strStreamName;
-    }
+    uint32_t in = stream->codecpar->codec_tag;
+    const char *p = (const char *)&in;
+    if(strnlen(p, 4) == 4)
+      return string(p, 4);
   }
 
 #ifdef FF_PROFILE_DTS_HD_MA
@@ -492,21 +484,19 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
   if (stream->codecpar->codec_id == AV_CODEC_ID_DTS)
   {
     if (stream->codecpar->profile == FF_PROFILE_DTS_HD_MA)
-      strStreamName = "dtshd_ma";
+      return "dtshd_ma";
     else if (stream->codecpar->profile == FF_PROFILE_DTS_HD_HRA)
-      strStreamName = "dtshd_hra";
+      return "dtshd_hra";
     else
-      strStreamName = "dca";
-    return strStreamName;
+      return "dca";
   }
 #endif
 
   const AVCodec *codec = avcodec_find_decoder(stream->codecpar->codec_id);
-
   if (codec)
-    strStreamName = codec->name;
+    return codec->name;
 
-  return strStreamName;
+  return "";
 }
 
 std::string OMXReader::GetCodecName(OMXStreamType type, unsigned int index)
@@ -519,7 +509,7 @@ std::string OMXReader::GetStreamLanguage(OMXStreamType type, unsigned int index)
   return m_streams[type][index].language;
 }
 
-int OMXReader::GetStreamByLanguage(OMXStreamType type, const char *lang)
+int OMXReader::GetStreamByLanguage(OMXStreamType type, const string &lang)
 {
   for(int i = 0; i < (int)m_streams[type].size(); i++)
     if(m_streams[type][i].language == lang)

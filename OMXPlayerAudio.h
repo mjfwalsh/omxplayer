@@ -23,7 +23,7 @@
 #define _OMX_PLAYERAUDIO_H_
 
 extern "C" {
-#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
 }
 
 #include "OMXStreamInfo.h"
@@ -39,7 +39,7 @@ extern "C" {
 class COMXAudioCodecOMX;
 class OMXClock;
 class OMXPacket;
-class OMXReader;
+class COMXStreamInfo;
 
 class OMXPlayerAudio : public OMXThread
 {
@@ -50,7 +50,7 @@ protected:
   pthread_mutex_t           m_lock_decoder;
   OMXClock                  *m_av_clock;
   std::vector<std::string>  m_codecs;
-  COMXAudio                 *m_decoder           = NULL;
+  COMXAudio                 *m_decoder           = nullptr;
   std::atomic<int>          m_stream_index;
   int                       m_stream_count;
   bool                      m_passthrough        = false;
@@ -59,7 +59,7 @@ protected:
   std::atomic<bool>         m_flush_requested;
   unsigned int              m_cached_size        = 0;
   OMXAudioConfig            m_config;
-  COMXAudioCodecOMX         *m_pAudioCodec       = NULL;
+  COMXAudioCodecOMX         *m_pAudioCodec       = nullptr;
   float                     m_CurrentVolume      = 1.0f;
   long                      m_amplification      = 0;
   bool                      m_mute               = false;
@@ -82,16 +82,16 @@ public:
   int64_t GetDelay();
   int64_t GetCacheTime();
   int64_t GetCacheTotal();
-  int64_t GetCurrentPTS() { return m_iCurrentPts; };
+  int64_t GetCurrentPTS() { return m_iCurrentPts; }
   void SubmitEOS();
   bool IsEOS();
-  unsigned int GetCached() { return m_cached_size; };
+  unsigned int GetCached() { return m_cached_size; }
   void SetVolume(float fVolume)                          { m_CurrentVolume = fVolume; if(m_decoder) m_decoder->SetVolume(fVolume); }
   float GetVolume()                                      { return m_CurrentVolume; }
   void SetMute(bool bOnOff)                              { m_mute = bOnOff; if(m_decoder) m_decoder->SetMute(bOnOff); }
   bool GetMute()                                         { return m_mute; }
   void SetDynamicRangeCompression(long drc)              { m_amplification = drc; if(m_decoder) m_decoder->SetDynamicRangeCompression(drc); }
-  bool Error() { return !m_player_ok; };
+  bool Error() { return !m_player_ok; }
 private:
   void SubmitEOSInternal();
   bool Decode(OMXPacket *pkt);

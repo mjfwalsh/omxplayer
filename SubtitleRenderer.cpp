@@ -179,14 +179,14 @@ void SubtitleRenderer::prepare(Subtitle &sub)
   if(sub.isImage)
     make_subtitle_image(sub);
   else
-    parse_lines(sub.text.data(), sub.text.length());
+    parse_lines(sub.text);
 }
 
 void SubtitleRenderer::prepare(const string &lines)
 {
   unprepare();
 
-  parse_lines(lines.data(), lines.length());
+  parse_lines(lines);
 }
 
 void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed_lines)
@@ -228,7 +228,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
           parsed_lines[i][j].text.length(),
           &parsed_lines[i][j].glyphs,
           &parsed_lines[i][j].num_glyphs,
-          NULL, NULL, NULL) != CAIRO_STATUS_SUCCESS)
+          nullptr, nullptr, nullptr) != CAIRO_STATUS_SUCCESS)
       {
         printf("Failed: %s\n", parsed_lines[i][j].text.c_str());
         throw "cairo_scaled_font_text_to_glyphs failed";
@@ -277,7 +277,7 @@ void SubtitleRenderer::make_subtitle_image(vector<vector<SubtitleText> > &parsed
 
       // free glyph array
       cairo_glyph_free(parsed_lines[i][j].glyphs);
-      parsed_lines[i][j].glyphs = NULL;
+      parsed_lines[i][j].glyphs = nullptr;
     }
 
     // draw black text outline
@@ -356,25 +356,25 @@ void SubtitleRenderer::clear()
   subtitleLayer->clearImage();
   if(dvdSubLayer)
     delete dvdSubLayer;
-  dvdSubLayer = NULL;
+  dvdSubLayer = nullptr;
 }
 
 void SubtitleRenderer::unprepare()
 {
   if(m_bitmap_image_data) {
     delete[] m_bitmap_image_data;
-    m_bitmap_image_data = NULL;
+    m_bitmap_image_data = nullptr;
   }
 
   if(m_cairo_image_data) {
     cairo_destroy(m_cr);
     cairo_surface_destroy(m_surface);
-    m_cairo_image_data = NULL;
+    m_cairo_image_data = nullptr;
   }
 }
 
 // Tag parser functions
-void SubtitleRenderer::parse_lines(const char *text, int lines_length)
+void SubtitleRenderer::parse_lines(const string &text)
 {
   vector<vector<SubtitleText> > formatted_lines(1);
 
@@ -382,17 +382,17 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
   unsigned int color = FC_OFF_WHITE;
 
   int pos = 0, old_pos = 0;
-  while (pos < lines_length) {
-    pos = m_tags->RegFind(text, pos, lines_length);
+  while (pos < (int)text.length()) {
+    pos = m_tags->RegFind(text, pos);
     string fullTag = m_tags->GetMatch(0);
 
     //parse text
     if(pos != old_pos || fullTag == "\n") {
-      int l = pos == -1 ? lines_length - old_pos : pos - old_pos;
+      int l = pos == -1 ? text.length() - old_pos : pos - old_pos;
 
       if(l > 0) {
         int font = italic ? ITALIC_FONT : (bold ? BOLD_FONT : NORMAL_FONT);
-        formatted_lines.back().emplace_back(text + old_pos, l, font, color);
+        formatted_lines.back().emplace_back(&text[old_pos], l, font, color);
       }
     }
 
@@ -400,9 +400,9 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
     if(pos < 0) break;
 
     // convert to lower case
-    for(uint i = 0; i < fullTag.length(); i++)
-      if(fullTag[i] >= 'A' && fullTag[i] <= 'Z')
-        fullTag[i] += 32;
+    for(auto &c : fullTag)
+      if(c >= 'A' && c <= 'Z')
+        c += 32;
 
     pos += fullTag.length();
     old_pos = pos;
@@ -421,15 +421,15 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
     } else if (fullTag == "</font>" || fullTag == "{\\c}") {
       color = FC_OFF_WHITE;
     } else if (fullTag.substr(0,5) == "<font") {
-      if(m_font_color_html->RegFind(fullTag.c_str(), 5) >= 0) {
-        color = hex2int(m_font_color_html->GetMatch(1).c_str());
+      if(m_font_color_html->RegFind(fullTag, 5) >= 0) {
+        color = hex2int(m_font_color_html->GetMatch(1));
       }
-    } else if(m_font_color_curly->RegFind(fullTag.c_str(), 0) >= 0) {
+    } else if(m_font_color_curly->RegFind(fullTag) >= 0) {
       string t = m_font_color_curly->GetMatch(3) +
                  m_font_color_curly->GetMatch(2) +
                  m_font_color_curly->GetMatch(1);
 
-      color = hex2int(t.c_str());
+      color = hex2int(t);
     }
   }
 
@@ -437,7 +437,7 @@ void SubtitleRenderer::parse_lines(const char *text, int lines_length)
 }
 
 // expects 6 lowercase, digit hex string
-unsigned int SubtitleRenderer::hex2int(const char *hex)
+unsigned int SubtitleRenderer::hex2int(const string &hex)
 {
   unsigned int r = 0;
   for(int i = 0, f = 20; i < 6; i++, f -= 4)

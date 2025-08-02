@@ -20,9 +20,6 @@
  */
 
 #include "OMXThread.h"
-
-#include <stdio.h>
-
 #include "utils/log.h"
 
 #ifdef CLASSNAME
@@ -32,7 +29,7 @@
 
 OMXThread::OMXThread()
 {
-  pthread_mutex_init(&m_lock, NULL);
+  pthread_mutex_init(&m_lock, nullptr);
   pthread_attr_init(&m_tattr);
   pthread_attr_setdetachstate(&m_tattr, PTHREAD_CREATE_JOINABLE);
   m_thread    = 0;
@@ -57,7 +54,7 @@ bool OMXThread::StopThread()
   }
 
   m_bAbort = true;
-  pthread_join(m_thread, NULL);
+  pthread_join(m_thread, nullptr);
   m_running = false;
 
   m_thread = 0;
@@ -95,7 +92,7 @@ void *OMXThread::Run(void *arg)
   thread->Process();
 
   CLogLog(LOGDEBUG, "%s::%s - Exited thread with  id %d", CLASSNAME, __func__, (int)thread->ThreadHandle());
-  pthread_exit(NULL);
+  pthread_exit(nullptr);
 }
 
 void OMXThread::Lock()

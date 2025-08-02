@@ -29,7 +29,6 @@
 
 class OMXClock;
 class OMXPacket;
-class SubtitleRenderer;
 class Subtitle;
 class Rect;
 class Dimension;
@@ -40,7 +39,7 @@ class OMXSubConfig
 public:
   bool              centered            = false;
   bool              ghost_box           = true;
-  unsigned int      subtitle_lines      = 3;
+  int               subtitle_lines      = 3;
   float             font_size           = 0.055f;
   const char        *reg_font           = "/usr/share/fonts/truetype/freefont/FreeSans.ttf";
   const char        *italic_font        = "/usr/share/fonts/truetype/freefont/FreeSansOblique.ttf";
@@ -50,9 +49,6 @@ public:
 class OMXPlayerSubtitles : public OMXThread
 {
 public:
-  OMXPlayerSubtitles(const OMXPlayerSubtitles&) = delete;
-  OMXPlayerSubtitles& operator=(const OMXPlayerSubtitles&) = delete;
-
   ~OMXPlayerSubtitles() override;
 
   OMXPlayerSubtitles(OMXSubConfig *config,
@@ -97,12 +93,12 @@ public:
     return m_delay;
   }
 
-  void DisplayText(const char *text, int duration, bool wait = false);
+  void DisplayText(const std::string &text, int duration, bool wait = false);
 
   void AddPacket(OMXPacket *pkt);
 
 protected:
-  AVCodecContext           *m_dvd_codec_context = NULL;
+  AVCodecContext           *m_dvd_codec_context = nullptr;
 
 private:
   void SendToRenderer(Mailbox::Item *msg);
@@ -123,5 +119,5 @@ private:
   int                                           m_delay = 0;
   SubtitleRenderer                              m_renderer;
   OMXClock*                                     m_av_clock;
-  uint32_t                                      *m_palette = NULL;
+  uint32_t                                      *m_palette = nullptr;
 };

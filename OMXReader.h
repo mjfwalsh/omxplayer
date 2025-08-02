@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -19,16 +20,8 @@
  *
  */
 
-#ifndef _OMX_READER_H_
-#define _OMX_READER_H_
-
-extern "C" {
-#include <libavformat/avformat.h>
-}
-
 #include "OMXStreamInfo.h"
 #include "OMXClock.h"
-#include "utils/simple_geometry.h"
 #include "utils/NoMoveCopy.h"
 
 #include <stdint.h>
@@ -36,9 +29,14 @@ extern "C" {
 #include <string>
 #include <unordered_map>
 
+class Dimension;
+
 #define MAX_VIDEO_STREAMS 1
 
 class OMXPacket;
+struct AVFormatContext;
+struct AVDictionary;
+struct AVStream;
 
 enum OMXStreamType
 {
@@ -67,12 +65,12 @@ public:
   virtual OMXPacket *Read();
   COMXStreamInfo GetHints(OMXStreamType type, int index);
   bool IsEof();
-  inline int  AudioStreamCount() { return m_streams[OMXSTREAM_AUDIO].size(); };
-  inline int  VideoStreamCount() { return m_streams[OMXSTREAM_VIDEO].size(); };
-  inline int  SubtitleStreamCount() { return m_streams[OMXSTREAM_SUBTITLE].size(); };
-  inline double GetAspectRatio() { return m_aspect; };
-  inline int GetWidth() { return m_width; };
-  inline int GetHeight() { return m_height; };
+  inline int  AudioStreamCount() { return m_streams[OMXSTREAM_AUDIO].size(); }
+  inline int  VideoStreamCount() { return m_streams[OMXSTREAM_VIDEO].size(); }
+  inline int  SubtitleStreamCount() { return m_streams[OMXSTREAM_SUBTITLE].size(); }
+  inline double GetAspectRatio() { return m_aspect; }
+  inline int GetWidth() { return m_width; }
+  inline int GetHeight() { return m_height; }
   void SetSpeed(float iSpeed);
   virtual SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) = 0;
   int GetStreamLengthSeconds();
@@ -80,7 +78,7 @@ public:
   std::string GetCodecName(OMXStreamType type, unsigned int index);
   void GetMetaData(OMXStreamType type, std::vector<std::string> &list);
   std::string GetStreamLanguage(OMXStreamType type, unsigned int index);
-  int GetStreamByLanguage(OMXStreamType type, const char *lang);
+  int GetStreamByLanguage(OMXStreamType type, const std::string &lang);
   virtual bool CanSeek() = 0;
   bool FindDVDSubs(Dimension &d, float &aspect, uint32_t **palette, uint32_t *buf);
   static void SetCookie(const char *c);
@@ -100,14 +98,14 @@ protected:
     OMXStreamType  type      = OMXSTREAM_NONE;
     int            id          = -1;
     int            hex_id      = -1;
-    void           *extradata  = NULL;
-    unsigned int   extrasize  = 0;
+    void           *extradata  = nullptr;
+    int            extrasize  = 0;
     COMXStreamInfo hints;
   };
 
   bool                      m_bMatroska       = false;
   bool                      m_bAVI            = false;
-  AVFormatContext           *m_pFormatContext = NULL;
+  AVFormatContext           *m_pFormatContext = nullptr;
   bool                      m_eof             = false;
   std::vector<OMXStream>    m_streams[OMXSTREAM_END];
   float                     m_speed           = DVD_PLAYSPEED_NORMAL;
@@ -126,14 +124,12 @@ protected:
   static int64_t timeout_duration;
 
   std::string GetStreamCodecName(AVStream *stream);
-  virtual int AddStream(int id, const char* lang = NULL);
+  virtual int AddStream(int id, const char* lang = nullptr);
   void PopulateStream(int id, const char *lang, OMXStream *this_stream);
   double SelectAspect(AVStream* st, bool& forced);
   int64_t ConvertTimestamp(int64_t pts, int den, int num);
-  static int interrupt_cb(void *unused = NULL);
+  static int interrupt_cb(void *unused = nullptr);
   static void reset_timeout(int x);
   bool SetHints(AVStream *stream, COMXStreamInfo *hints);
   virtual uint32_t *getPalette(OMXStream *st, uint32_t *palette) = 0;
 };
-
-#endif

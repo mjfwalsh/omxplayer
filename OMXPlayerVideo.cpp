@@ -20,7 +20,6 @@
  */
 
 #include <stdio.h>
-#include <string>
 #include <assert.h>
 
 #include "OMXPlayerVideo.h"
@@ -40,8 +39,8 @@ m_cached_size(0),
 m_iVideoDelay(0),
 m_config(config)
 {
-  pthread_cond_init(&m_packet_cond, NULL);
-  pthread_mutex_init(&m_lock_decoder, NULL);
+  pthread_cond_init(&m_packet_cond, nullptr);
+  pthread_mutex_init(&m_lock_decoder, nullptr);
 
   if (m_config.hints.fpsrate && m_config.hints.fpsscale)
     m_fps = AV_TIME_BASE / NormalizeFrameduration((double)AV_TIME_BASE * m_config.hints.fpsscale / m_config.hints.fpsrate);
@@ -152,7 +151,7 @@ void OMXPlayerVideo::Decode(OMXPacket *pkt)
 
 void OMXPlayerVideo::Process()
 {
-  OMXPacket *omx_pkt = NULL;
+  OMXPacket *omx_pkt = nullptr;
 
   while(true)
   {
@@ -169,7 +168,7 @@ void OMXPlayerVideo::Process()
     if(m_flush && omx_pkt)
     {
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
       m_flush = false;
     }
     else if(!omx_pkt && !m_packets.empty())
@@ -192,14 +191,14 @@ void OMXPlayerVideo::Process()
     if(m_flush && omx_pkt)
     {
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
       m_flush = false;
     }
     else if(omx_pkt)
     {
       Decode(omx_pkt);
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
     }
     UnLockDecoder();
   }
@@ -236,7 +235,7 @@ bool OMXPlayerVideo::AddPacket(OMXPacket *pkt)
     return true;
   }
 
-  if((m_cached_size + pkt->avpkt->size) < m_config.queue_size * 1024 * 1024)
+  if((m_cached_size + pkt->avpkt->size) < m_config.queue_size)
   {
     Lock();
     m_cached_size += pkt->avpkt->size;

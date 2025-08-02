@@ -53,10 +53,6 @@ convert 3d to anaglyph
 
 Letterbox, fill, stretch (default: letterbox)
 
-=item B<--audio_fifo>  I<n>
-
-Size of audio output fifo in seconds
-
 =item B<--audio_queue> I<n>
 
 Size of audio input queue in MB

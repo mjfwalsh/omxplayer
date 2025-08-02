@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <dbus/dbus.h>
 #include <vector>
 #include <string>
@@ -8,9 +7,7 @@
 #include "KeyConfig.h"
 #include "DbusCommandSearch.h"
 
-#define CLASSNAME "OMXControl"
-
-DBusConnection     *bus = NULL;
+static DBusConnection *bus = nullptr;
 
 OMXControl::~OMXControl()
 {
@@ -47,7 +44,7 @@ OMXControl::operator bool() const
 
 bool OMXControl::dbus_connect(const char *dbus_name)
 {
-  if(bus != NULL)
+  if(bus != nullptr)
     throw "Only one dbus connection can exist";
 
   DBusError error;
@@ -84,7 +81,7 @@ fail:
   {
     dbus_connection_close(bus);
     dbus_connection_unref(bus);
-    bus = NULL;
+    bus = nullptr;
   }
 
   return false;
@@ -96,7 +93,7 @@ void OMXControl::dbus_disconnect()
   {
     dbus_connection_close(bus);
     dbus_connection_unref(bus);
-    bus = NULL;
+    bus = nullptr;
   }
 }
 
@@ -107,13 +104,13 @@ enum ControlFlow OMXControl::getEvent()
 
   dispatch();
   DBusMessage *m = dbus_connection_pop_message(bus);
-  if (m == NULL)
+  if (m == nullptr)
     return CONTINUE;
 
   CLogLog(LOGDEBUG, "Popped message member: %s interface: %s type: %d path: %s", dbus_message_get_member(m), dbus_message_get_interface(m), dbus_message_get_type(m), dbus_message_get_path(m) );
 
   const char *method = dbus_message_get_member(m);
-  if (method == NULL)
+  if (method == nullptr)
     return CONTINUE;
 
   enum Action action = dbus_find_method(method);
@@ -138,7 +135,7 @@ DMessage::~DMessage()
 
     if(reply)
     {
-      dbus_connection_send(bus, reply, NULL);
+      dbus_connection_send(bus, reply, nullptr);
       dbus_message_unref(reply);
     }
   }
@@ -197,9 +194,13 @@ bool DMessage::get_arg_double(double *value)
   return get_arg(DBUS_TYPE_DOUBLE, value);
 }
 
-bool DMessage::get_arg_string(const char **value)
+bool DMessage::get_arg_string(std::string &s)
 {
-  return get_arg(DBUS_TYPE_STRING, value);
+  const char *value;
+  bool r = get_arg(DBUS_TYPE_STRING, &value);
+  if(r)
+    s.assign(value);
+  return r;
 }
 
 bool DMessage::ignore_arg()
@@ -219,7 +220,7 @@ void DMessage::respond_error(const char *name, const char *msg)
   if(!reply)
     throw "memory error";
 
-  dbus_connection_send(bus, reply, NULL);
+  dbus_connection_send(bus, reply, nullptr);
   dbus_message_unref(reply);
   needs_response = false;
 }
@@ -256,8 +257,9 @@ void DMessage::respond_bool(bool value)
   respond(DBUS_TYPE_BOOLEAN, &t);
 }
 
-void DMessage::respond_string(const char *value)
+void DMessage::respond_string(const std::string &s)
 {
+  const char *value = s.c_str();
   respond(DBUS_TYPE_STRING, &value);
 }
 
@@ -269,7 +271,7 @@ void DMessage::respond(int type, void *value)
     throw "Memory error";
 
   dbus_message_append_args(reply, type, value, DBUS_TYPE_INVALID);
-  dbus_connection_send(bus, reply, NULL);
+  dbus_connection_send(bus, reply, nullptr);
 
   dbus_message_unref(reply);
 
@@ -294,7 +296,7 @@ void DMessage::respond_array(const char *array[], int size)
     throw "Memory error";
 
   dbus_message_append_args(reply, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING, &array, size, DBUS_TYPE_INVALID);
-  dbus_connection_send(bus, reply, NULL);
+  dbus_connection_send(bus, reply, nullptr);
   dbus_message_unref(reply);
 
   needs_response = false;
@@ -312,7 +314,7 @@ void DMessage::send_metadata(const char *url, int64_t *duration)
 
       //First dict entry: URI
       const char *key1 = "xesam:url";
-      dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
+      dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, nullptr, &dict_entry_cont);
         dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key1);
         dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_STRING_AS_STRING, &var);
         dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &url);
@@ -321,7 +323,7 @@ void DMessage::send_metadata(const char *url, int64_t *duration)
 
       //Second dict entry: duration in us
       const char *key2 = "mpris:length";
-      dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry_cont);
+      dbus_message_iter_open_container(&dict_cont, DBUS_TYPE_DICT_ENTRY, nullptr, &dict_entry_cont);
         dbus_message_iter_append_basic(&dict_entry_cont, DBUS_TYPE_STRING, &key2);
         dbus_message_iter_open_container(&dict_entry_cont, DBUS_TYPE_VARIANT, DBUS_TYPE_INT64_AS_STRING, &var);
         dbus_message_iter_append_basic(&var, DBUS_TYPE_INT64, duration);
@@ -331,7 +333,7 @@ void DMessage::send_metadata(const char *url, int64_t *duration)
 
     //Send message
     needs_response = false;
-    dbus_connection_send(bus, reply, NULL);
+    dbus_connection_send(bus, reply, nullptr);
     dbus_message_unref(reply);
   }
 }

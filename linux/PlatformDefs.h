@@ -1,6 +1,4 @@
-#ifndef __PLATFORM_DEFS_H__
-#define __PLATFORM_DEFS_H__
-
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -96,6 +94,3 @@ typedef struct tWAVEFORMATEXTENSIBLE
   unsigned int dwChannelMask;
   GUID SubFormat;
 } __attribute__((__packed__)) WAVEFORMATEXTENSIBLE;
-
-
-#endif //__PLATFORM_DEFS_H__

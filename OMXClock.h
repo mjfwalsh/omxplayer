@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -18,9 +19,6 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
-
-#ifndef _AVCLOCK_H_
-#define _AVCLOCK_H_
 
 #include "OMXCore.h"
 #include "utils/SingleLock.h"
@@ -60,7 +58,7 @@ public:
   OMXClock();
   ~OMXClock();
 
-  bool IsPaused() { return m_pause; };
+  bool IsPaused() { return m_pause; }
   bool Stop();
   bool Step(int steps = 1);
   bool Reset(bool has_video, bool has_audio);
@@ -69,7 +67,7 @@ public:
   bool Pause();
   bool Resume();
   bool SetSpeed(float speed);
-  float  PlaySpeed() { return m_omx_speed; };
+  float  PlaySpeed() { return m_omx_speed; }
   COMXCoreComponent *GetOMXClock();
   bool StateExecute();
   void StateIdle();
@@ -81,5 +79,3 @@ private:
   void SetClockPorts(OMX_TIME_CONFIG_CLOCKSTATETYPE *clock, bool has_video, bool has_audio);
   bool SetReferenceClock(bool has_audio);
 };
-
-#endif

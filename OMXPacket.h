@@ -23,11 +23,13 @@
 #define _OMX_PACKET_H_
 
 extern "C" {
-#include <libavformat/avformat.h>
+#include <libavutil/avutil.h>
 }
 
 #include "OMXStreamInfo.h"
 #include "utils/NoMoveCopy.h"
+
+struct AVPacket;
 
 class OMXPacket : NoMoveCopy
 {

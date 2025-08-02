@@ -1,6 +1,4 @@
-#ifndef __PCM_REMAP__H__
-#define __PCM_REMAP__H__
-
+#pragma once
 /*
  *      Copyright (C) 2005-2010 Team XBMC
  *      http://www.xbmc.org
@@ -23,6 +21,7 @@
  */
 
 #include <vector>
+#include <stdint.h>
 
 #define PCM_MAX_CH 18
 enum PCMChannels
@@ -66,10 +65,10 @@ enum PCMLayout
 struct PCMMapInfo
 {
   enum  PCMChannels channel;
-  float level;
-  bool  ifExists;
-  int   in_offset;
-  bool  copy;
+  float level = 0.0f;
+  bool  ifExists = false;
+  int   in_offset = 0;
+  bool  copy = false;
 };
 
 //!  Channels remapper class
@@ -89,7 +88,7 @@ class CPCMRemap
 {
 protected:
   enum PCMLayout     m_channelLayout;
-  unsigned int       m_inChannels, m_outChannels;
+  int                m_inChannels, m_outChannels;
   enum PCMChannels   m_inMap [PCM_MAX_CH];
   enum PCMChannels   m_outMap[PCM_MAX_CH];
 
@@ -107,8 +106,7 @@ protected:
   const char*        PCMLayoutStr(enum PCMLayout ename);
 
 public:
-  CPCMRemap(unsigned int inChannels, const enum PCMChannels *inChannelMap, unsigned int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize);
+  CPCMRemap(int inChannels, const enum PCMChannels *inChannelMap, int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize);
   void GetDownmixMatrix(float *downmix);
+  static int CountBits(int64_t value);
 };
-
-#endif

@@ -109,7 +109,7 @@ static struct lookup_item *search_table(const char *needle)
 enum Action dbus_find_method(const char *method_name)
 {
   const struct lookup_item *method = search_table(method_name);
-  if(method == NULL)
+  if(method == nullptr)
     return INVALID_METHOD;
 
   return method->method;
@@ -118,7 +118,7 @@ enum Action dbus_find_method(const char *method_name)
 enum Action dbus_find_property(const char *property_name)
 {
   const struct lookup_item *property = search_table(property_name);
-  if(property == NULL)
+  if(property == nullptr)
     return INVALID_PROPERTY;
 
   return property->property;

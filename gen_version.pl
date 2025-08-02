@@ -53,13 +53,11 @@ sub generate_version_info_header {
     open(my $w, '>', 'version_info.h') || exit 1;
 
     print $w <<"OUT";
-#ifndef __VERSION_H__
-#define __VERSION_H__
+#pragma once
 #define VERSION_DATE "$date"
 #define VERSION_HASH "$hash"
 #define VERSION_BRANCH "$branch"
 #define VERSION_REPO "$repo"
-#endif
 OUT
 ;
 

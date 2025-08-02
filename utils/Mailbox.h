@@ -53,11 +53,11 @@ public:
 
   class Item : NoMoveCopy {
     public:
-    explicit Item(const enum Type &t) : type(t) {};
-    virtual ~Item() {};
+    explicit Item(const enum Type &t) : type(t) {}
+    virtual ~Item() {}
 
     enum Type type;
-    Item *next = NULL;
+    Item *next = nullptr;
   };
   class Close : public Item
   {
@@ -66,12 +66,12 @@ public:
       :
       Item(CLOSE),
       sem(w)
-    {};
+    {}
 
     ~Close() override
     {
       sem_post(sem);
-    };
+    }
 
     sem_t *sem;
   };
@@ -79,14 +79,14 @@ public:
   {
     public:
     explicit DVDSubs(DispmanxLayer *dl) :
-      Item(ADD_DVD_SUBS), layer(dl) {};
+      Item(ADD_DVD_SUBS), layer(dl) {}
 
     DispmanxLayer *layer;
   };
   class Push : public Item
   {
     public:
-    Push(OMXPacket *p, bool s) : Item(PUSH), pkt(p), currently_showing(s) {};
+    Push(OMXPacket *p, bool s) : Item(PUSH), pkt(p), currently_showing(s) {}
 
     ~Push() override
     {
@@ -99,33 +99,33 @@ public:
   class UseInternalSubs : public Item
   {
     public:
-    explicit UseInternalSubs(const int &as) : Item(USE_INTERNAL_SUBS), active_stream(as)  {};
+    explicit UseInternalSubs(const int &as) : Item(USE_INTERNAL_SUBS), active_stream(as)  {}
 
     int active_stream;
   };
   class SetPaused : public Item
   {
     public:
-    explicit SetPaused(bool v) : Item(SET_PAUSED), value(v) {};
+    explicit SetPaused(bool v) : Item(SET_PAUSED), value(v) {}
 
     bool value;
   };
   class SetDelay : public Item
   {
     public:
-    explicit SetDelay(bool v) : Item(SET_DELAY), value(v) {};
+    explicit SetDelay(bool v) : Item(SET_DELAY), value(v) {}
 
     int value;
   };
   class DisplayText : public Item
   {
     public:
-    DisplayText(const char *tl, int d, bool w)
+    DisplayText(const std::string &tl, int d, bool w)
     : Item(DISPLAY_TEXT),
       text_lines(tl),
       duration(d),
       wait(w)
-    {};
+    {}
 
     std::string text_lines;
     int duration;
@@ -141,7 +141,7 @@ public:
       return;
     }
 
-    if(tail == NULL) {
+    if(tail == nullptr) {
       head = tail = elem;
     } else {
       tail->next = elem;
@@ -154,14 +154,14 @@ public:
   {
     std::lock_guard<std::mutex> look(messages_lock);
 
-    if(head == NULL) {
-      return NULL;
+    if(head == nullptr) {
+      return nullptr;
     } else {
       Item *old_head = head;
       head = head->next;
 
-      if(head == NULL)
-        tail = NULL;
+      if(head == nullptr)
+        tail = nullptr;
 
       return old_head;
     }
@@ -170,26 +170,26 @@ public:
   void wait(const std::chrono::milliseconds &rel_time)
   {
     std::unique_lock<std::mutex> lock(messages_lock);
-    messages_cond.wait_for(lock, rel_time, [&]{return head != NULL;});
+    messages_cond.wait_for(lock, rel_time, [&]{return head != nullptr;});
   }
 
   void finish()
   {
     std::lock_guard<std::mutex> look(messages_lock);
 
-    while(head != NULL)
+    while(head != nullptr)
     {
       Item *old_head = head;
       head = head->next;
       delete old_head;
     }
-    tail = NULL;
+    tail = nullptr;
     finished = true;
   }
 
 private:
-  Item *head = NULL;
-  Item *tail = NULL;
+  Item *head = nullptr;
+  Item *tail = nullptr;
 
   std::mutex messages_lock;
   std::condition_variable messages_cond;

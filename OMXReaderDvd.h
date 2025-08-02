@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -19,9 +20,6 @@
  *
  */
 
-#ifndef _OMX_READER_DVD_H_
-#define _OMX_READER_DVD_H_
-
 #include <stdint.h>
 #include <unordered_map>
 
@@ -38,7 +36,7 @@ public:
   SeekResult SeekChapter(int delta, int &result_chapter, int64_t &cur_pts) override;
   enum SeekResult SeekTime(int64_t &time, bool backwards) override;
   enum SeekResult SeekTimeDelta(int64_t delta, int64_t &cur_pts) override;
-  inline bool CanSeek() override { return true; };
+  inline bool CanSeek() override { return true; }
 
 protected:
   static int dvd_read(void *h, uint8_t* buf, int size);
@@ -46,16 +44,16 @@ protected:
   bool SeekByte(int seek_byte, bool backwords, const int64_t &new_pts);
   void AddMissingSubtitleStream(int id, const char *lang);
   void GetStreams();
-  int AddStream(int id, const char* lang = NULL) override;
+  int AddStream(int id, const char* lang = nullptr) override;
   int DvdRead(unsigned char *lpBuf, int no_blocks);
   int64_t DvdSeek(int blocks, int whence = SEEK_SET);
   int GetCell(int ms);
   uint32_t *getPalette(OMXStream *st, uint32_t *palette) override;
 
-  AVIOContext *m_ioContext = NULL;
+  AVIOContext *m_ioContext = nullptr;
   int m_pos = 0;
   int pos_byte_offset = 0;
-  dvd_file_t *m_dvd_track = NULL;
+  dvd_file_t *m_dvd_track = nullptr;
   OMXDvdPlayer::track_info &m_current_track;
   int m_track_num;
   int m_current_part = 0;
@@ -63,5 +61,3 @@ protected:
   int64_t m_offset = 0;
   std::unordered_map<int, int> m_pending_streams;
 };
-
-#endif

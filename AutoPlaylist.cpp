@@ -51,7 +51,7 @@ void AutoPlaylist::readPlaylist(const string &filename)
     "ogv|qt|rm|rmvb|roq|svi|ts|vob|webm|wmv|yuv|iso|dmg)$");
 
   // Quit if file being played doesn't have one of the above filename extensions
-  if(fnameext_match.RegFind(basename, 0) == -1) {
+  if(fnameext_match.RegFind(basename) == -1) {
     puts("Disabling playlist as filename extension not recognised");
     return;
   }
@@ -59,7 +59,7 @@ void AutoPlaylist::readPlaylist(const string &filename)
   struct dirent *ent;
   while ((ent = readdir(dir))) {
     if(ent->d_type != DT_DIR && ent->d_name[0] != '.' &&
-        fnameext_match.RegFind(ent->d_name, 0) > -1) {
+        fnameext_match.RegFind(ent->d_name) > -1) {
 
       playlist.push_back(ent->d_name);
     }

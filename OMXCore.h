@@ -59,11 +59,11 @@ class COMXCoreTunel : NoMoveCopy
 public:
   void Initialize(COMXCoreComponent *src_component, unsigned int src_port, COMXCoreComponent *dst_component, unsigned int dst_port);
   bool IsInitialized() const { return m_tunnel_set; }
-  OMX_ERRORTYPE Deestablish(bool noWait = false);
+  OMX_ERRORTYPE Deestablish();
   OMX_ERRORTYPE Establish();
 private:
-  COMXCoreComponent *m_src_component = NULL;
-  COMXCoreComponent *m_dst_component = NULL;
+  COMXCoreComponent *m_src_component = nullptr;
+  COMXCoreComponent *m_dst_component = nullptr;
   unsigned int      m_src_port       = 0;
   unsigned int      m_dst_port       = 0;
   bool              m_tunnel_set     = false;
@@ -95,7 +95,7 @@ public:
   OMX_ERRORTYPE DisablePort(unsigned int port, bool wait = true);
 
   bool          Initialize(const char *component_name, OMX_INDEXTYPE index);
-  bool          IsInitialized() const { return m_handle != NULL; }
+  bool          IsInitialized() const { return m_handle != nullptr; }
   bool          Deinitialize();
 
   // OMXCore Decoder delegate callback routines.
@@ -142,10 +142,10 @@ public:
   void IgnoreNextError(OMX_S32 error) { m_ignore_error = error; }
 
 private:
-  OMX_HANDLETYPE m_handle = NULL;
+  OMX_HANDLETYPE m_handle = nullptr;
   unsigned int   m_input_port = 0;
   unsigned int   m_output_port = 0;
-  const char     *m_componentName = NULL;
+  const char     *m_componentName = nullptr;
   pthread_mutex_t   m_omx_event_mutex;
   pthread_mutex_t   m_omx_eos_mutex;
   std::vector<omx_event> m_omx_events;

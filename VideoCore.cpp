@@ -21,6 +21,8 @@ extern "C" {
 #include <bcm_host.h>
 }
 
+#include <math.h>
+
 #include "OMXStreamInfo.h"
 #include "OMXPlayerVideo.h"
 #include "utils/log.h"
@@ -114,9 +116,9 @@ void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool
     fps = AV_TIME_BASE / OMXPlayerVideo::NormalizeFrameduration((double)AV_TIME_BASE * hints->fpsscale / hints->fpsrate);
 
   //Supported HDMI CEA/DMT resolutions, preferred resolution will be returned
-  TV_SUPPORTED_MODE_NEW_T *supported_modes = NULL;
+  TV_SUPPORTED_MODE_NEW_T *supported_modes = nullptr;
   // query the number of modes first
-  int max_supported_modes = vc_tv_hdmi_get_supported_modes_new(group, NULL, 0, &prefer_group, &prefer_mode);
+  int max_supported_modes = vc_tv_hdmi_get_supported_modes_new(group, nullptr, 0, &prefer_group, &prefer_mode);
 
   if (max_supported_modes > 0)
     supported_modes = new TV_SUPPORTED_MODE_NEW_T[max_supported_modes];
@@ -130,7 +132,7 @@ void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool
         group, num_modes, prefer_group, prefer_mode);
   }
 
-  TV_SUPPORTED_MODE_NEW_T *tv_found = NULL;
+  TV_SUPPORTED_MODE_NEW_T *tv_found = nullptr;
 
   if (num_modes > 0 && prefer_group != HDMI_RES_GROUP_INVALID)
   {
@@ -154,8 +156,8 @@ void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool
       /* Check size too, only choose, bigger resolutions */
       if(hints->width && hints->height)
       {
-				uint32_t w = tv->width;
-				uint32_t h = tv->height;
+        uint32_t w = tv->width;
+        uint32_t h = tv->height;
 
         /* cost of too small a resolution is high */
         score += max((int)(hints->width - w), 0) * (1<<16);
@@ -208,10 +210,6 @@ void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool
       m_native_interlace_active = true;
     }
 
-    // if we are closer to ntsc version of framerate, let gpu know
-    int ifps = (int)(fps+0.5f);
-    bool ntsc_freq = fabs(fps*1001.0f/1000.0f - ifps) < fabs(fps-ifps);
-
     /* inform TV of ntsc setting */
     HDMI_PROPERTY_PARAM_T property;
 
@@ -230,7 +228,7 @@ void VideoCore::SetVideoMode(const COMXStreamInfo *hints, FORMAT_3D_T is3d, bool
       vc_tv_hdmi_set_property(&property);
     }
 
-    printf("ntsc_freq:%d %s\n", ntsc_freq, property.param1 == HDMI_3D_FORMAT_SBS_HALF ? "3DSBS" :
+    printf("video mode: %s\n", property.param1 == HDMI_3D_FORMAT_SBS_HALF ? "3DSBS" :
             property.param1 == HDMI_3D_FORMAT_TB_HALF ? "3DTB" : property.param1 == HDMI_3D_FORMAT_FRAME_PACKING ? "3DFP":"");
     sem_t tv_synced;
     sem_init(&tv_synced, 0, 0);

@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -18,9 +19,6 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
-
-#ifndef _OMX_READER_FILE_H_
-#define _OMX_READER_FILE_H_
 
 #include "OMXReader.h"
 #include "OMXReaderFile.h"
@@ -49,5 +47,3 @@ protected:
   int64_t m_chapters[MAX_OMX_CHAPTERS];
   int m_chapter_count = 0;
 };
-
-#endif

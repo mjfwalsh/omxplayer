@@ -37,7 +37,6 @@ extern "C" {
 
 
 using namespace std;
-using namespace boost;
 
 OMXPlayerSubtitles::~OMXPlayerSubtitles()
 {
@@ -77,7 +76,7 @@ bool OMXPlayerSubtitles::Open(size_t stream_count, const string &subtitle_path)
     m_external_subtitle_stream = internal_stream_count;
   }
 
-  m_subtitle_buffers.resize(internal_stream_count, circular_buffer<Subtitle>(32));
+  m_subtitle_buffers.resize(internal_stream_count, boost::circular_buffer<Subtitle>(32));
 
   return true;
 }
@@ -92,7 +91,7 @@ void OMXPlayerSubtitles::initDVDSubs(const Rect &view_port, const Dimension &sub
       m_palette[i] = palette[i];
   } else if(m_palette) {
     delete[] m_palette;
-    m_palette = NULL;
+    m_palette = nullptr;
   }
 
   AVCONST AVCodec *dvd_codec = avcodec_find_decoder(AV_CODEC_ID_DVD_SUBTITLE);
@@ -103,11 +102,11 @@ void OMXPlayerSubtitles::initDVDSubs(const Rect &view_port, const Dimension &sub
   if(!m_dvd_codec_context)
     throw "Failed to allocate DVD codec";
 
-  if(m_palette == NULL) {
-    if(avcodec_open2(m_dvd_codec_context, dvd_codec, NULL) < 0)
+  if(m_palette == nullptr) {
+    if(avcodec_open2(m_dvd_codec_context, dvd_codec, nullptr) < 0)
       throw "avcodec_open2 failed 2";
   } else {
-    AVDictionary *d = NULL;
+    AVDictionary *d = nullptr;
     if(av_dict_set(&d, "palette", "0,1,2,3,4,5,6,7,8,9,A,B,C,D,E,F", 0) < 0)
       throw "av_dict_set failed";
 
@@ -148,7 +147,7 @@ void OMXPlayerSubtitles::Close()
   if(m_palette)
   {
     delete[] m_palette;
-    m_palette = NULL;
+    m_palette = nullptr;
   }
 }
 
@@ -272,7 +271,7 @@ void OMXPlayerSubtitles::RenderLoop()
     while(1)
     {
       Mailbox::Item *args = m_mailbox.receive();
-      if(args == NULL)
+      if(args == nullptr)
         break;
 
       switch(args->type) {
@@ -295,7 +294,7 @@ void OMXPlayerSubtitles::RenderLoop()
               // Add extra streams as the need arises
               if(pkt->stream_type_index >= (int)m_subtitle_buffers.size())
               {
-                m_subtitle_buffers.resize(pkt->stream_type_index + 1, circular_buffer<Subtitle>(32));
+                m_subtitle_buffers.resize(pkt->stream_type_index + 1, boost::circular_buffer<Subtitle>(32));
                 m_stream_count++;
               }
 
@@ -588,7 +587,7 @@ bool OMXPlayerSubtitles::GetImageData(OMXPacket *pkt, Subtitle &sub)
   if(m_palette)
     sub.assign_image(r->data[0], r->linesize[0] * r->h, (uint32_t *)r->data[1]);
   else
-    sub.assign_image(r->data[0], r->linesize[0] * r->h, NULL);
+    sub.assign_image(r->data[0], r->linesize[0] * r->h, nullptr);
 
   // tidy up
   avsubtitle_free(&s);
@@ -610,7 +609,7 @@ void OMXPlayerSubtitles::AddPacket(OMXPacket *pkt)
   SendToRenderer(new Mailbox::Push(pkt, m_visible && pkt->stream_type_index == m_active_index));
 }
 
-void OMXPlayerSubtitles::DisplayText(const char *text, int duration, bool wait)
+void OMXPlayerSubtitles::DisplayText(const string &text, int duration, bool wait)
 {
   SendToRenderer(new Mailbox::DisplayText(text, duration, wait));
 }

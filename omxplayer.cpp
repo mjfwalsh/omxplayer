@@ -24,6 +24,9 @@
 #include <getopt.h>
 #include <string.h>
 #include <sys/file.h>
+#include <filesystem>
+#include <fstream>
+#include <string>
 
 #include "utils/log.h"
 
@@ -64,66 +67,74 @@
 #define OSD_ERROR  0b00001111
 
 
-volatile sig_atomic_t m_stopped           = false;
-long              m_Volume              = 0;
-long              m_Amplification       = 0;
-bool              m_NativeDeinterlace   = false;
-int               m_osd                 = OSD_EXTRA | OSD_NORM;
-std::string       m_external_subtitles_path;
-bool              m_cmd_line_subtitles  = false;
-bool              m_Pause               = false;
-OMXReader         *m_omx_reader         = NULL;
-int               m_audio_index         = -1;
-OMXClock          *m_av_clock           = NULL;
-OMXControl        m_omxcontrol;
-Keyboard          *m_keyboard           = NULL;
-OMXAudioConfig    m_config_audio;
-OMXVideoConfig    m_config_video;
-OMXPacket         *m_omx_pkt            = NULL;
-int               m_subtitle_index      = -1;
-OMXPlayerVideo    *m_player_video       = NULL;
-OMXPlayerAudio    *m_player_audio       = NULL;
-OMXPlayerSubtitles *m_player_subtitles  = NULL;
-bool              m_loop                = false;
-RecentFileStore   m_file_store;
-RecentDVDStore    m_dvd_store;
-AutoPlaylist      m_playlist;
-bool              m_firstfile           = true;
-bool              m_send_eos            = false;
-std::string       m_filename;
-int               m_track               = -1;
-bool              m_is_dvd_device       = false;
-OMXDvdPlayer      *m_DvdPlayer          = NULL;
-int               m_incr                = -1;
-int               m_loop_from           = 0;
-bool              m_stats               = false;
-bool              m_dump_format         = false;
-bool              m_dump_format_exit    = false;
-FORMAT_3D_T       m_3d                  = CONF_FLAGS_FORMAT_NONE;
-bool              m_refresh             = false;
-float             m_threshold           = -1.0f; // amount of audio/video required to come out of buffering
-int               m_orientation         = -1; // unset
-float             m_fps                 = 0.0f; // unset
-int               m_next_prev_file      = 0;
-char              m_audio_lang[4]       = "\0";
-char              m_subtitle_lang[4]    = "\0";
-std::string       m_replacement_filename;
-bool              m_playlist_enabled    = true;
-float             m_latency             = 0.0f;
-VideoCore         m_video_core;
-CECListener       m_cec_listener;
+static volatile sig_atomic_t m_stopped           = false;
+static long              m_Volume              = 0;
+static long              m_Amplification       = 0;
+static bool              m_NativeDeinterlace   = false;
+static int               m_osd                 = OSD_EXTRA | OSD_NORM;
+static std::string       m_external_subtitles_path;
+static bool              m_cmd_line_subtitles  = false;
+static bool              m_Pause               = false;
+static OMXReader         *m_omx_reader         = nullptr;
+static int               m_audio_index         = -1;
+static OMXClock          *m_av_clock           = nullptr;
+static OMXControl        m_omxcontrol;
+static Keyboard          *m_keyboard           = nullptr;
+static OMXAudioConfig    m_config_audio;
+static OMXVideoConfig    m_config_video;
+static OMXPacket         *m_omx_pkt            = nullptr;
+static int               m_subtitle_index      = -1;
+static OMXPlayerVideo    *m_player_video       = nullptr;
+static OMXPlayerAudio    *m_player_audio       = nullptr;
+static OMXPlayerSubtitles *m_player_subtitles  = nullptr;
+static bool              m_loop                = false;
+static RecentFileStore   m_file_store;
+static RecentDVDStore    m_dvd_store;
+static AutoPlaylist      m_playlist;
+static bool              m_firstfile           = true;
+static bool              m_send_eos            = false;
+static std::string       m_filename;
+static int               m_track               = -1;
+static bool              m_is_dvd_device       = false;
+static OMXDvdPlayer      *m_DvdPlayer          = nullptr;
+static int               m_incr                = -1;
+static int               m_loop_from           = 0;
+static bool              m_stats               = false;
+static bool              m_dump_format         = false;
+static bool              m_dump_format_exit    = false;
+static FORMAT_3D_T       m_3d                  = CONF_FLAGS_FORMAT_NONE;
+static bool              m_refresh             = false;
+static float             m_threshold           = -1.0f; // amount of audio/video required to come out of buffering
+static int               m_orientation         = -1; // unset
+static float             m_fps                 = 0.0f; // unset
+static int               m_next_prev_file      = 0;
+static std::string       m_audio_lang;
+static std::string       m_subtitle_lang;
+static std::string       m_replacement_filename;
+static bool              m_playlist_enabled    = true;
+static float             m_latency             = 0.0f;
+static VideoCore         m_video_core;
+static CECListener       m_cec_listener;
 
-#define safe_delete(object) if(object) { delete object; object = NULL; }
+template <class T>
+static void safe_delete(T &object)
+{
+  if(object)
+  {
+    delete object;
+    object = nullptr;
+  }
+}
 
-float playspeeds[] = {0, 1/16.0, 1/8.0, 1/4.0, 1/2.0, 0.975, 1.0, 1.125, 2.0, 4.0};
-const int playspeed_max = 9, playspeed_normal = 6;
-int playspeed_current = playspeed_normal;
+static float playspeeds[] = {0, 1/16.0, 1/8.0, 1/4.0, 1/2.0, 0.975, 1.0, 1.125, 2.0, 4.0};
+static const int playspeed_max = 9, playspeed_normal = 6;
+static int playspeed_current = playspeed_normal;
 
 enum{ERROR=-1,SUCCESS,ONEBYTE};
 
 // SIGUSR1 is an error in a thread so exit
 // otherwise set m_stopped for an orderly winddown
-void sig_handler(int s)
+static void sig_handler(int s)
 {
   if(s == SIGUSR1)
     exit(1);
@@ -131,42 +142,37 @@ void sig_handler(int s)
     m_stopped = true;
 }
 
-void print_usage()
+static void print_usage()
 {
   puts("usage: omxplayer [file|url]");
 }
 
-void osd_print(int options, const char *msg)
+static void osd_print(int options, const char *msg)
 {
   if(options & m_osd)
     m_player_subtitles->DisplayText(msg, (options & OSD_LONG) ? 3000 : 1500, (options & OSD_SLEEP));
 
   if(options & OSD_STDOUT)
   {
-    char *s = strdup(msg);
-    if(s) {
-      char *p = s;
-      while(*p != '\0') {
-        if(*p == '\n') *p = ' ';
-        p++;
-      }
-
-      puts(s);
-      free(s);
+    while(*msg != '\0')
+    {
+      putchar(*msg == '\n' ? ' ' : *msg);
+      msg++;
     }
+    putchar('\n');
   }
 }
 
-void osd_print(const char *msg)
+static inline void osd_print(const char *msg)
 {
   osd_print(OSD_NORM, msg);
 }
 
 #ifdef __GNUC__
-void osd_printf(int options, const char* format, ...) __attribute__((format(printf,2,3)));
+static void osd_printf(int options, const char* format, ...) __attribute__((format(printf,2,3)));
 #endif
 
-void osd_printf(int options, const char* format, ...)
+static void osd_printf(int options, const char* format, ...)
 {
     char buffer[120];
     va_list va;
@@ -177,14 +183,14 @@ void osd_printf(int options, const char* format, ...)
     osd_print(options, &buffer[0]);
 }
 
-void show_progress_message(const char *msg, int pos)
+static void show_progress_message(const char *msg, int pos)
 {
   int dur = m_omx_reader->GetStreamLengthSeconds();
   osd_printf(OSD_NORM | OSD_STDOUT, "%s\n%02d:%02d:%02d / %02d:%02d:%02d",
                 msg, (pos/3600), (pos/60)%60, pos%60, (dur/3600), (dur/60)%60, dur%60);
 }
 
-std::string getShortFileName()
+static std::string getShortFileName()
 {
   int lastSlash = m_filename.find_last_of('/');
   std::string short_filename = m_filename.substr(lastSlash + 1);
@@ -196,27 +202,23 @@ std::string getShortFileName()
 
 static void UpdateRaspicastMetaData(const std::string &msg)
 {
-  FILE *fp = fopen("/dev/shm/.r_info", "w");
-  if(fp == NULL) return;
+  std::ofstream fp("/dev/shm/.r_info");
+  if(!fp.is_open()) return;
 
-  fputs("local\n", fp);
-  fputs(msg.c_str(), fp);
-  fputs("\n", fp);
-  fclose(fp);
+  fp << "local\n" << msg << "\n";
 }
 
 static void printSubtitleOsd()
 {
   if(m_subtitle_index == -1) {
-    m_subtitle_lang[0] = '\0';
+    m_subtitle_lang.clear();
     osd_print("Subtitles Off");
   } else {
-    strcpy(m_subtitle_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE,
-        m_subtitle_index).c_str());
-    if(m_subtitle_lang[0] == '\0')
+    m_subtitle_lang = m_omx_reader->GetStreamLanguage(OMXSTREAM_SUBTITLE, m_subtitle_index);
+    if(m_subtitle_lang.empty())
       osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d", m_subtitle_index + 1);
     else
-      osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang);
+      osd_printf(OSD_NORM | OSD_STDOUT, "Subtitle stream: %d (%s)", m_subtitle_index + 1, m_subtitle_lang.c_str());
   }
   m_player_subtitles->PrintInfo();
 }
@@ -250,11 +252,11 @@ static void FlushStreams(int64_t pts = AV_NOPTS_VALUE)
   if(m_omx_pkt)
   {
     delete m_omx_pkt;
-    m_omx_pkt = NULL;
+    m_omx_pkt = nullptr;
   }
 }
 
-enum ControlFlow Seek(int seconds_delta)
+static enum ControlFlow Seek(int seconds_delta)
 {
   int64_t cur_pts = m_av_clock->GetMediaTime();
 
@@ -278,7 +280,7 @@ enum ControlFlow Seek(int seconds_delta)
 
 // find the nearest element of the playspeeds array
 // to the inputted play speed
-int get_approx_speed(double &new_speed)
+static int get_approx_speed(double &new_speed)
 {
   const int arr_len = sizeof(playspeeds) / sizeof(int);
 
@@ -301,7 +303,7 @@ void initDVDSubs()
   // If so, setup a dispmanx layer to display them
   Dimension sub_dim(m_config_video.hints.width, m_config_video.hints.height);
   float sub_aspect = m_config_video.hints.aspect;
-  uint32_t *palette = NULL;
+  uint32_t *palette = nullptr;
   uint32_t buf[16];
 
   if(!m_omx_reader->FindDVDSubs(sub_dim, sub_aspect, &palette, buf))
@@ -312,7 +314,7 @@ void initDVDSubs()
   m_player_subtitles->initDVDSubs(view_port, sub_dim, palette);
 }
 
-int startup(int argc, char *argv[])
+static int startup(int argc, char *argv[])
 {
   signal(SIGINT, sig_handler);
   signal(SIGTERM, sig_handler);
@@ -334,7 +336,6 @@ int startup(int argc, char *argv[])
   const int lines_opt       = 0x104;
   const int pos_opt         = 0x105;
   const int vol_opt         = 0x106;
-  const int audio_fifo_opt  = 0x107;
   const int video_fifo_opt  = 0x108;
   const int audio_queue_opt = 0x109;
   const int video_queue_opt = 0x10a;
@@ -372,86 +373,85 @@ int startup(int argc, char *argv[])
   const int omxplayer_log_level = 0x405;
 
   struct option longopts[] = {
-    { "info",         no_argument,        NULL,          'i' },
-    { "with-info",    no_argument,        NULL,          'I' },
-    { "help",         no_argument,        NULL,          'h' },
-    { "version",      no_argument,        NULL,          'v' },
-    { "aidx",         required_argument,  NULL,          'n' },
-    { "adev",         required_argument,  NULL,          'o' },
-    { "stats",        no_argument,        NULL,          's' },
-    { "passthrough",  no_argument,        NULL,          'p' },
-    { "vol",          required_argument,  NULL,          vol_opt },
-    { "amp",          required_argument,  NULL,          amp_opt },
-    { "deinterlace",  no_argument,        NULL,          'd' },
-    { "nodeinterlace",no_argument,        NULL,          no_deinterlace_opt },
-    { "nativedeinterlace",no_argument,    NULL,          native_deinterlace_opt },
-    { "anaglyph",     required_argument,  NULL,          anaglyph_opt },
-    { "advanced",     optional_argument,  NULL,          advanced_opt },
-    { "hw",           no_argument,        NULL,          'w' },
-    { "3d",           required_argument,  NULL,          '3' },
-    { "allow-mvc",    no_argument,        NULL,          'M' },
-    { "hdmiclocksync", no_argument,       NULL,          'y' },
-    { "nohdmiclocksync", no_argument,     NULL,          'z' },
-    { "refresh",      no_argument,        NULL,          'r' },
-    { "genlog",       optional_argument,  NULL,          'g' },
-    { "sid",          required_argument,  NULL,          't' },
-    { "pos",          required_argument,  NULL,          'l' },
-    { "blank",        optional_argument,  NULL,          'b' },
-    { "no-playlist",  no_argument,        NULL,          'a' },
-    { "font",         required_argument,  NULL,          font_opt },
-    { "italic-font",  required_argument,  NULL,          italic_font_opt },
-    { "bold-font",    required_argument,  NULL,          bold_font_opt },
-    { "font-size",    required_argument,  NULL,          font_size_opt },
-    { "align",        required_argument,  NULL,          align_opt },
-    { "no-ghost-box", no_argument,        NULL,          no_ghost_box_opt },
-    { "subtitles",    required_argument,  NULL,          subtitles_opt },
-    { "lines",        required_argument,  NULL,          lines_opt },
-    { "win",          required_argument,  NULL,          pos_opt },
-    { "crop",         required_argument,  NULL,          crop_opt },
-    { "aspect-mode",  required_argument,  NULL,          aspect_mode_opt },
-    { "audio_fifo",   required_argument,  NULL,          audio_fifo_opt },
-    { "video_fifo",   required_argument,  NULL,          video_fifo_opt },
-    { "audio_queue",  required_argument,  NULL,          audio_queue_opt },
-    { "video_queue",  required_argument,  NULL,          video_queue_opt },
-    { "threshold",    required_argument,  NULL,          threshold_opt },
-    { "timeout",      required_argument,  NULL,          timeout_opt },
-    { "boost-on-downmix", no_argument,    NULL,          boost_on_downmix_opt },
-    { "no-boost-on-downmix", no_argument, NULL,          no_boost_on_downmix_opt },
-    { "key-config",   required_argument,  NULL,          key_config_opt },
-    { "no-osd",       no_argument,        NULL,          no_osd_opt },
-    { "limited-osd",  no_argument,        NULL,          limited_osd_opt },
-    { "no-keys",      no_argument,        NULL,          no_keys_opt },
-    { "orientation",  required_argument,  NULL,          orientation_opt },
-    { "fps",          required_argument,  NULL,          fps_opt },
-    { "live",         no_argument,        NULL,          live_opt },
-    { "layout",       required_argument,  NULL,          layout_opt },
-    { "dbus_name",    required_argument,  NULL,          dbus_name_opt },
-    { "loop",         no_argument,        NULL,          loop_opt },
-    { "layer",        required_argument,  NULL,          layer_opt },
-    { "alpha",        required_argument,  NULL,          alpha_opt },
-    { "display",      required_argument,  NULL,          display_opt },
-    { "cookie",       required_argument,  NULL,          http_cookie_opt },
-    { "user-agent",   required_argument,  NULL,          http_user_agent_opt },
-    { "lavfdopts",    required_argument,  NULL,          lavfdopts_opt },
-    { "avdict",       required_argument,  NULL,          avdict_opt },
-    { "track",        required_argument,  NULL,          track_opt },
-    { "start-paused", no_argument,        NULL,          start_paused_opt },
-    { "ffmpeg-log",   required_argument,  NULL,          ffmpeg_log_level },
-    { "log",          required_argument,  NULL,          omxplayer_log_level },
-    { 0, 0, 0, 0 }
+    { "info",         no_argument,        nullptr,          'i' },
+    { "with-info",    no_argument,        nullptr,          'I' },
+    { "help",         no_argument,        nullptr,          'h' },
+    { "version",      no_argument,        nullptr,          'v' },
+    { "aidx",         required_argument,  nullptr,          'n' },
+    { "adev",         required_argument,  nullptr,          'o' },
+    { "stats",        no_argument,        nullptr,          's' },
+    { "passthrough",  no_argument,        nullptr,          'p' },
+    { "vol",          required_argument,  nullptr,          vol_opt },
+    { "amp",          required_argument,  nullptr,          amp_opt },
+    { "deinterlace",  no_argument,        nullptr,          'd' },
+    { "nodeinterlace",no_argument,        nullptr,          no_deinterlace_opt },
+    { "nativedeinterlace",no_argument,    nullptr,          native_deinterlace_opt },
+    { "anaglyph",     required_argument,  nullptr,          anaglyph_opt },
+    { "advanced",     optional_argument,  nullptr,          advanced_opt },
+    { "hw",           no_argument,        nullptr,          'w' },
+    { "3d",           required_argument,  nullptr,          '3' },
+    { "allow-mvc",    no_argument,        nullptr,          'M' },
+    { "hdmiclocksync", no_argument,       nullptr,          'y' },
+    { "nohdmiclocksync", no_argument,     nullptr,          'z' },
+    { "refresh",      no_argument,        nullptr,          'r' },
+    { "genlog",       optional_argument,  nullptr,          'g' },
+    { "sid",          required_argument,  nullptr,          't' },
+    { "pos",          required_argument,  nullptr,          'l' },
+    { "blank",        optional_argument,  nullptr,          'b' },
+    { "no-playlist",  no_argument,        nullptr,          'a' },
+    { "font",         required_argument,  nullptr,          font_opt },
+    { "italic-font",  required_argument,  nullptr,          italic_font_opt },
+    { "bold-font",    required_argument,  nullptr,          bold_font_opt },
+    { "font-size",    required_argument,  nullptr,          font_size_opt },
+    { "align",        required_argument,  nullptr,          align_opt },
+    { "no-ghost-box", no_argument,        nullptr,          no_ghost_box_opt },
+    { "subtitles",    required_argument,  nullptr,          subtitles_opt },
+    { "lines",        required_argument,  nullptr,          lines_opt },
+    { "win",          required_argument,  nullptr,          pos_opt },
+    { "crop",         required_argument,  nullptr,          crop_opt },
+    { "aspect-mode",  required_argument,  nullptr,          aspect_mode_opt },
+    { "video_fifo",   required_argument,  nullptr,          video_fifo_opt },
+    { "audio_queue",  required_argument,  nullptr,          audio_queue_opt },
+    { "video_queue",  required_argument,  nullptr,          video_queue_opt },
+    { "threshold",    required_argument,  nullptr,          threshold_opt },
+    { "timeout",      required_argument,  nullptr,          timeout_opt },
+    { "boost-on-downmix", no_argument,    nullptr,          boost_on_downmix_opt },
+    { "no-boost-on-downmix", no_argument, nullptr,          no_boost_on_downmix_opt },
+    { "key-config",   required_argument,  nullptr,          key_config_opt },
+    { "no-osd",       no_argument,        nullptr,          no_osd_opt },
+    { "limited-osd",  no_argument,        nullptr,          limited_osd_opt },
+    { "no-keys",      no_argument,        nullptr,          no_keys_opt },
+    { "orientation",  required_argument,  nullptr,          orientation_opt },
+    { "fps",          required_argument,  nullptr,          fps_opt },
+    { "live",         no_argument,        nullptr,          live_opt },
+    { "layout",       required_argument,  nullptr,          layout_opt },
+    { "dbus_name",    required_argument,  nullptr,          dbus_name_opt },
+    { "loop",         no_argument,        nullptr,          loop_opt },
+    { "layer",        required_argument,  nullptr,          layer_opt },
+    { "alpha",        required_argument,  nullptr,          alpha_opt },
+    { "display",      required_argument,  nullptr,          display_opt },
+    { "cookie",       required_argument,  nullptr,          http_cookie_opt },
+    { "user-agent",   required_argument,  nullptr,          http_user_agent_opt },
+    { "lavfdopts",    required_argument,  nullptr,          lavfdopts_opt },
+    { "avdict",       required_argument,  nullptr,          avdict_opt },
+    { "track",        required_argument,  nullptr,          track_opt },
+    { "start-paused", no_argument,        nullptr,          start_paused_opt },
+    { "ffmpeg-log",   required_argument,  nullptr,          ffmpeg_log_level },
+    { "log",          required_argument,  nullptr,          omxplayer_log_level },
+    { nullptr, 0, nullptr, 0 }
   };
 
   int               c;
   OMXSubConfig      config_sub;
   bool              no_hdmi_clock_sync  = false;
   uint32_t          background          = 0;
-  const char        *keymap_file        = NULL;
+  const char        *keymap_file        = nullptr;
   int               log_level           = LOGNONE;
-  const char        *log_file           = NULL;
+  const char        *log_file           = nullptr;
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
 
-  while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, NULL)) != -1)
+  while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, nullptr)) != -1)
   {
     switch (c)
     {
@@ -600,8 +600,7 @@ int startup(int argc, char *argv[])
         }
         else
         {
-          strncpy(m_subtitle_lang, optarg, 3);
-          m_subtitle_lang[3] = '\0';
+          m_subtitle_lang.assign(optarg, strnlen(optarg, 3));
         }
         break;
       case 'n':
@@ -611,8 +610,7 @@ int startup(int argc, char *argv[])
         }
         else
         {
-          strncpy(m_audio_lang, optarg, 3);
-          m_audio_lang[3] = '\0';
+          m_audio_lang.assign(optarg, strnlen(optarg, 3));
         }
         break;
       case 'l':
@@ -679,7 +677,7 @@ int startup(int argc, char *argv[])
       case subtitles_opt:
         m_external_subtitles_path = optarg;
         m_cmd_line_subtitles = true;
-        strcpy(m_subtitle_lang, "ext");
+        m_subtitle_lang = "ext";
 
         // check if command line provided subtitles file exists
         if(!Exists(m_external_subtitles_path))
@@ -742,17 +740,14 @@ int startup(int argc, char *argv[])
       case no_boost_on_downmix_opt:
         m_config_audio.boostOnDownmix = false;
         break;
-      case audio_fifo_opt:
-        m_config_audio.fifo_size = atof(optarg);
-        break;
       case video_fifo_opt:
         m_config_video.fifo_size = atof(optarg);
         break;
       case audio_queue_opt:
-        m_config_audio.queue_size = atof(optarg);
+        m_config_audio.queue_size = atof(optarg) * 1024 * 1024;
         break;
       case video_queue_opt:
-        m_config_video.queue_size = atof(optarg);
+        m_config_video.queue_size = atof(optarg) * 1024 * 1024;
         break;
       case threshold_opt:
         m_threshold = atof(optarg);
@@ -796,7 +791,7 @@ int startup(int argc, char *argv[])
         m_playlist_enabled = false;
         break;
       case 'b':
-        background = optarg ? strtoul(optarg, NULL, 0) : 0xff000000;
+        background = optarg ? strtoul(optarg, nullptr, 0) : 0xff000000;
         break;
       case key_config_opt:
         keymap_file = optarg;
@@ -825,22 +820,20 @@ int startup(int argc, char *argv[])
       case track_opt:
         m_track = atoi(optarg) - 1;
         if(m_track < 0) m_track = -1;
+        break;
       case start_paused_opt:
         m_Pause = true;
         break;
       case 'h':
         print_usage();
         return EXIT_SUCCESS;
-        break;
       case 'v':
         print_version();
         return EXIT_SUCCESS;
-        break;
       case ':':
       case '?':
       default:
         return EXIT_FAILURE;
-        break;
     }
   }
 
@@ -857,7 +850,7 @@ int startup(int argc, char *argv[])
     if(fd == -1)
     {
       printf("Failed to open lockfile: %s\n", lock_path);
-      perror(NULL);
+      perror(nullptr);
       return EXIT_FAILURE;
     }
 
@@ -944,7 +937,7 @@ int startup(int argc, char *argv[])
 }
 
 // we jump here when is provided with a new file
-int change_file()
+static int change_file()
 {
   bool started_from_link = false;
 
@@ -964,10 +957,8 @@ restart:
     }
 
     // get realpath for file
-    char *fp = realpath(m_filename.c_str(), NULL);
-    if(!fp) abort();
-    m_filename = fp;
-    free(fp);
+    std::filesystem::path fp = m_filename;
+    m_filename = std::filesystem::absolute(fp).string();
 
     // check if this is a link file
     // if it's a link file, rerun some file checks
@@ -975,14 +966,14 @@ restart:
     {
       started_from_link = true;
       m_file_store.readlink(m_filename, m_track, m_incr,
-                            &m_audio_lang[0], m_audio_index,
-                            &m_subtitle_lang[0], m_subtitle_index);
+                            m_audio_lang, m_audio_index,
+                            m_subtitle_lang, m_subtitle_index);
       goto restart;
     }
 
     // Are we dealing with a DVD VIDEO_TS folder or a device file
     CRegExp findvideots("^(.*?/VIDEO_TS|/dev/.*$)");
-    m_is_dvd_device = findvideots.RegFind(m_filename, 0) > -1;
+    m_is_dvd_device = findvideots.RegFind(m_filename) > -1;
 
     if(m_is_dvd_device)
       m_filename = findvideots.GetMatch(1);
@@ -1000,8 +991,8 @@ restart:
 
       if(m_playlist_enabled && !started_from_link)
         m_file_store.retrieveRecentInfo(m_filename, m_track, m_incr,
-                                        &m_audio_lang[0], m_audio_index,
-                                        &m_subtitle_lang[0], m_subtitle_index);
+                                        m_audio_lang, m_audio_index,
+                                        m_subtitle_lang, m_subtitle_index);
     }
   }
 
@@ -1010,7 +1001,7 @@ restart:
 
 
 // we jump here when playing the next item in an auto generated playlist
-int change_playlist_item()
+static int change_playlist_item()
 {
   std::string fileExt = m_filename.substr(m_filename.size()-4, 4);
 
@@ -1035,8 +1026,8 @@ int change_playlist_item()
       m_dvd_store.retrieveRecentInfo(m_DvdPlayer->GetID(),
                                      m_track,
                                      m_incr,
-                                     &m_audio_lang[0],
-                                     &m_subtitle_lang[0]);
+                                     m_audio_lang,
+                                     m_subtitle_lang);
 
     // If m_track is set to -1, look for the first enabled track
     if(m_track == -1)
@@ -1071,14 +1062,14 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   {
   case OPEN_URI:
     {
-      const char *file;
-      if(!m->get_arg_string(&file))
+      std::string file;
+      if(!m->get_arg_string(file))
       {
         m->respond_invalid_args();
         break;
       }
 
-      m_replacement_filename.assign(file);
+      m_replacement_filename = file;
 
       // Entering a pipe: would make no sense here
       if(IsPipe(m_filename) || IsPipe(m_replacement_filename))
@@ -1166,11 +1157,11 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       m_audio_index = m_player_audio->SetActiveStreamDelta(delta);
     }
 
-    strcpy(m_audio_lang, m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, m_audio_index).c_str());
-    if(m_audio_lang[0] == '\0')
+    m_audio_lang = m_omx_reader->GetStreamLanguage(OMXSTREAM_AUDIO, m_audio_index);
+    if(m_audio_lang.empty())
       osd_printf(OSD_NORM, "Audio stream: %d", m_audio_index + 1);
     else
-      osd_printf(OSD_NORM, "Audio stream: %d (%s)", m_audio_index + 1, m_audio_lang);
+      osd_printf(OSD_NORM, "Audio stream: %d (%s)", m_audio_index + 1, m_audio_lang.c_str());
     break;
 
   case ACTION_PREVIOUS_CHAPTER:
@@ -1202,12 +1193,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_PREVIOUS_FILE:
     m_next_prev_file = -1;
     return END_PLAY;
-    break;
 
   case ACTION_NEXT_FILE:
     m_next_prev_file = 1;
     return END_PLAY;
-    break;
 
   case ACTION_PREVIOUS_SUBTITLE:
     m_subtitle_index = m_player_subtitles->SetActiveStreamDelta(-1);
@@ -1272,7 +1261,6 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case ACTION_EXIT:
     m_stopped = true;
     return END_PLAY;
-    break;
 
   case ACTION_SEEK_BACK_SMALL:
     return Seek(-30);
@@ -1344,10 +1332,10 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
   case GET:
     {
       //Retrieve interface and property name
-      const char *property;
-      if(m->ignore_arg() && m->get_arg_string(&property))
+      std::string property;
+      if(m->ignore_arg() && m->get_arg_string(property))
       {
-        return handle_event(dbus_find_property(property), m);
+        return handle_event(dbus_find_property(property.c_str()), m);
       }
       else
       {
@@ -1357,27 +1345,29 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
 
   case SET:
-    //Retrieve interface, property name and value
-    //Message has the form message[STRING:interface STRING:property DOUBLE:value] or message[STRING:interface STRING:property VARIANT[DOUBLE:value]]
-    const char *property;
-
-    if(!m->ignore_arg() || !m->get_arg_string(&property))
     {
-      m->respond_invalid_args();
-      break;
-    }
+      //Retrieve interface, property name and value
+      //Message has the form message[STRING:interface STRING:property DOUBLE:value] or message[STRING:interface STRING:property VARIANT[DOUBLE:value]]
+      std::string property;
 
-    if(strcmp(property, "Volume")==0)
-    {
-      return handle_event(SET_VOLUME, m);
-    }
-    else if (strcmp(property, "Rate")==0)
-    {
-      return handle_event(SET_SPEED, m);
-    }
+      if(!m->ignore_arg() || !m->get_arg_string(property))
+      {
+        m->respond_invalid_args();
+        break;
+      }
 
-    //Wrong property
-    m->respond_unknown_property();
+      if(property == "Volume")
+      {
+        return handle_event(SET_VOLUME, m);
+      }
+      else if (property == "Rate")
+      {
+        return handle_event(SET_SPEED, m);
+      }
+
+      //Wrong property
+      m->respond_unknown_property();
+    }
     break;
 
   case CAN_QUIT:
@@ -1426,7 +1416,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     break;
 
   case GET_SOURCE:
-    m->respond_string(m_filename.c_str());
+    m->respond_string(m_filename);
     break;
 
   case SET_VOLUME:
@@ -1544,12 +1534,13 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       // Make sure a value is sent for setting alpha
       if(m->ignore_arg() && m->get_arg_int64(&alpha))
       {
-        m->respond_invalid_args();
-        break;
+        m->respond_int64(alpha);
+        if(m_player_video) m_player_video->SetAlpha(alpha);
       }
-
-      m->respond_int64(alpha);
-      if(m_player_video) m_player_video->SetAlpha(alpha);
+      else
+      {
+        m->respond_invalid_args();
+      }
       break;
     }
 
@@ -1575,18 +1566,18 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       if(!m_player_video)
         break;
 
-      const char *aspectMode;
-      if(!m->ignore_arg() && m->get_arg_string(&aspectMode))
+      std::string aspectMode;
+      if(!m->ignore_arg() || !m->get_arg_string(aspectMode))
       {
         m->respond_invalid_args();
         break;
       }
 
-      if (strcmp(aspectMode, "letterbox") == 0)
+      if (aspectMode == "letterbox")
         m_config_video.aspectMode = 1;
-      else if (strcmp(aspectMode, "fill") == 0)
+      else if (aspectMode == "fill")
         m_config_video.aspectMode = 2;
-      else if (strcmp(aspectMode, "stretch") == 0)
+      else if (aspectMode == "stretch")
         m_config_video.aspectMode = 3;
       else
       {
@@ -1689,7 +1680,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
 
 // we jump here when playing the next track in a dvd
-int run_play_loop()
+static int run_play_loop()
 {
   try {
     if(m_DvdPlayer)
@@ -1701,7 +1692,7 @@ int run_play_loop()
   catch(const char *msg)
   {
     osd_printf(OSD_ERROR, "OMXReader error: %s", msg);
-    m_omx_reader = NULL;
+    m_omx_reader = nullptr;
     return END_PLAY_WITH_ERROR;
   }
 
@@ -1790,7 +1781,7 @@ int run_play_loop()
     catch(const char *msg)
     {
       puts(msg);
-      m_player_video = NULL;
+      m_player_video = nullptr;
       return END_PLAY_WITH_ERROR;
     }
   }
@@ -1809,7 +1800,7 @@ int run_play_loop()
     }
 
     // an audio string overrides any provided stream number
-    if(m_audio_lang[0] != '\0')
+    if(!m_audio_lang.empty())
       m_audio_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_AUDIO, m_audio_lang);
 
     // select an audio stream to play when not already selected
@@ -1861,7 +1852,7 @@ int run_play_loop()
     {
       puts(msg);
       osd_print(OSD_ERROR, "Audio unavailable");
-      m_player_audio = NULL;
+      m_player_audio = nullptr;
     }
   }
 
@@ -1883,7 +1874,7 @@ int run_play_loop()
   }
 
   // set subtitle stream
-  if(m_subtitle_lang[0] != '\0')
+  if(!m_subtitle_lang.empty())
     m_subtitle_index = m_omx_reader->GetStreamByLanguage(OMXSTREAM_SUBTITLE, m_subtitle_lang);
 
   m_player_subtitles->SetActiveStream(m_subtitle_index);
@@ -1928,7 +1919,7 @@ int run_play_loop()
         action = m_cec_listener.getEvent();
 
       if(action != INVALID_ACTION)
-        next = handle_event(action, NULL);
+        next = handle_event(action, nullptr);
       else if(m_omxcontrol)
         next = m_omxcontrol.getEvent();
       else
@@ -2100,7 +2091,7 @@ int run_play_loop()
         goto discard_packet;
 
       if(m_player_video->AddPacket(m_omx_pkt))
-        m_omx_pkt = NULL;
+        m_omx_pkt = nullptr;
       else
         OMXClock::Sleep(10);
       break;
@@ -2110,7 +2101,7 @@ int run_play_loop()
         goto discard_packet;
 
       if(m_player_audio->AddPacket(m_omx_pkt))
-        m_omx_pkt = NULL;
+        m_omx_pkt = nullptr;
       else
         OMXClock::Sleep(10);
       break;
@@ -2120,19 +2111,19 @@ int run_play_loop()
         goto discard_packet;
 
       m_player_subtitles->AddPacket(m_omx_pkt);
-      m_omx_pkt = NULL;
+      m_omx_pkt = nullptr;
       break;
 
     discard_packet:
     default:
       delete m_omx_pkt;
-      m_omx_pkt = NULL;
+      m_omx_pkt = nullptr;
     }
   }
   return END_PLAY;
 }
 
-void end_of_play_loop()
+static void end_of_play_loop()
 {
   if (m_stats)
     puts("");
@@ -2170,14 +2161,14 @@ void end_of_play_loop()
   m_incr = 0;
 }
 
-int play_next(int next)
+static int play_next(int next)
 {
   m_firstfile = false;
   m_next_prev_file = 0;
   return next;
 }
 
-int playlist_control()
+static int playlist_control()
 {
   int t = (int)(m_av_clock->GetMediaTime()*1e-6);
 
@@ -2193,7 +2184,7 @@ int playlist_control()
 
         // no more tracks to play, exit DVD mode
         delete m_DvdPlayer;
-        m_DvdPlayer = NULL;
+        m_DvdPlayer = nullptr;
       }
 
       // Play next file in playlist if there is one...
@@ -2204,11 +2195,11 @@ int playlist_control()
 
     } else if(!m_firstfile || t > 5) {
       if(m_is_dvd_device)
-        m_dvd_store.remember(m_track, t, &m_audio_lang[0], &m_subtitle_lang[0]);
+        m_dvd_store.remember(m_track, t, m_audio_lang, m_subtitle_lang);
       else
         m_file_store.remember(m_filename, m_track, t,
-                              &m_audio_lang[0], m_audio_index,
-                              &m_subtitle_lang[0], m_subtitle_index);
+                              m_audio_lang, m_audio_index,
+                              m_subtitle_lang, m_subtitle_index);
     }
   }
 
@@ -2237,7 +2228,7 @@ int playlist_control()
   return SHUTDOWN;
 }
 
-int shutdown(bool exit_with_error)
+static int shutdown(bool exit_with_error)
 {
   // We may get here after receiving an error
   // so be conservative and check before deleting objects

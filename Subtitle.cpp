@@ -18,7 +18,6 @@
  */
 
 #include <string>
-#include <stdio.h>
 
 #include "Subtitle.h"
 

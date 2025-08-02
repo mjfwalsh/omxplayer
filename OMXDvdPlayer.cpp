@@ -19,16 +19,11 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <string.h>
 #include <limits.h>
+#include <math.h>
 #include <dvdread/dvd_reader.h>
 #include <dvdread/ifo_read.h>
-#include <dvdread/nav_read.h>
 #include <memory>
-
-extern "C" {
-#include <libavformat/avio.h>
-}
 
 #include "OMXDvdPlayer.h"
 #include "OMXReaderDvd.h"
@@ -78,7 +73,7 @@ OMXDvdPlayer::OMXDvdPlayer(const std::string &filename)
     vtsi_mat_t *vtsi_mat  = ifo[title_set_num]->vtsi_mat;
     pgc_t     *pgc      = vts_pgcit->pgci_srp[ifo[title_set_num]->vts_ptt_srpt->title[vts_ttn - 1].ptt[0].pgcn - 1].pgc;
 
-    if(pgc->cell_playback == NULL || pgc->program_map == NULL)
+    if(pgc->cell_playback == nullptr || pgc->program_map == nullptr)
       continue;
 
     // Ignore tracks which are shorter than two minutes
@@ -231,7 +226,7 @@ OMXReaderDvd *OMXDvdPlayer::OpenTrack(int ct)
   if(dvd_track && tracks[ct].title->title_num != tracks[track_no].title->title_num)
   {
     DVDCloseFile(dvd_track);
-    dvd_track = NULL;
+    dvd_track = nullptr;
   }
 
   // select track
@@ -269,7 +264,7 @@ int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)
     ms += frames * 40;
   else
     // 29.97fps equals 33.3667 millisecs per frame
-    ms += (int)((frames * 33.3667) + 0.5);
+    ms += lroundf((float)frames * 33.3667f);
 
   return ms;
 }
@@ -279,7 +274,7 @@ int OMXDvdPlayer::dvdtime2msec(dvd_time_t *dt)
  */
 void OMXDvdPlayer::read_title_name()
 {
-  FILE *filehandle = 0;
+  FILE *filehandle;
   char title[33];
   int  i;
 
@@ -417,11 +412,11 @@ void OMXDvdPlayer::removeCompositeTracks()
   tracks.erase(tracks.begin() + longest_track);
 }
 
-int clamp(float val)
+static int clamp(float val)
 {
   if(val > 255) return 255;
   else if(val < 0) return 0;
-  else return (int)(val + 0.5f);
+  else return lroundf(val);
 }
 
 // This is a condensed version of code from mpv

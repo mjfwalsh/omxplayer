@@ -19,11 +19,6 @@
  *
  */
 
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif
-
-#include <stdlib.h>
 #include <string.h>
 #include <math.h>
 #include <assert.h>
@@ -218,7 +213,7 @@ void CPCMRemap::ResolveChannels()
   /* figure out what channels we have and can use */
   for(enum PCMChannels *chan = PCMLayoutMap[m_channelLayout]; *chan != PCM_INVALID; ++chan)
   {
-    for(unsigned int out_ch = 0; out_ch < m_outChannels; ++out_ch)
+    for(int out_ch = 0; out_ch < m_outChannels; ++out_ch)
       if (m_outMap[out_ch] == *chan)
       {
         m_useable[*chan] = true;
@@ -237,7 +232,7 @@ void CPCMRemap::ResolveChannels()
   }
 
   /* see if our input has side/back channels */
-  for(unsigned int in_ch = 0; in_ch < m_inChannels; ++in_ch)
+  for(int in_ch = 0; in_ch < m_inChannels; ++in_ch)
     switch(m_inMap[in_ch])
     {
       case PCM_SIDE_LEFT:
@@ -257,7 +252,7 @@ void CPCMRemap::ResolveChannels()
   if (hasSide && !hasBack && (!m_useable[PCM_SIDE_LEFT] || !m_useable[PCM_SIDE_RIGHT]))
   {
     CLogLog(LOGDEBUG, "CPCMRemap: Forcing side channel map to back channels");
-    for(unsigned int in_ch = 0; in_ch < m_inChannels; ++in_ch)
+    for(int in_ch = 0; in_ch < m_inChannels; ++in_ch)
            if (m_inMap[in_ch] == PCM_SIDE_LEFT ) m_inMap[in_ch] = PCM_BACK_LEFT;
       else if (m_inMap[in_ch] == PCM_SIDE_RIGHT) m_inMap[in_ch] = PCM_BACK_RIGHT;
   }
@@ -273,9 +268,8 @@ void CPCMRemap::ResolveChannels()
   }
 
   memset(m_counts, 0, sizeof(m_counts));
-  for(unsigned int in_ch = 0; in_ch < m_inChannels; ++in_ch)
+  for(int in_ch = 0; in_ch < m_inChannels; ++in_ch)
   {
-
     for (int i = 0; i < PCM_MAX_CH + 1; i++)
       table[i].channel = PCM_INVALID;
 
@@ -309,7 +303,7 @@ void CPCMRemap::BuildMap()
   float loudest    = 0.0;
   bool  hasLoudest = false;
 
-  for(unsigned int out_ch = 0; out_ch < m_outChannels; ++out_ch)
+  for(int out_ch = 0; out_ch < m_outChannels; ++out_ch)
   {
     float scale = 0;
     int count = 0;
@@ -341,7 +335,7 @@ void CPCMRemap::BuildMap()
   }
 
   /* adjust the channels that are too loud */
-  for(unsigned int out_ch = 0; out_ch < m_outChannels; ++out_ch)
+  for(int out_ch = 0; out_ch < m_outChannels; ++out_ch)
   {
     std::string s;
     for(dst = m_lookupMap[m_outMap[out_ch]]; dst->channel != PCM_INVALID; ++dst)
@@ -379,15 +373,15 @@ void CPCMRemap::DumpMap(const char *type, unsigned int channels, const enum PCMC
 }
 
 /* sets the input format, and returns the requested channel layout */
-CPCMRemap::CPCMRemap(unsigned int inChannels, const enum PCMChannels *inChannelMap, unsigned int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize)
+CPCMRemap::CPCMRemap(int inChannels, const enum PCMChannels *inChannelMap, int outChannels, const enum PCMChannels *outChannelMap, enum PCMLayout channelLayout, bool dontnormalize)
 :
   m_channelLayout(channelLayout),
   m_inChannels(inChannels),
   m_outChannels(outChannels),
   m_dontnormalize(dontnormalize)
 {
-  assert(inChannelMap != NULL);
-  assert(outChannelMap != NULL);
+  assert(inChannelMap != nullptr);
+  assert(outChannelMap != nullptr);
 
   if (m_channelLayout >= PCM_MAX_LAYOUT) m_channelLayout = PCM_LAYOUT_2_0;
 
@@ -433,7 +427,7 @@ void CPCMRemap::GetDownmixMatrix(float *downmix)
   for (int i=0; i<8*8; i++)
     downmix[i] = 0.0f;
 
-  for (unsigned int ch = 0; ch < m_outChannels; ch++)
+  for (int ch = 0; ch < m_outChannels; ch++)
   {
     struct PCMMapInfo *info = m_lookupMap[m_outMap[ch]];
     if (info->channel == PCM_INVALID)
@@ -442,4 +436,12 @@ void CPCMRemap::GetDownmixMatrix(float *downmix)
     for(; info->channel != PCM_INVALID; info++)
       downmix[8*ch + (info->in_offset>>1)] = info->level;
   }
+}
+
+int CPCMRemap::CountBits(int64_t value)
+{
+  int bits = 0;
+  for(;value;++bits)
+    value &= value - 1;
+  return bits;
 }

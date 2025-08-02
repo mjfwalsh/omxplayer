@@ -21,7 +21,7 @@
  */
 
 extern "C" {
-#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 }
 
 class COMXStreamInfo
@@ -47,6 +47,6 @@ public:
   int bitspersample = 0;
 
   // CODEC EXTRADATA
-  void*        extradata = NULL; // extra data for codec to use
-  unsigned int extrasize = 0; // size of extra data
+  void*        extradata = nullptr; // extra data for codec to use
+  int          extrasize = 0; // size of extra data
 };

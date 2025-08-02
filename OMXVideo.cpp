@@ -39,13 +39,8 @@ extern "C" {
 #define OMX_H264MAIN_DECODER    OMX_VIDEO_DECODER
 #define OMX_H264HIGH_DECODER    OMX_VIDEO_DECODER
 #define OMX_MPEG4_DECODER       OMX_VIDEO_DECODER
-#define OMX_MSMPEG4V1_DECODER   OMX_VIDEO_DECODER
-#define OMX_MSMPEG4V2_DECODER   OMX_VIDEO_DECODER
-#define OMX_MSMPEG4V3_DECODER   OMX_VIDEO_DECODER
-#define OMX_MPEG4EXT_DECODER    OMX_VIDEO_DECODER
 #define OMX_MPEG2V_DECODER      OMX_VIDEO_DECODER
 #define OMX_VC1_DECODER         OMX_VIDEO_DECODER
-#define OMX_WMV3_DECODER        OMX_VIDEO_DECODER
 #define OMX_VP6_DECODER         OMX_VIDEO_DECODER
 #define OMX_VP8_DECODER         OMX_VIDEO_DECODER
 #define OMX_THEORA_DECODER      OMX_VIDEO_DECODER
@@ -58,11 +53,11 @@ bool COMXVideo::SendDecoderConfig()
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
 
   /* send decoder config */
-  if(m_config.hints.extrasize > 0 && m_config.hints.extradata != NULL)
+  if(m_config.hints.extrasize > 0 && m_config.hints.extradata != nullptr)
   {
     OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer();
 
-    if(omx_buffer == NULL)
+    if(omx_buffer == nullptr)
     {
       CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
       return false;
@@ -88,15 +83,13 @@ bool COMXVideo::SendDecoderConfig()
 
 bool COMXVideo::NaluFormatStartCodes(enum AVCodecID codec, const uint8_t *in_extradata, int in_extrasize)
 {
-  switch(codec)
+  if(codec == AV_CODEC_ID_H264)
   {
-    case AV_CODEC_ID_H264:
-      if (in_extrasize < 7 || in_extradata == NULL)
-        return true;
-      // valid avcC atom data always starts with the value 1 (version), otherwise annexb
-      else if ( *in_extradata != 1 )
-        return true;
-    default: break;
+    if (in_extrasize < 7 || in_extradata == nullptr)
+      return true;
+    // valid avcC atom data always starts with the value 1 (version), otherwise annexb
+    else if ( *in_extradata != 1 )
+      return true;
   }
   return false;
 }
@@ -356,7 +349,7 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
 
   m_config = config;
 
-  m_video_codec_name = NULL;
+  m_video_codec_name = nullptr;
   m_codingType            = OMX_VIDEO_CodingUnused;
 
   m_submitted_eos = false;
@@ -477,18 +470,17 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
     default:
       printf("Unsupported video codec: %s\n", avcodec_get_name(m_config.hints.codec));
       throw "Unsupported video codec";
-    break;
   }
 
   if(!m_omx_decoder.Initialize(decoder_name, OMX_IndexParamVideoInit))
     throw "Video decoder initalization failed";
 
-  if(clock == NULL)
+  if(clock == nullptr)
     throw "invalid clock";
 
   m_omx_clock = clock->GetOMXClock();
 
-  if(m_omx_clock->GetComponent() == NULL)
+  if(m_omx_clock->GetComponent() == nullptr)
   {
     throw "invalid clock component";
   }
@@ -692,7 +684,7 @@ bool COMXVideo::Decode(OMXPacket *pkt)
     {
       // 500ms timeout
       OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(500);
-      if(omx_buffer == NULL)
+      if(omx_buffer == nullptr)
       {
         CLogLog(LOGERROR, "OMXVideo::Decode timeout");
         puts("COMXVideo::Decode timeout");
@@ -878,7 +870,7 @@ void COMXVideo::SubmitEOS()
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(1000);
 
-  if(omx_buffer == NULL)
+  if(omx_buffer == nullptr)
   {
     CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
     m_failed_eos = true;

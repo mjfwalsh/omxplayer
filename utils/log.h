@@ -42,4 +42,4 @@ extern bool g_logging_enabled;
 void _CLogLog(int loglevel, const char *format, ... ) ATTRIB_LOG_FORMAT;
 bool CLogInit(int level, const char* path);
 
-#define CLogLog(...) { if(g_logging_enabled) { _CLogLog(__VA_ARGS__); } }
+#define CLogLog(...) if(g_logging_enabled) _CLogLog(__VA_ARGS__)

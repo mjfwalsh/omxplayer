@@ -82,7 +82,7 @@ private:
   void read_disc_serial_number();
 
   dvd_reader_t *dvd_device;
-  dvd_file_t *dvd_track = NULL;
+  dvd_file_t *dvd_track = nullptr;
 
   int track_no = -1;
 

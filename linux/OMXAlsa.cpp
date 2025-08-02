@@ -75,7 +75,7 @@ typedef struct _GOMX_QUEUE {
 
 static void gomxq_init(GOMX_QUEUE *q, ptrdiff_t offset)
 {
-  q->head = q->tail = 0;
+  q->head = q->tail = nullptr;
   q->offset = offset;
   q->num = 0;
 }
@@ -87,7 +87,7 @@ static void **gomxq_nextptr(const GOMX_QUEUE *q, void *item)
 
 static void gomxq_enqueue(GOMX_QUEUE *q, void *item)
 {
-  *gomxq_nextptr(q, item) = 0;
+  *gomxq_nextptr(q, item) = nullptr;
   if (q->tail) {
     *gomxq_nextptr(q, q->tail) = item;
     q->tail = item;
@@ -102,7 +102,7 @@ static void *gomxq_dequeue(GOMX_QUEUE *q)
   void *item = q->head;
   if (item) {
     q->head = *gomxq_nextptr(q, item);
-    if (!q->head) q->tail = 0;
+    if (!q->head) q->tail = nullptr;
     q->num--;
   }
   return item;
@@ -153,16 +153,16 @@ typedef struct _GOMX_COMPONENT {
 
 static GOMX_PORT *gomx_get_port(GOMX_COMPONENT *comp, size_t idx)
 {
-  if (idx >= comp->nports) return 0;
+  if (idx >= comp->nports) return nullptr;
   return &comp->ports[idx];
 }
 
-OMX_ERRORTYPE gomx_get_component_version(
+static OMX_ERRORTYPE gomx_get_component_version(
     OMX_HANDLETYPE hComponent, OMX_STRING pComponentName,
     OMX_VERSIONTYPE *pComponentVersion, OMX_VERSIONTYPE *pSpecVersion, OMX_UUIDTYPE *pComponentUUID)
 {
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  CDEBUG(comp, 0, "enter");
+  CDEBUG(comp, nullptr, "enter");
   strcpy(pComponentName, comp->name);
   pComponentVersion->nVersion = OMX_VERSION;
   pSpecVersion->nVersion = OMX_VERSION;
@@ -181,7 +181,7 @@ static OMX_ERRORTYPE gomx_get_parameter(OMX_HANDLETYPE hComponent, OMX_INDEXTYPE
 
   if (comp->state == OMX_StateInvalid) return OMX_ErrorInvalidState;
 
-  CDEBUG(comp, 0, "called %x, %p", nParamIndex, pComponentParameterStructure);
+  CDEBUG(comp, nullptr, "called %x, %p", nParamIndex, pComponentParameterStructure);
   switch (nParamIndex) {
   case OMX_IndexParamAudioInit:
     domain = OMX_PortDomainAudio;
@@ -213,7 +213,7 @@ static OMX_ERRORTYPE gomx_get_parameter(OMX_HANDLETYPE hComponent, OMX_INDEXTYPE
     memcpy(pComponentParameterStructure, &port->def, sizeof *pdt);
     break;
   default:
-    CINFO(comp, 0, "UNSUPPORTED %x, %p", nParamIndex, pComponentParameterStructure);
+    CINFO(comp, nullptr, "UNSUPPORTED %x, %p", nParamIndex, pComponentParameterStructure);
     return OMX_ErrorNotImplemented;
   }
   return OMX_ErrorNone;
@@ -231,15 +231,15 @@ static OMX_ERRORTYPE gomx_component_tunnel_request(
     OMX_HANDLETYPE hTunneledComp, OMX_U32 nTunneledPort, OMX_TUNNELSETUPTYPE* pTunnelSetup)
 {
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  GOMX_PORT *port = 0;
+  GOMX_PORT *port = nullptr;
 
   if (comp->state == OMX_StateInvalid) return OMX_ErrorInvalidState;
   if (!(port = gomx_get_port(comp, nPort))) return OMX_ErrorBadPortIndex;
   if (comp->state != OMX_StateLoaded && port->def.bEnabled)
     return OMX_ErrorIncorrectStateOperation;
 
-  if (hTunneledComp == 0 || pTunnelSetup == 0) {
-    port->tunnel_comp = 0;
+  if (hTunneledComp == nullptr || pTunnelSetup == nullptr) {
+    port->tunnel_comp = nullptr;
     return OMX_ErrorNone;
   }
 
@@ -382,7 +382,7 @@ static OMX_ERRORTYPE gomx_free_buffer(OMX_HANDLETYPE hComponent, OMX_U32 nPortIn
        comp->state == OMX_StateIdle)))) {
     /* In unexpected states the port unpopulated error is sent. */
     if (port->num_buffers == port->def.nBufferCountActual)
-      __gomx_event(comp, OMX_EventError, OMX_ErrorPortUnpopulated, nPortIndex, 0);
+      __gomx_event(comp, OMX_EventError, OMX_ErrorPortUnpopulated, nPortIndex, nullptr);
     /* FIXME? should we mark the port also down */
   }
 
@@ -467,7 +467,7 @@ static OMX_ERRORTYPE gomx_empty_this_buffer(OMX_HANDLETYPE hComponent, OMX_BUFFE
 
 static OMX_ERRORTYPE gomx_fill_this_buffer(OMX_HANDLETYPE hComponent, OMX_BUFFERHEADERTYPE* pBuffer)
 {
-  CDEBUG(hComponent, 0, "stub");
+  CDEBUG(hComponent, nullptr, "stub");
   return OMX_ErrorNotImplemented;
 }
 
@@ -475,8 +475,8 @@ static void __gomx_process_mark(GOMX_COMPONENT *comp, OMX_BUFFERHEADERTYPE *hdr)
 {
   if (hdr->hMarkTargetComponent == (OMX_HANDLETYPE) comp) {
     __gomx_event(comp, OMX_EventMark, 0, 0, hdr->pMarkData);
-    hdr->hMarkTargetComponent = 0;
-    hdr->pMarkData = 0;
+    hdr->hMarkTargetComponent = nullptr;
+    hdr->pMarkData = nullptr;
   }
 }
 
@@ -491,7 +491,7 @@ static OMX_ERRORTYPE __gomx_port_unpopulate(GOMX_COMPONENT *comp, GOMX_PORT *por
       pthread_cond_wait(&port->cond_idle, &comp->mutex);
 
     CINFO(comp, port, "free tunnel buffers");
-    while ((hdr = (OMX_BUFFERHEADERTYPE*)gomxq_dequeue(&port->tunnel_supplierq)) != 0) {
+    while ((hdr = (OMX_BUFFERHEADERTYPE*)gomxq_dequeue(&port->tunnel_supplierq)) != nullptr) {
       void *buf = hdr->pBuffer;
       OMX_FreeBuffer(port->tunnel_comp, port->tunnel_port, hdr);
       free(buf);
@@ -522,7 +522,7 @@ static OMX_ERRORTYPE __gomx_port_populate(GOMX_COMPONENT *comp, GOMX_PORT *port)
       void *buf = malloc(port->def.nBufferSize);
       if (buf) {
         r = OMX_UseBuffer(port->tunnel_comp, &hdr,
-            port->tunnel_port, 0,
+            port->tunnel_port, nullptr,
             port->def.nBufferSize, (OMX_U8*) buf);
         if (r != OMX_ErrorNone) free(buf);
       }
@@ -577,7 +577,7 @@ static OMX_ERRORTYPE gomx_send_command(OMX_HANDLETYPE hComponent, OMX_COMMANDTYP
   c = (GOMX_COMMAND*) malloc(sizeof(GOMX_COMMAND));
   if (!c) return OMX_ErrorInsufficientResources;
 
-  CINFO(comp, 0, "SendCommand %x, %x, %p", Cmd, nParam1, pCmdData);
+  CINFO(comp, nullptr, "SendCommand %x, %x, %p", Cmd, nParam1, pCmdData);
   c->cmd = Cmd;
   c->param = nParam1;
   c->data = pCmdData;
@@ -607,7 +607,7 @@ static OMX_ERRORTYPE gomx_do_set_state(GOMX_COMPONENT *comp, GOMX_COMMAND *cmd)
     return OMX_ErrorNone;
   }
 
-  CDEBUG(comp, 0, "starting transition to state %d", new_state);
+  CDEBUG(comp, nullptr, "starting transition to state %d", new_state);
 
   comp->wanted_state = new_state;
 
@@ -636,14 +636,14 @@ static OMX_ERRORTYPE gomx_do_set_state(GOMX_COMPONENT *comp, GOMX_COMMAND *cmd)
     /* start threads */
     r = OMX_ErrorInsufficientResources;
     if (comp->worker &&
-        pthread_create(&comp->worker_thread, 0, comp->worker, comp) != 0)
+        pthread_create(&comp->worker_thread, nullptr, comp->worker, comp) != 0)
       goto err;
     break;
   case GOMX_TRANS(OMX_StateExecuting, OMX_StateIdle):
     /* stop/join threads & wait buffers to be returned to suppliers */
     if (comp->worker_thread) {
       pthread_mutex_unlock(&comp->mutex);
-      pthread_join(comp->worker_thread, 0);
+      pthread_join(comp->worker_thread, nullptr);
       pthread_mutex_lock(&comp->mutex);
       comp->worker_thread = 0;
     }
@@ -660,11 +660,11 @@ static OMX_ERRORTYPE gomx_do_set_state(GOMX_COMPONENT *comp, GOMX_COMMAND *cmd)
     goto err;
   }
   comp->state = new_state;
-  CDEBUG(comp, 0, "transition to state %d: success", new_state);
+  CDEBUG(comp, nullptr, "transition to state %d: success", new_state);
   return OMX_ErrorNone;
 err:
   comp->wanted_state = comp->state;
-  CDEBUG(comp, 0, "transition to state %d: result %x", new_state, r);
+  CDEBUG(comp, nullptr, "transition to state %d: result %x", new_state, r);
   return r;
 }
 
@@ -700,7 +700,7 @@ static OMX_ERRORTYPE gomx_do_command(GOMX_COMPONENT *comp, GOMX_COMMAND *cmd)
 
   switch (cmd->cmd) {
   case OMX_CommandStateSet:
-    CINFO(comp, 0, "state %x", cmd->param);
+    CINFO(comp, nullptr, "state %x", cmd->param);
     return gomx_do_set_state(comp, cmd);
   case OMX_CommandFlush:
   case OMX_CommandPortEnable:
@@ -713,7 +713,7 @@ static OMX_ERRORTYPE gomx_do_command(GOMX_COMPONENT *comp, GOMX_COMMAND *cmd)
   case OMX_CommandMarkBuffer:
     /* FIXME: Not implemented (but not used in omxplayer) */
   default:
-    CINFO(comp, 0, "UNSUPPORTED %x, %x, %p", cmd->cmd, cmd->param, cmd->data);
+    CINFO(comp, nullptr, "UNSUPPORTED %x, %x, %p", cmd->cmd, cmd->param, cmd->data);
     return OMX_ErrorNotImplemented;
   }
 }
@@ -725,7 +725,7 @@ static void *gomx_worker(void *ptr)
   OMX_BUFFERHEADERTYPE *hdr;
   OMX_ERRORTYPE r;
 
-  CINFO(comp, 0, "start");
+  CINFO(comp, nullptr, "start");
   pthread_mutex_lock(&comp->mutex);
   while (comp->state != OMX_StateInvalid) {
     GOMX_COMMAND *cmd = (GOMX_COMMAND *) gomxq_dequeue(&comp->cmdq);
@@ -735,7 +735,7 @@ static void *gomx_worker(void *ptr)
         __gomx_event(comp, OMX_EventCmdComplete,
                cmd->cmd, cmd->param, cmd->data);
       else
-        __gomx_event(comp, OMX_EventError, r, 0, 0);
+        __gomx_event(comp, OMX_EventError, r, 0, nullptr);
     } else {
       pthread_cond_wait(&comp->cond, &comp->mutex);
     }
@@ -746,7 +746,7 @@ static void *gomx_worker(void *ptr)
     /* FIXME: Rate limit and retry if needed suppplier buffer enqueuing */
     for (size_t i = 0; i < comp->nports; i++) {
       port = &comp->ports[i];
-      while ((hdr = (OMX_BUFFERHEADERTYPE*)gomxq_dequeue(&port->tunnel_supplierq)) != 0) {
+      while ((hdr = (OMX_BUFFERHEADERTYPE*)gomxq_dequeue(&port->tunnel_supplierq)) != nullptr) {
         pthread_mutex_unlock(&comp->mutex);
         r = OMX_FillThisBuffer(port->tunnel_comp, hdr);
         pthread_mutex_lock(&comp->mutex);
@@ -759,7 +759,7 @@ static void *gomx_worker(void *ptr)
   }
   pthread_mutex_unlock(&comp->mutex);
   /* FIXME: make sure all buffers are returned and worker threads stopped */
-  CINFO(comp, 0, "stop");
+  CINFO(comp, nullptr, "stop");
   return 0;
 }
 
@@ -813,15 +813,15 @@ static void gomx_init(GOMX_COMPONENT *comp, const char *name, OMX_PTR pAppData, 
   comp->ports = ports;
 
   gomxq_init(&comp->cmdq, offsetof(GOMX_COMMAND, next));
-  pthread_cond_init(&comp->cond, 0);
-  pthread_mutex_init(&comp->mutex, 0);
-  pthread_create(&comp->component_thread, 0, gomx_worker, comp);
+  pthread_cond_init(&comp->cond, nullptr);
+  pthread_mutex_init(&comp->mutex, nullptr);
+  pthread_create(&comp->component_thread, nullptr, gomx_worker, comp);
 
   for (size_t i = 0; i < comp->nports; i++) {
     GOMX_PORT *port = &comp->ports[i];
-    pthread_cond_init(&port->cond_no_buffers, 0);
-    pthread_cond_init(&port->cond_populated, 0);
-    pthread_cond_init(&port->cond_idle, 0);
+    pthread_cond_init(&port->cond_no_buffers, nullptr);
+    pthread_cond_init(&port->cond_populated, nullptr);
+    pthread_cond_init(&port->cond_idle, nullptr);
     gomxq_init(&port->tunnel_supplierq,
       port->def.eDir == OMX_DirInput
       ? offsetof(OMX_BUFFERHEADERTYPE, pInputPortPrivate)
@@ -831,12 +831,12 @@ static void gomx_init(GOMX_COMPONENT *comp, const char *name, OMX_PTR pAppData, 
 
 static void gomx_fini(GOMX_COMPONENT *comp)
 {
-  CINFO(comp, 0, "destroying");
+  CINFO(comp, nullptr, "destroying");
   pthread_mutex_lock(&comp->mutex);
   comp->state = OMX_StateInvalid;
   pthread_cond_broadcast(&comp->cond);
   pthread_mutex_unlock(&comp->mutex);
-  pthread_join(comp->component_thread, 0);
+  pthread_join(comp->component_thread, nullptr);
 
   for (size_t i = 0; i < comp->nports; i++) {
     GOMX_PORT *port = &comp->ports[i];
@@ -930,7 +930,7 @@ static OMX_ERRORTYPE omxalsasink_set_parameter(OMX_HANDLETYPE hComponent, OMX_IN
     sink->pcm_format = pcm_format;
     break;
   default:
-    CINFO(comp, 0, "UNSUPPORTED %x, %p", nParamIndex, pComponentParameterStructure);
+    CINFO(comp, nullptr, "UNSUPPORTED %x, %p", nParamIndex, pComponentParameterStructure);
     return OMX_ErrorNotImplemented;
   }
   return OMX_ErrorNone;
@@ -955,10 +955,10 @@ static OMX_ERRORTYPE omxalsasink_get_config(OMX_HANDLETYPE hComponent, OMX_INDEX
     if (sink->pcm_state == SND_PCM_STATE_RUNNING)
       u32param->nU32 += sink->pcm_delay;
     pthread_mutex_unlock(&comp->mutex);
-    CDEBUG(comp, 0, "OMX_IndexConfigAudioRenderingLatency %d", u32param->nU32);
+    CDEBUG(comp, nullptr, "OMX_IndexConfigAudioRenderingLatency %d", u32param->nU32);
     break;
   default:
-    CINFO(comp, 0, "UNSUPPORTED %x, %p", nIndex, pComponentConfigStructure);
+    CINFO(comp, nullptr, "UNSUPPORTED %x, %p", nIndex, pComponentConfigStructure);
     return OMX_ErrorNotImplemented;
   }
   return OMX_ErrorNone;
@@ -977,15 +977,15 @@ static OMX_ERRORTYPE omxalsasink_set_config(OMX_HANDLETYPE hComponent, OMX_INDEX
   switch (nIndex) {
   case OMX_IndexConfigBrcmClockReferenceSource:
     if ((r = omx_cast(bt, pComponentConfigStructure))) return r;
-    CDEBUG(comp, 0, "OMX_IndexConfigBrcmClockReferenceSource %d", bt->bEnabled);
+    CDEBUG(comp, nullptr, "OMX_IndexConfigBrcmClockReferenceSource %d", bt->bEnabled);
     break;
   case OMX_IndexConfigBrcmAudioDestination:
     if ((r = omx_cast(adest, pComponentConfigStructure))) return r;
     strncpy(sink->device_name, (const char*) adest->sName, sizeof sink->device_name - 1);
-    CDEBUG(comp, 0, "OMX_IndexConfigBrcmAudioDestination %s", adest->sName);
+    CDEBUG(comp, nullptr, "OMX_IndexConfigBrcmAudioDestination %s", adest->sName);
     break;
   default:
-    CINFO(comp, 0, "UNSUPPORTED %x, %p", nIndex, pComponentConfigStructure);
+    CINFO(comp, nullptr, "UNSUPPORTED %x, %p", nIndex, pComponentConfigStructure);
     return OMX_ErrorNotImplemented;
   }
   return OMX_ErrorNone;
@@ -994,7 +994,7 @@ static OMX_ERRORTYPE omxalsasink_set_config(OMX_HANDLETYPE hComponent, OMX_INDEX
 static OMX_ERRORTYPE omxalsasink_get_extension_index(OMX_HANDLETYPE hComponent, OMX_STRING cParameterName, OMX_INDEXTYPE *pIndexType)
 {
   GOMX_COMPONENT *comp = (GOMX_COMPONENT *) hComponent;
-  CINFO(comp, 0, "UNSUPPORTED '%s', %p", cParameterName, pIndexType);
+  CINFO(comp, nullptr, "UNSUPPORTED '%s', %p", cParameterName, pIndexType);
   return OMX_ErrorNotImplemented;
 }
 
@@ -1014,18 +1014,18 @@ static void *omxalsasink_worker(void *ptr)
   OMX_BUFFERHEADERTYPE *buf;
   GOMX_PORT *audio_port = &comp->ports[OMXALSA_PORT_AUDIO];
   GOMX_PORT *clock_port = &comp->ports[OMXALSA_PORT_CLOCK];
-  snd_pcm_t *dev = 0;
+  snd_pcm_t *dev = nullptr;
   snd_pcm_sframes_t n, delay;
   snd_pcm_hw_params_t *hwp;
   snd_pcm_uframes_t buffer_size, period_size, period_size_max;
-  SwrContext *resampler = 0;
-  uint8_t *resample_buf = 0;
+  SwrContext *resampler = nullptr;
+  uint8_t *resample_buf = nullptr;
   int32_t timescale;
 
 #if LIBSWRESAMPLE_VERSION_MAJOR < 4
   uint64_t layout;
 #else
-  AVChannelLayout *layout = NULL;
+  AVChannelLayout *layout = nullptr;
 #endif
 
   size_t resample_bufsz;
@@ -1034,7 +1034,7 @@ static void *omxalsasink_worker(void *ptr)
   struct timespec ts;
   int err;
 
-  CINFO(comp, 0, "worker started");
+  CINFO(comp, nullptr, "worker started");
 
   err = snd_pcm_open(&dev, sink->device_name, SND_PCM_STREAM_PLAYBACK, 0);
   if (err < 0) goto alsa_error;
@@ -1051,15 +1051,15 @@ static void *omxalsasink_worker(void *ptr)
   if (err) goto alsa_error;
   err = snd_pcm_hw_params_set_access(dev, hwp, sink->pcm.bInterleaved ? SND_PCM_ACCESS_RW_INTERLEAVED : SND_PCM_ACCESS_RW_NONINTERLEAVED);
   if (err) goto alsa_error;
-  err = snd_pcm_hw_params_set_rate_near(dev, hwp, &rate, 0);
+  err = snd_pcm_hw_params_set_rate_near(dev, hwp, &rate, nullptr);
   if (err) goto alsa_error;
   err = snd_pcm_hw_params_set_format(dev, hwp, sink->pcm_format);
   if (err) goto alsa_error;
-  err = snd_pcm_hw_params_set_period_size_max(dev, hwp, &period_size_max, 0);
+  err = snd_pcm_hw_params_set_period_size_max(dev, hwp, &period_size_max, nullptr);
   if (err) goto alsa_error;
   err = snd_pcm_hw_params_set_buffer_size_near(dev, hwp, &buffer_size);
   if (err) goto alsa_error;
-  err = snd_pcm_hw_params_set_period_size_near(dev, hwp, &period_size, 0);
+  err = snd_pcm_hw_params_set_period_size_near(dev, hwp, &period_size, nullptr);
   if (err) goto alsa_error;
   err = snd_pcm_hw_params(dev, hwp);
   if (err) goto alsa_error;
@@ -1070,16 +1070,16 @@ static void *omxalsasink_worker(void *ptr)
 
 #if LIBSWRESAMPLE_VERSION_MAJOR < 4
   layout = av_get_default_channel_layout(sink->pcm.nChannels);
-  resampler = swr_alloc_set_opts(NULL,
+  resampler = swr_alloc_set_opts(nullptr,
     /*out*/ layout, AV_SAMPLE_FMT_S16, rate,
     /*in*/ layout, AV_SAMPLE_FMT_S16, in_sample_rate,
-    0, NULL);
+    0, nullptr);
 #else
   av_channel_layout_default(layout, sink->pcm.nChannels);
   swr_alloc_set_opts2(&resampler,
     /*out*/ layout, AV_SAMPLE_FMT_S16, rate,
     /*in*/ layout, AV_SAMPLE_FMT_S16, in_sample_rate,
-    0, NULL);
+    0, nullptr);
 #endif
 
   if (!resampler) goto err;
@@ -1092,7 +1092,7 @@ static void *omxalsasink_worker(void *ptr)
   resample_buf = (uint8_t *) malloc(resample_bufsz);
   if (!resample_buf) goto err;
 
-  CINFO(comp, 0, "sample_rate %d, frame_size %d", rate, sink->frame_size);
+  CINFO(comp, nullptr, "sample_rate %d, frame_size %d", rate, sink->frame_size);
 
   pthread_mutex_lock(&comp->mutex);
   while (comp->wanted_state == OMX_StateExecuting) {
@@ -1104,7 +1104,7 @@ static void *omxalsasink_worker(void *ptr)
     sink->pcm_delay = delay;
 
     /* Wait for buffer, or timeout to refresh state */
-    buf = 0;
+    buf = nullptr;
     timescale = sink->timescale;
     if (timescale)
       buf = (OMX_BUFFERHEADERTYPE*) gomxq_dequeue(&sink->playq);
@@ -1129,7 +1129,7 @@ static void *omxalsasink_worker(void *ptr)
       if (resampler && buf->nFlags & OMX_BUFFERFLAG_STARTTIME)
         swr_init(resampler);
       if (buf->nFlags & (OMX_BUFFERFLAG_STARTTIME|OMX_BUFFERFLAG_DISCONTINUITY)) {
-        CINFO(comp, 0, "STARTTIME nTimeStamp=%llx", pts);
+        CINFO(comp, nullptr, "STARTTIME nTimeStamp=%llx", pts);
         sink->starttime = pts;
       }
 
@@ -1146,7 +1146,7 @@ static void *omxalsasink_worker(void *ptr)
     }
 
     if (buf->nFlags & (OMX_BUFFERFLAG_DECODEONLY|OMX_BUFFERFLAG_CODECCONFIG|OMX_BUFFERFLAG_DATACORRUPT)) {
-      CDEBUG(comp, 0, "skipping: %d bytes, flags %x", buf->nFilledLen, buf->nFlags);
+      CDEBUG(comp, nullptr, "skipping: %d bytes, flags %x", buf->nFilledLen, buf->nFlags);
       sink->play_queue_size -= buf->nFilledLen;
     } else {
       uint8_t *out_ptr, *in_ptr;
@@ -1184,7 +1184,7 @@ static void *omxalsasink_worker(void *ptr)
       while (out_len > 0) {
         n = snd_pcm_writei(dev, out_ptr, out_len);
         if (n < 0) {
-          CINFO(comp, 0, "alsa error: %ld: %s", n, snd_strerror(n));
+          CINFO(comp, nullptr, "alsa error: %ld: %s", n, snd_strerror(n));
           snd_pcm_recover(dev, n, 1);
           n = 0;
         }
@@ -1197,14 +1197,14 @@ static void *omxalsasink_worker(void *ptr)
 
     __gomx_process_mark(comp, buf);
     if (buf->nFlags & OMX_BUFFERFLAG_EOS) {
-      CDEBUG(comp, 0, "end-of-stream");
+      CDEBUG(comp, nullptr, "end-of-stream");
       pthread_mutex_unlock(&comp->mutex);
       snd_pcm_drain(dev);
       snd_pcm_prepare(dev);
       pthread_mutex_lock(&comp->mutex);
       sink->pcm_state = SND_PCM_STATE_PREPARED;
       sink->pcm_delay = 0;
-      __gomx_event(comp, OMX_EventBufferFlag, OMXALSA_PORT_AUDIO, buf->nFlags, 0);
+      __gomx_event(comp, OMX_EventBufferFlag, OMXALSA_PORT_AUDIO, buf->nFlags, nullptr);
     }
     __gomx_empty_buffer_done(comp, buf);
   }
@@ -1213,18 +1213,18 @@ cleanup:
   if (dev) snd_pcm_close(dev);
   if (resampler) swr_close(resampler);
   free(resample_buf);
-  CINFO(comp, 0, "worker stopped");
-  return 0;
+  CINFO(comp, nullptr, "worker stopped");
+  return nullptr;
 
 alsa_error:
-  CINFO(comp, 0, "ALSA error: %s", snd_strerror(err));
+  CINFO(comp, nullptr, "ALSA error: %s", snd_strerror(err));
 err:
   pthread_mutex_lock(&comp->mutex);
   /* FIXME: Current we just go to invalid state, but we might go
    * back to Idle with ErrorResourcesPreempted and let the client
    * recover. However, omxplayer does not care about this. */
   comp->state = OMX_StateInvalid;
-  __gomx_event(comp, OMX_EventError, OMX_StateInvalid, 0, 0);
+  __gomx_event(comp, OMX_EventError, OMX_StateInvalid, 0, nullptr);
   pthread_mutex_unlock(&comp->mutex);
   goto cleanup;
 }
@@ -1242,7 +1242,7 @@ static OMX_ERRORTYPE omxalsasink_audio_flush(GOMX_COMPONENT *comp, GOMX_PORT *po
 {
   OMX_ALSASINK *sink = (OMX_ALSASINK *) comp;
   OMX_BUFFERHEADERTYPE *buf;
-  while ((buf = (OMX_BUFFERHEADERTYPE *) gomxq_dequeue(&sink->playq)) != 0) {
+  while ((buf = (OMX_BUFFERHEADERTYPE *) gomxq_dequeue(&sink->playq)) != nullptr) {
     sink->play_queue_size -= buf->nFilledLen;
     __gomx_empty_buffer_done(comp, buf);
   }

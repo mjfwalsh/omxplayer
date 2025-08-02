@@ -32,7 +32,7 @@ extern "C" {
 }
 
 #include <dvdread/dvd_reader.h>
-#include <dvdread/ifo_read.h>
+#include <dvdread/nav_types.h>
 #include <dvdread/nav_read.h>
 
 #include "OMXReader.h"
@@ -43,7 +43,6 @@ extern "C" {
 #include "utils/log.h"
 
 #define FFMPEG_FILE_BUFFER_SIZE   32768 // default reading size for ffmpeg
-#define PCI_SIZE  980
 
 OMXReaderDvd::OMXReaderDvd(dvd_file_t *dt, OMXDvdPlayer::track_info &ct, int tn)
     :
@@ -57,22 +56,22 @@ OMXReaderDvd::OMXReaderDvd(dvd_file_t *dt, OMXDvdPlayer::track_info &ct, int tn)
   if(!buffer)
     throw "av_malloc failed";
 
-  m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, this, dvd_read, NULL, dvd_seek);
+  m_ioContext = avio_alloc_context(buffer, FFMPEG_FILE_BUFFER_SIZE, 0, this, dvd_read, nullptr, dvd_seek);
   if(!m_ioContext)
     throw "avio_alloc_context failed";
 
-  AVCONST AVInputFormat *iformat = NULL;
-  av_probe_input_buffer(m_ioContext, &iformat, NULL, NULL, 0, 0);
+  AVCONST AVInputFormat *iformat = nullptr;
+  av_probe_input_buffer(m_ioContext, &iformat, nullptr, nullptr, 0, 0);
   if(!iformat)
     throw "av_probe_input_buffer failed";
 
   m_pFormatContext->pb = m_ioContext;
-  int result = avformat_open_input(&m_pFormatContext, NULL, iformat, &s_avdict);
+  int result = avformat_open_input(&m_pFormatContext, nullptr, iformat, &s_avdict);
   av_dict_free(&s_avdict);
   if(result < 0)
     throw "avformat_open_input failed";
 
-  if(avformat_find_stream_info(m_pFormatContext, NULL) < 0)
+  if(avformat_find_stream_info(m_pFormatContext, nullptr) < 0)
     throw "avformat_find_stream_info failed";
 
   m_pFormatContext->duration = (int64_t)m_current_track.length * 1000;
@@ -100,8 +99,8 @@ OMXPacket *OMXReaderDvd::Read()
 again:
   OMXPacket *pkt = OMXReader::Read();
 
-  if(pkt == NULL)
-    return NULL;
+  if(pkt == nullptr)
+    return nullptr;
 
   // check for dvd_nav_packets
   if(pkt->hints.codec == AV_CODEC_ID_DVD_NAV)
@@ -199,7 +198,7 @@ void OMXReaderDvd::GetStreams()
   for(unsigned int i = 0; i < m_pFormatContext->nb_streams; i++)
     stream_lookup[m_pFormatContext->streams[i]->id] = i;
 
-  auto AddStreamByHexId = [&](int id, const char *lang = NULL)
+  auto AddStreamByHexId = [&](int id, const char *lang = nullptr)
   {
     try {
       OMXReader::AddStream(stream_lookup.at(id), lang);
@@ -375,7 +374,7 @@ enum SeekResult OMXReaderDvd::SeekTime(int64_t &seek_micro, bool backwards)
     return SEEK_OUT_OF_BOUNDS;
   }
 
-  int cur_time_seeking_pos;
+  int cur_time_seeking_pos = 0;
   int cur_cell_seeking_pos = m_current_track.cells[ch].cell;
   int seek_within_cell = seek_ms - m_current_track.cells[ch].time;
 

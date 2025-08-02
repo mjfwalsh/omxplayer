@@ -83,14 +83,12 @@ static int convertStringToAction(const string &str_action)
   struct action_lookup *result = (struct action_lookup *)
     bsearch(str_action.c_str(), table, item_count, item_size, compare);
 
-  return result == NULL ? -1 : result->v;
+  return result == nullptr ? -1 : result->v;
 }
 /* Parses a line from the config file in the mode 'action:key'. Looks up
 the action in the relevant enum array. Returns true on success. */
 static bool getActionAndKeyFromString(const string &line, int &int_action, string &key)
 {
-  string str_action;
-
   if(line[0] == '#')
     return false;
 
@@ -98,7 +96,7 @@ static bool getActionAndKeyFromString(const string &line, int &int_action, strin
   if(colonIndex == string::npos)
     return false;
 
-  str_action = line.substr(0, colonIndex);
+  string str_action = line.substr(0, colonIndex);
   key = line.substr(colonIndex+1);
 
   int_action = convertStringToAction(str_action);
@@ -194,7 +192,7 @@ static void parseConfigFile(const char *filepath, unordered_map<int, int> &keyma
       {
         if(key.size() > 4)
         {
-        int n = strtoul(key.substr(4).c_str(), 0, 0);
+        int n = strtoul(key.substr(4).c_str(), nullptr, 0);
         if (n > 0)
           keymap[n] = key_action;
         }
@@ -216,7 +214,7 @@ static void parseConfigFile(const char *filepath, unordered_map<int, int> &keyma
 
 void buildKeymap(const char *filename, unordered_map<int, int> &map)
 {
-  if(filename == NULL) {
+  if(filename == nullptr) {
     buildDefaultKeymap(map);
   } else {
     parseConfigFile(filename, map);

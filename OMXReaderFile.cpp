@@ -35,7 +35,7 @@ using namespace std;
 
 OMXReaderFile::OMXReaderFile(string &filename, bool live, bool has_external_subs)
 {
-  AVDictionary *d = NULL;
+  AVDictionary *d = nullptr;
 
   if(s_avdict)
     av_dict_copy(&d, s_avdict, 0);
@@ -67,7 +67,7 @@ OMXReaderFile::OMXReaderFile(string &filename, bool live, bool has_external_subs
 
   CLogLog(LOGDEBUG, "COMXPlayer::OpenFile - avformat_open_input %s", filename.c_str());
 
-  int result = avformat_open_input(&m_pFormatContext, filename.c_str(), NULL, &d);
+  int result = avformat_open_input(&m_pFormatContext, filename.c_str(), nullptr, &d);
   av_dict_free(&d);
   if(result < 0)
     throw "avformat_open_input failed";
@@ -91,7 +91,7 @@ OMXReaderFile::OMXReaderFile(string &filename, bool live, bool has_external_subs
   if (live)
     m_pFormatContext->flags |= AVFMT_FLAG_NOBUFFER;
 
-  if(avformat_find_stream_info(m_pFormatContext, NULL) < 0)
+  if(avformat_find_stream_info(m_pFormatContext, nullptr) < 0)
     throw "avformat_find_stream_info failed";
 
   // fill in rest of metadata
@@ -206,7 +206,7 @@ uint32_t *OMXReaderFile::getPalette(OMXStream *st, uint32_t *palette)
     }
     while(p < end && *p++ != '\n');
   }
-  return NULL;
+  return nullptr;
 
   found_palette:
 
@@ -214,7 +214,7 @@ uint32_t *OMXReaderFile::getPalette(OMXStream *st, uint32_t *palette)
   for(int i = 0; i < 16; i++) {
     palette[i] = strtoul(p, &next, 16);
     if(p == next) {
-      return NULL;
+      return nullptr;
     } else {
       p = next;
     }

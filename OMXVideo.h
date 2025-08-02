@@ -59,7 +59,7 @@ public:
   int aspectMode = 0;
   int display = 0;
   int layer = 1;
-  float queue_size = 10.0f;
+  unsigned int queue_size = 10 * 1024 * 1024;
   float fifo_size = (float)80*1024*60 / (1024*1024);
 };
 
@@ -72,7 +72,7 @@ public:
   unsigned int GetFreeSpace();
   bool  Decode(OMXPacket *pkt);
   void Reset(void);
-  const char *GetDecoderName() { return m_video_codec_name; };
+  const char *GetDecoderName() { return m_video_codec_name; }
   void SetVideoRect(const Rect& SrcRect, const Rect& DestRect);
   void SetVideoRect(int aspectMode);
   void SetAlpha(int alpha);
@@ -96,7 +96,7 @@ protected:
   COMXCoreComponent m_omx_render;
   COMXCoreComponent m_omx_sched;
   COMXCoreComponent m_omx_image_fx;
-  COMXCoreComponent *m_omx_clock = NULL;
+  COMXCoreComponent *m_omx_clock = nullptr;
 
   COMXCoreTunel     m_omx_tunnel_decoder;
   COMXCoreTunel     m_omx_tunnel_clock;

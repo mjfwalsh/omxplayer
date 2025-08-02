@@ -22,20 +22,21 @@
  */
 
 extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libswresample/swresample.h>
+#include <libavutil/samplefmt.h>
 }
 
-#include "utils/PCMRemap.h"
 #include "utils/NoMoveCopy.h"
 
 class COMXStreamInfo;
 class OMXPacket;
+struct AVCodecContext;
+struct SwrContext;
+struct AVFrame;
 
 class COMXAudioCodecOMX : NoMoveCopy
 {
 public:
-  COMXAudioCodecOMX(COMXStreamInfo &hints, enum PCMLayout layout);
+  COMXAudioCodecOMX(COMXStreamInfo &hints);
   ~COMXAudioCodecOMX();
   bool SendPacket(OMXPacket *pkt);
   bool GetFrame();
@@ -46,14 +47,14 @@ public:
   unsigned int GetFrameSize() { return m_frameSize; }
 
 protected:
-  AVCodecContext* m_pCodecContext = NULL;
-  SwrContext*     m_pConvert = NULL;
+  AVCodecContext* m_pCodecContext = nullptr;
+  SwrContext*     m_pConvert = nullptr;
   enum AVSampleFormat m_iSampleFormat = AV_SAMPLE_FMT_NONE;
   enum AVSampleFormat m_desiredSampleFormat = AV_SAMPLE_FMT_NONE;
 
-  AVFrame* m_pFrame1 = NULL;
+  AVFrame* m_pFrame1 = nullptr;
 
-  unsigned char *m_pBufferOutput = NULL;
+  unsigned char *m_pBufferOutput = nullptr;
   int   m_iBufferOutputUsed = 0;
   int   m_iBufferOutputAlloced = 0;
 

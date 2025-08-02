@@ -1,13 +1,11 @@
 #pragma once
 
-#include "KeyConfig.h"
-#include "omxplayer.h"
-
 #include <stdint.h>
 #include <vector>
 #include <string>
 
 #include "utils/NoMoveCopy.h"
+#include "omxplayer.h"
 
 struct DBusMessage;
 struct DBusMessageIter;
@@ -16,7 +14,7 @@ class DMessage : NoMoveCopy
 {
 private:
   DBusMessage *m;
-  DBusMessageIter *m_args = NULL;
+  DBusMessageIter *m_args = nullptr;
 
 public:
   DMessage(DBusMessage *message, bool needs_response);
@@ -27,7 +25,7 @@ public:
   bool get_arg_int(int *value);
   bool get_arg_int64(int64_t *value);
   bool get_arg_double(double *value);
-  bool get_arg_string(const char **value);
+  bool get_arg_string(std::string &value);
 
   bool ignore_arg();
 
@@ -38,7 +36,7 @@ public:
   void respond_int64(int64_t value);
   void respond_double(double value);
   void respond_bool(bool value);
-  void respond_string(const char *value);
+  void respond_string(const std::string &value);
 
   void respond_array(const std::vector<std::string> &list);
   void respond_array(const char *array[], int size);

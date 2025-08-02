@@ -37,7 +37,7 @@ class DispmanxLayer : NoMoveCopy
 {
 public:
   DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_image = Dimension(-1, -1),
-    const uint32_t *palette = NULL);
+    const uint32_t *palette = nullptr);
   ~DispmanxLayer();
 
   void hideElement();

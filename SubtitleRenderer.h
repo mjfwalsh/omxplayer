@@ -49,8 +49,8 @@ public:
   void clear();
 
 private:
-  DispmanxLayer *subtitleLayer = NULL;
-  DispmanxLayer *dvdSubLayer = NULL;
+  DispmanxLayer *subtitleLayer = nullptr;
+  DispmanxLayer *dvdSubLayer = nullptr;
 
   class SubtitleText : NoMoveCopy
   {
@@ -59,14 +59,14 @@ private:
       int font;
       unsigned int color;
 
-      cairo_glyph_t *glyphs = NULL;
+      cairo_glyph_t *glyphs = nullptr;
       int num_glyphs = -1;
 
       SubtitleText(const char *t, int l, int f, unsigned int c)
       : font(f), color(c)
       {
         text.assign(t, l);
-      };
+      }
 
       ~SubtitleText()
       {
@@ -76,14 +76,14 @@ private:
       SubtitleText(SubtitleText &&o) noexcept
       : text(o.text), font(o.font), color(o.color), glyphs(o.glyphs), num_glyphs(o.num_glyphs)
       {
-        o.glyphs = NULL;
+        o.glyphs = nullptr;
       }
   };
 
-  void parse_lines(const char *text, int lines_length);
+  void parse_lines(const std::string &text);
   void make_subtitle_image(std::vector<std::vector<SubtitleText> > &parsed_lines);
   void make_subtitle_image(Subtitle &sub);
-  unsigned int hex2int(const char *hex);
+  unsigned int hex2int(const std::string &hex);
 
   CRegExp *m_tags;
   CRegExp *m_font_color_html;
@@ -105,8 +105,8 @@ private:
   const unsigned int FC_BLACK     = 0x30000000;
   const unsigned int FC_GHOST     = 0x40000000;
 
-  unsigned char *m_cairo_image_data = NULL;
-  unsigned char *m_bitmap_image_data = NULL;
+  unsigned char *m_cairo_image_data = nullptr;
+  unsigned char *m_bitmap_image_data = nullptr;
 
   // cairo stuff
   cairo_surface_t *m_surface;

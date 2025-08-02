@@ -1,3 +1,4 @@
+#pragma once
 /*
  *      Copyright (C) 2005-2008 Team XBMC
  *      http://www.xbmc.org
@@ -18,9 +19,6 @@
  *  http://www.gnu.org/copyleft/gpl.html
  *
  */
-
-#ifndef _OMX_THREAD_H_
-#define _OMX_THREAD_H_
 
 #include <pthread.h>
 #include <atomic>
@@ -49,4 +47,3 @@ public:
   void UnLock();
   static pthread_t main_thread;
 };
-#endif

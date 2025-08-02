@@ -1,3 +1,4 @@
+#pragma once
 /*
 * XBMC Media Center
 * Copyright (c) 2002 d7o3g4q and RUNTiME
@@ -20,14 +21,11 @@
 
 //////////////////////////////////////////////////////////////////////
 
-#ifndef __OPENMAXAUDIORENDER_H__
-#define __OPENMAXAUDIORENDER_H__
-
 #include <string>
 #include <list>
 
 extern "C" {
-#include <libavcodec/avcodec.h>
+#include <libavcodec/codec_id.h>
 }
 
 #include "linux/PlatformDefs.h"
@@ -52,8 +50,7 @@ public:
   bool passthrough = false;
   bool hwdecode = false;
   bool is_live = false;
-  float queue_size = 3.0f;
-  float fifo_size = 2.0f;
+  unsigned int queue_size = 3 * 1024 * 1024;
 };
 
 class COMXAudio : NoMoveCopy
@@ -66,7 +63,7 @@ public:
   COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample);
   ~COMXAudio();
 
-  bool AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size);
+  bool AddPackets(const void* data, unsigned int len, int64_t pts, unsigned int frame_size);
   unsigned int GetSpace();
 
   void SetVolume(float nVolume);
@@ -99,8 +96,8 @@ private:
   unsigned int  m_BytesPerSec;
   float         m_InputBytesPerMicrosec;
   unsigned int  m_BufferLen;
-  unsigned int  m_InputChannels;
-  unsigned int  m_OutputChannels;
+  int           m_InputChannels;
+  int           m_OutputChannels;
   unsigned int  m_BitsPerSample;
   float    m_maxLevel;
   float         m_amplification;
@@ -120,16 +117,17 @@ private:
   OMX_AUDIO_CHANNELTYPE m_output_channels[OMX_AUDIO_MAXCHANNELS];
   OMX_AUDIO_PARAM_PCMMODETYPE m_pcm_output;
   OMX_AUDIO_PARAM_PCMMODETYPE m_pcm_input;
-  OMX_AUDIO_PARAM_DTSTYPE     m_dtsParam;
   WAVEFORMATEXTENSIBLE        m_wave_header;
-  class amplitudes_t {
-		public:
-    amplitudes_t(int64_t p, float l) : pts(p), level(l) {}
+
+  class amplitudes {
+  public:
+    amplitudes(int64_t p, float l) : pts(p), level(l) {}
 
     int64_t pts;
     float level;
   };
-  std::list<amplitudes_t> m_ampqueue;
+
+  std::list<amplitudes> m_ampqueue;
   float m_downmix_matrix[OMX_AUDIO_MAXCHANNELS*OMX_AUDIO_MAXCHANNELS];
 
 protected:
@@ -146,4 +144,3 @@ protected:
   COMXCoreTunel     m_omx_tunnel_splitter_hdmi;
   CCriticalSection m_critSection;
 };
-#endif

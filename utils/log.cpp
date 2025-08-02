@@ -30,7 +30,7 @@
 
 #include "log.h"
 
-static FILE*       m_stream         = NULL;
+static FILE*       m_stream         = nullptr;
 static bool        m_file_is_open   = false;
 static int         m_logLevel       = LOGNONE;
 
@@ -48,20 +48,20 @@ static void CLogClose()
     fclose(m_stream);
     m_file_is_open = false;
   }
-  m_stream = NULL;
+  m_stream = nullptr;
 
   pthread_mutex_destroy(&m_log_mutex);
 }
 
 void _CLogLog(int loglevel, const char *format, ... )
 {
-  if (m_stream == NULL || loglevel > m_logLevel)
+  if (m_stream == nullptr || loglevel > m_logLevel)
     return;
 
   pthread_mutex_lock(&m_log_mutex);
 
   struct timeval now;
-  gettimeofday(&now, NULL);
+  gettimeofday(&now, nullptr);
   const struct tm *time = localtime( &now.tv_sec );
   uint64_t stamp = now.tv_usec + now.tv_sec * 1000000;
 
@@ -82,13 +82,13 @@ bool CLogInit(int level, const char* path)
 {
   if(level == LOGNONE) return false;
 
-  pthread_mutex_init(&m_log_mutex, NULL);
+  pthread_mutex_init(&m_log_mutex, nullptr);
 
   m_logLevel = level;
   g_logging_enabled = true;
   atexit(CLogClose);
 
-  if(path == NULL)
+  if(path == nullptr)
   {
     m_stream = stdout;
     m_file_is_open = g_logging_enabled = true;
@@ -96,7 +96,7 @@ bool CLogInit(int level, const char* path)
   else
   {
     m_stream = fopen(path, "w");
-    m_file_is_open = g_logging_enabled = m_stream != NULL;
+    m_file_is_open = g_logging_enabled = m_stream != nullptr;
   }
 
   return g_logging_enabled;

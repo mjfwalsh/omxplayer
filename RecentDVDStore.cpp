@@ -20,7 +20,6 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include <string.h>
 
 #include "RecentDVDStore.h"
 
@@ -83,7 +82,7 @@ void RecentDVDStore::readStore()
 }
 
 
-void RecentDVDStore::retrieveRecentInfo(const string &key, int &track, int &time, char *audio, char *subtitle)
+void RecentDVDStore::retrieveRecentInfo(const string &key, int &track, int &time, string &audio, string &subtitle)
 {
   if(!m_init) return;
 
@@ -100,10 +99,10 @@ void RecentDVDStore::retrieveRecentInfo(const string &key, int &track, int &time
         time = i->time;
       }
       if(audio[0] == '\0') {
-        strncpy(audio, i->audio.c_str(), 3);
+        audio = i->audio.substr(0, 3);
       }
       if(subtitle[0] == '\0') {
-        strncpy(subtitle, i->subtitle.c_str(), 3);
+        subtitle = i->subtitle.substr(0, 3);
       }
       store.erase(i);
       return;
@@ -112,7 +111,7 @@ void RecentDVDStore::retrieveRecentInfo(const string &key, int &track, int &time
 }
 
 
-void RecentDVDStore::remember(const int &track, const int &time, char *audio, char *subtitle)
+void RecentDVDStore::remember(const int &track, const int &time, const string &audio, const string &subtitle)
 {
   if(!m_init || current_dvd.empty()) return;
 

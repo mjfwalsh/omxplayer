@@ -35,9 +35,9 @@ CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
   int errCode;
   PCRE2_SIZE errOffset;
 
-  m_re = pcre2_compile((const unsigned char *)re, PCRE2_ZERO_TERMINATED, m_iOptions, &errCode, &errOffset, NULL);
+  m_re = pcre2_compile((const unsigned char *)re, PCRE2_ZERO_TERMINATED, m_iOptions, &errCode, &errOffset, nullptr);
 
-  m_match_data = pcre2_match_data_create_from_pattern(m_re, NULL);
+  m_match_data = pcre2_match_data_create_from_pattern(m_re, nullptr);
 
   if (!m_re)
   {
@@ -49,26 +49,17 @@ CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
 
 CRegExp::~CRegExp()
 {
-  PCRE::pcre2_code_free(m_re);
-  PCRE::pcre2_match_data_free(m_match_data);
+  pcre2_code_free(m_re);
+  pcre2_match_data_free(m_match_data);
 }
 
-int CRegExp::RegFind(const char* str, int startoffset, int str_len /*= -1*/)
+int CRegExp::RegFind(const std::string &str, int startoffset)
 {
   m_bMatched    = false;
   m_iMatchCount = 0;
 
-  if (!str)
-  {
-    CLogLog(LOGERROR, "PCRE: Called without a string to match");
-    return -1;
-  }
-
-  if(str_len == -1)
-    str_len = strlen(str);
-
   m_subject = str;
-  int rc = pcre2_match(m_re, (const unsigned char *)str, str_len, startoffset, 0, m_match_data, NULL);
+  int rc = pcre2_match(m_re, (const unsigned char *)str.c_str(), str.size(), startoffset, 0, m_match_data, nullptr);
 
   if (rc < 1)
   {

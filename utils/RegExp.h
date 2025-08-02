@@ -36,14 +36,12 @@ public:
 
   ~CRegExp();
 
-  int RegFind(const char *str, int startoffset = 0, int len = -1);
-  inline int RegFind(const std::string& str, int startoffset = 0) { return RegFind(str.c_str(), startoffset, str.length()); }
-  inline int RegFind(const std::string& str, int startoffset, int len) { return RegFind(str.c_str(), startoffset, len); }
+  int RegFind(const std::string &str, int startoffset = 0);
   std::string GetMatch(int iSub = 0);
 
 private:
   PCRE::pcre2_code *m_re;
-  size_t *m_iOvector = NULL;
+  size_t *m_iOvector = nullptr;
   PCRE::pcre2_match_data *m_match_data;
   int         m_iMatchCount = 0;
   int         m_iOptions = PCRE2_DOTALL;

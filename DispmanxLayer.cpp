@@ -149,16 +149,16 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 
   // set palette is necessary
   if(imagetype == VC_IMAGE_8BPP) {
-    int new_palette[256];  // ARGB
+    uint32_t new_palette[256];  // ARGB
 
-    if(palette == NULL) {
+    if(palette == nullptr) {
       new_palette[0] = 0x00000000; // transparent background
       new_palette[1] = 0xFF000000; // black outline
       new_palette[2] = 0xFFFFFFFF; // white text
       new_palette[3] = 0xFF7F7F7F; // gray
     } else {
       int h = 0;
-      int alpha = 0x0;
+      uint32_t alpha = 0x0;
       for(int i = 0; i < 16; i++) {
         for(int j = 0; j < 16; j++) {
           new_palette[h++] = alpha | palette[j];
@@ -179,7 +179,7 @@ DispmanxLayer::DispmanxLayer(int bytesperpixel, Rect dest_rect, Dimension src_im
 
   m_element = vc_dispmanx_element_add(m_update, s_display, s_layer - 1,
     &dstRect, m_resource, &srcRect,
-    DISPMANX_PROTECTION_NONE, &alpha, NULL, DISPMANX_NO_ROTATE);
+    DISPMANX_PROTECTION_NONE, &alpha, nullptr, DISPMANX_NO_ROTATE);
 
   if(m_element == 0)
     throw "Dispamnx Error: vc_dispmanx_element_add failed";

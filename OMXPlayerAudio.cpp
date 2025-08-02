@@ -69,8 +69,8 @@ m_stream_count(codecs.size()),
 m_flush_requested(false),
 m_config(config)
 {
-  pthread_cond_init(&m_packet_cond, NULL);
-  pthread_mutex_init(&m_lock_decoder, NULL);
+  pthread_cond_init(&m_packet_cond, nullptr);
+  pthread_mutex_init(&m_lock_decoder, nullptr);
 
   m_bAbort = false;
 
@@ -187,7 +187,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
         if(m_flush_requested) return true;
       }
 
-      if(!m_decoder->AddPackets(decoded, decoded_size, pkt->avpkt->dts, pkt->avpkt->pts, m_pAudioCodec->GetFrameSize()))
+      if(!m_decoder->AddPackets(decoded, decoded_size, pkt->avpkt->pts, m_pAudioCodec->GetFrameSize()))
         return false;
     }
   }
@@ -199,7 +199,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
       if(m_flush_requested) return true;
     }
 
-    if(!m_decoder->AddPackets(pkt->avpkt->data, pkt->avpkt->size, pkt->avpkt->dts, pkt->avpkt->pts, 0))
+    if(!m_decoder->AddPackets(pkt->avpkt->data, pkt->avpkt->size, pkt->avpkt->pts, 0))
       return false;
   }
 
@@ -208,7 +208,7 @@ bool OMXPlayerAudio::Decode(OMXPacket *pkt)
 
 void OMXPlayerAudio::Process()
 {
-  OMXPacket *omx_pkt = NULL;
+  OMXPacket *omx_pkt = nullptr;
 
   while(true)
   {
@@ -225,7 +225,7 @@ void OMXPlayerAudio::Process()
     if(m_flush && omx_pkt)
     {
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
       m_flush = false;
     }
     else if(!omx_pkt && !m_packets.empty())
@@ -248,13 +248,13 @@ void OMXPlayerAudio::Process()
     if(m_flush && omx_pkt)
     {
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
       m_flush = false;
     }
     else if(omx_pkt && Decode(omx_pkt))
     {
       delete omx_pkt;
-      omx_pkt = NULL;
+      omx_pkt = nullptr;
     }
     UnLockDecoder();
   }
@@ -294,7 +294,7 @@ bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
     return true;
   }
 
-  if((m_cached_size + pkt->avpkt->size) < m_config.queue_size * 1024 * 1024)
+  if((m_cached_size + pkt->avpkt->size) < m_config.queue_size)
   {
     Lock();
     m_cached_size += pkt->avpkt->size;
@@ -310,10 +310,10 @@ bool OMXPlayerAudio::AddPacket(OMXPacket *pkt)
 bool OMXPlayerAudio::OpenAudioCodec()
 {
   try {
-    m_pAudioCodec = new COMXAudioCodecOMX(m_config.hints, m_config.layout);
+    m_pAudioCodec = new COMXAudioCodecOMX(m_config.hints);
   }
   catch(const char *msg) {
-    m_pAudioCodec = NULL;
+    m_pAudioCodec = nullptr;
     return false;
   }
 
@@ -324,7 +324,7 @@ void OMXPlayerAudio::CloseAudioCodec()
 {
   if(m_pAudioCodec)
     delete m_pAudioCodec;
-  m_pAudioCodec = NULL;
+  m_pAudioCodec = nullptr;
 }
 
 bool OMXPlayerAudio::IsPassthrough(COMXStreamInfo hints)
@@ -355,7 +355,7 @@ bool OMXPlayerAudio::OpenDecoder()
   catch(const char *msg)
   {
   puts(msg);
-    m_decoder = NULL;
+    m_decoder = nullptr;
     return false;
   }
 
@@ -382,7 +382,7 @@ bool OMXPlayerAudio::CloseDecoder()
 {
   if(m_decoder)
     delete m_decoder;
-  m_decoder   = NULL;
+  m_decoder   = nullptr;
   return true;
 }
 

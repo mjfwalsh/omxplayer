@@ -30,7 +30,6 @@
 
 class OMXClock;
 class OMXPacket;
-struct AVStream;
 
 class OMXPlayerVideo : public OMXThread
 {
@@ -39,7 +38,7 @@ protected:
   int64_t                   m_iCurrentPts = 0;
   pthread_cond_t            m_packet_cond;
   pthread_mutex_t           m_lock_decoder;
-  COMXVideo                 *m_decoder = NULL;
+  COMXVideo                 *m_decoder = nullptr;
   float                     m_fps = 25.0f;
   bool                      m_flush = false;
   std::atomic<bool>         m_flush_requested;
@@ -58,8 +57,8 @@ public:
   bool AddPacket(OMXPacket *pkt);
   int  GetDecoderBufferSize();
   int  GetDecoderFreeSpace();
-  int64_t GetCurrentPTS() { return m_iCurrentPts; };
-  unsigned int GetCached() { return m_cached_size; };
+  int64_t GetCurrentPTS() { return m_iCurrentPts; }
+  unsigned int GetCached() { return m_cached_size; }
   void SubmitEOS();
   bool IsEOS();
   void SetDelay(int64_t delay) { m_iVideoDelay = delay; }
@@ -74,7 +73,5 @@ private:
   void Process() override;
   void Decode(OMXPacket *pkt);
   void SubmitEOSInternal();
-  OMXPlayerVideo(const OMXPlayerVideo&) = delete;
-  OMXPlayerVideo& operator=(const OMXPlayerVideo&) = delete;
 };
 #endif

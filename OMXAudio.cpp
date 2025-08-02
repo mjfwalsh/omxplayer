@@ -222,7 +222,7 @@ bool COMXAudio::PortSettingsChanged()
 
     omx_err = m_omx_render_hdmi.SetConfig(OMX_IndexConfigBrcmClockReferenceSource, &configBool);
     if (omx_err != OMX_ErrorNone)
-       return false;
+      return false;
 
     OMX_CONFIG_BRCMAUDIODESTINATIONTYPE audioDest;
     OMX_INIT_STRUCTURE(audioDest);
@@ -346,14 +346,6 @@ bool COMXAudio::PortSettingsChanged()
   return true;
 }
 
-static unsigned count_bits(uint64_t value)
-{
-  unsigned bits = 0;
-  for(;value;++bits)
-    value &= value - 1;
-  return bits;
-}
-
 COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t channelMap, unsigned int uiBitsPerSample)
   :
   m_CurrentVolume   (0      ),
@@ -368,7 +360,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   CSingleLock lock (m_critSection);
   OMX_ERRORTYPE omx_err;
 
-  m_InputChannels = count_bits(channelMap);
+  m_InputChannels = CPCMRemap::CountBits(channelMap);
 
   if(m_InputChannels == 0)
     throw "COMXAudio Error: No input channels";
@@ -538,7 +530,7 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   if(m_eEncoding == OMX_AUDIO_CodingPCM)
   {
     OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer();
-    if(omx_buffer == NULL)
+    if(omx_buffer == nullptr)
     {
       CLogLog(LOGERROR, "COMXAudio::Initialize - buffer error 0x%08x", omx_err);
       throw "COMXAudio Error: buffer error";
@@ -562,11 +554,11 @@ COMXAudio::COMXAudio(OMXClock *clock, const OMXAudioConfig &config, uint64_t cha
   else if(m_config.hwdecode)
   {
     // send decoder config
-    if(m_config.hints.extrasize > 0 && m_config.hints.extradata != NULL)
+    if(m_config.hints.extrasize > 0 && m_config.hints.extradata != nullptr)
     {
       OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer();
 
-      if(omx_buffer == NULL)
+      if(omx_buffer == nullptr)
       {
         CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
         throw "COMXAudio Error: GetInputBuffer error";
@@ -775,25 +767,25 @@ bool COMXAudio::ApplyVolume(void)
 
 
 //***********************************************************************************************
-bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int64_t pts, unsigned int frame_size)
+bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t pts, unsigned int frame_size)
 {
   CSingleLock lock (m_critSection);
 
   unsigned pitch = (m_config.passthrough || m_config.hwdecode) ? 1:(m_BitsPerSample >> 3) * m_InputChannels;
   unsigned int demuxer_samples = len / pitch;
   unsigned int demuxer_samples_sent = 0;
-  uint8_t *demuxer_content = (uint8_t *)data;
+  const uint8_t *demuxer_content = (const uint8_t *)data;
 
   OMX_ERRORTYPE omx_err;
 
-  OMX_BUFFERHEADERTYPE *omx_buffer = NULL;
+  OMX_BUFFERHEADERTYPE *omx_buffer = nullptr;
 
   while(demuxer_samples_sent < demuxer_samples)
   {
     // 200ms timeout
     omx_buffer = m_omx_decoder.GetInputBuffer(200);
 
-    if(omx_buffer == NULL)
+    if(omx_buffer == nullptr)
     {
       CLogLog(LOGERROR, "COMXAudio::Decode timeout");
       puts("COMXAudio::Decode timeout");
@@ -826,7 +818,7 @@ bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t dts, int6
         unsigned int frame = (demuxer_samples_sent + sample) / frame_samples;
         unsigned int sample_in_frame = (demuxer_samples_sent + sample) - frame * frame_samples;
         int out_remaining = std::min(std::min(frame_samples - sample_in_frame, samples), samples-sample);
-        uint8_t *src = demuxer_content + frame*frame_size + sample_in_frame * sample_pitch;
+        const uint8_t *src = demuxer_content + frame*frame_size + sample_in_frame * sample_pitch;
         uint8_t *dst = (uint8_t *)omx_buffer->pBuffer + sample * sample_pitch;
         for (unsigned int channel = 0; channel < m_InputChannels; channel++)
         {
@@ -919,14 +911,14 @@ void COMXAudio::UpdateAttenuation()
   // discard too old data
   while(!m_ampqueue.empty())
   {
-    const amplitudes_t &v = m_ampqueue.front();
+    const amplitudes &v = m_ampqueue.front();
     /* we'll also consume if queue gets unexpectedly long to avoid filling memory */
     if (v.pts == AV_NOPTS_VALUE || v.pts < stamp || v.pts - stamp > 15000000)
       m_ampqueue.pop_front();
     else break;
   }
   float maxlevel = 0.0f, imminent_maxlevel = 0.0f;
-  for(const amplitudes_t &v : m_ampqueue)
+  for(const amplitudes &v : m_ampqueue)
   {
     maxlevel = std::max(maxlevel, v.level);
     // check for maximum volume in next 200ms
@@ -995,7 +987,7 @@ int64_t COMXAudio::GetDelay()
   else // just measure the input fifo
   {
     unsigned int used = m_omx_decoder.GetInputBufferSize() - m_omx_decoder.GetInputBufferSpace();
-    return m_InputBytesPerMicrosec ? (float)used / (float)m_InputBytesPerMicrosec : 0.0f;
+    return m_InputBytesPerMicrosec ? (float)used / (float)m_InputBytesPerMicrosec : 0;
   }
 }
 
@@ -1083,7 +1075,7 @@ void COMXAudio::SubmitEOS()
   OMX_ERRORTYPE omx_err = OMX_ErrorNone;
   OMX_BUFFERHEADERTYPE *omx_buffer = m_omx_decoder.GetInputBuffer(1000);
 
-  if(omx_buffer == NULL)
+  if(omx_buffer == nullptr)
   {
     CLogLog(LOGERROR, "%s::%s - buffer error 0x%08x", CLASSNAME, __func__, omx_err);
     m_failed_eos = true;
