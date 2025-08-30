@@ -27,6 +27,7 @@ extern "C" {
 #include "OMXClock.h"
 #include "OMXPacket.h"
 #include "OMXStreamInfo.h"
+#include "utils/defs.h"
 #include "utils/log.h"
 
 #ifdef CLASSNAME
@@ -364,28 +365,28 @@ COMXVideo::COMXVideo(OMXClock *clock, const OMXVideoConfig &config)
     {
       switch(m_config.hints.profile)
       {
-        case FF_PROFILE_H264_BASELINE:
+        case AV_PROFILE_H264_BASELINE:
           // (role name) video_decoder.avc
           // H.264 Baseline profile
           decoder_name = OMX_H264BASE_DECODER;
           m_codingType = OMX_VIDEO_CodingAVC;
           m_video_codec_name = "omx-h264";
           break;
-        case FF_PROFILE_H264_MAIN:
+        case AV_PROFILE_H264_MAIN:
           // (role name) video_decoder.avc
           // H.264 Main profile
           decoder_name = OMX_H264MAIN_DECODER;
           m_codingType = OMX_VIDEO_CodingAVC;
           m_video_codec_name = "omx-h264";
           break;
-        case FF_PROFILE_H264_HIGH:
+        case AV_PROFILE_H264_HIGH:
           // (role name) video_decoder.avc
           // H.264 Main profile
           decoder_name = OMX_H264HIGH_DECODER;
           m_codingType = OMX_VIDEO_CodingAVC;
           m_video_codec_name = "omx-h264";
           break;
-        case FF_PROFILE_UNKNOWN:
+        case AV_PROFILE_UNKNOWN:
           decoder_name = OMX_H264HIGH_DECODER;
           m_codingType = OMX_VIDEO_CodingAVC;
           m_video_codec_name = "omx-h264";

@@ -34,6 +34,7 @@ extern "C" {
 #include "OMXPacket.h"
 #include "OMXClock.h"
 #include "omxplayer.h"
+#include "utils/defs.h"
 #include "utils/log.h"
 #include "utils/simple_geometry.h"
 
@@ -479,13 +480,13 @@ std::string OMXReader::GetStreamCodecName(AVStream *stream)
       return string(p, 4);
   }
 
-#ifdef FF_PROFILE_DTS_HD_MA
+#ifdef AV_PROFILE_DTS_HD_MA
   /* use profile to determine the DTS type */
   if (stream->codecpar->codec_id == AV_CODEC_ID_DTS)
   {
-    if (stream->codecpar->profile == FF_PROFILE_DTS_HD_MA)
+    if (stream->codecpar->profile == AV_PROFILE_DTS_HD_MA)
       return "dtshd_ma";
-    else if (stream->codecpar->profile == FF_PROFILE_DTS_HD_HRA)
+    else if (stream->codecpar->profile == AV_PROFILE_DTS_HD_HRA)
       return "dtshd_hra";
     else
       return "dca";

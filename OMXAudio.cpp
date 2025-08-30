@@ -820,7 +820,7 @@ bool COMXAudio::AddPackets(const void* data, unsigned int len, int64_t pts, unsi
         int out_remaining = std::min(std::min(frame_samples - sample_in_frame, samples), samples-sample);
         const uint8_t *src = demuxer_content + frame*frame_size + sample_in_frame * sample_pitch;
         uint8_t *dst = (uint8_t *)omx_buffer->pBuffer + sample * sample_pitch;
-        for (unsigned int channel = 0; channel < m_InputChannels; channel++)
+        for (int channel = 0; channel < m_InputChannels; channel++)
         {
           //CLogLog(LOGDEBUG, "%s::%s copy(%d,%d,%d) (s:%d f:%d sin:%d c:%d)", CLASSNAME, __func__, dst-(uint8_t *)omx_buffer->pBuffer, src-demuxer_content, out_remaining, sample, frame, sample_in_frame
           memcpy(dst, src, out_remaining * sample_pitch);
