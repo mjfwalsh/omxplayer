@@ -7,6 +7,8 @@
 #endif
 
 #if LIBAVCODEC_VERSION_MAJOR < 62
+    #include <libavcodec/avcodec.h>
+
     #define AV_PROFILE_DTS_HD_HRA FF_PROFILE_DTS_HD_HRA
     #define AV_PROFILE_DTS_HD_MA FF_PROFILE_DTS_HD_MA
     #define AV_PROFILE_H264_BASELINE FF_PROFILE_H264_BASELINE
