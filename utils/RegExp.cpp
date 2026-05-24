@@ -25,8 +25,6 @@
 #include "RegExp.h"
 #include "log.h"
 
-using namespace PCRE;
-
 CRegExp::CRegExp(const char *re, bool casesensitive /* = false */)
 {
   if(!casesensitive)

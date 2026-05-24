@@ -19,6 +19,7 @@
  */
 
 #include <string>
+#include <stdint.h>
 
 #include "utils/simple_geometry.h"
 

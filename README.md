@@ -24,6 +24,13 @@ directory with links to 20 most recently played files.
 
 * **CEC Input**: OMXPlayer should respond to commands from your TV's remote control.
 
+* **Graphical Subtitles**
+
+* Suport for more recent version of ffmpeg (master branch, April 2026).
+
+* Support for more recent Raspberry OS versions: Buster, Bullseye and Trixie
+  - Please see detailed instructions regarding the **kms driver** and disabling the GUI.
+
 ## LIMITATIONS
 
 OMXPlayer does not support software video decoding. HEVC is not supported, and DVD video
@@ -31,8 +38,6 @@ will only play on systems with mpeg2 hardware decoding. This can be purchased on
 isn't available on the rpi4.
 
 DVD menus are not supported.
-
-OMXPlayer will not work on 64bit systems.
 
 ## COMPILING
 
@@ -45,9 +50,9 @@ Bullseye no longer comes with the required firmware files but it should still be
 get the required files by compiling and installing RaspberryPi's
 [userland](https://github.com/raspberrypi/userland) repo (requires cmake).
 
-To compile omxplayer you will also need the following packages<sup>[*](#required-packages)</sup>:
+To compile OMXPlayer you will also need the following packages:
 
-    git libasound2-dev libpcre2-dev libboost-dev libcairo2-dev libdvdread-dev
+    git libasound2-dev libpcre2-dev libboost-dev libcairo2-dev libdvdread-dev \
     libdbus-1-dev libavutil-dev libswresample-dev libavcodec-dev libavformat-dev
 
 Once you have these installed you should be able to compile OMXPlayer with a `make`
@@ -56,7 +61,7 @@ Once you have these installed you should be able to compile OMXPlayer with a `ma
 
 To run OMXPlayer need to disable the kms driver. You can do this by replacing it with the fake
 kms driver or by disabling it completely. You can do this by changing the `dtoverlay` setting in
-your system's `/boot/config.txt` file.
+your system's `config.txt` file, located in `/boot/firmware` (if present) or `/boot` (if not).
 
     # kms is enabled so omxplayer can't run
     dtoverlay=vc4-kms-v3d
@@ -64,20 +69,20 @@ your system's `/boot/config.txt` file.
     # the fake kms driver is enabled (note the f before kms)
     dtoverlay=vc4-fkms-v3d
 
-    # the kms driver is completely disabled
+    # the kms driver is completely disabled (recommended)
     #dtoverlay=vc4-kms-v3d
 
-You will also need the following static libraries:
+If you are on **Bullseye** or **Trixie** you will also need to disable the graphical user
+interface and boot into command line mode. **Buster** is the last version of RasberryPi
+OS whose GUI does not need kms to run.
+
+You will also need the following libraries:
 
     libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so
 
-which should be in the `/opt/vc/lib` directory.
-
-You will also need the following packages<sup>[*](#required-packages)</sup>:
+You will also need the following packages (included in the full version of Raspberry PI OS):
 
     libavcodec58 libavformat58 libavutil56 libswresample3 libcairo2
-
-(These packages are included in the full version of Raspberry PI OS.)
 
 ### DVDs
 
@@ -95,20 +100,3 @@ on how to get it.
 Please see the [manpage](omxplayer.pod) for command line options.
 
 Please see [dbus.md](dbus.md) for details on OMXPlayer's dbus interface.
-
-## Required packages
-
-The above package lists assume you have all the packages that come preinstalled with
-Raspberry PI OS (lite) still installed.
-
-If you don't you will also need:
-
-### To compile
-
-    libraspberrypi-dev libraspberrypi0 libraspberrypi-bin gcc g++ libstdc++-10-dev pkg-config
-    binutils libc6-dev libfreetype6-dev  perl
-
-### To run
-
-    libc6 libdbus-1-3 libasound2 libfreetype6 libgcc1 libpcre3
-    libstdc++6 zlib1g ca-certificates dbus libdvdread8

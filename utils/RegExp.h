@@ -22,10 +22,8 @@
 
 #include <string>
 
-namespace PCRE {
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
-}
 
 #include "NoMoveCopy.h"
 
@@ -40,9 +38,9 @@ public:
   std::string GetMatch(int iSub = 0);
 
 private:
-  PCRE::pcre2_code *m_re;
+  pcre2_code *m_re;
   size_t *m_iOvector = nullptr;
-  PCRE::pcre2_match_data *m_match_data;
+  pcre2_match_data *m_match_data;
   int         m_iMatchCount = 0;
   int         m_iOptions = PCRE2_DOTALL;
   bool        m_bMatched = false;
