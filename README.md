@@ -78,7 +78,7 @@ OS whose GUI does not need kms to run.
 
 You will also need the following libraries:
 
-    libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so
+    libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so libbcm_host.so libvchiq_arm.so libvcos.so
 
 You will also need the following packages (included in the full version of Raspberry PI OS):
 

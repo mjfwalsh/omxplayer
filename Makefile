@@ -50,20 +50,24 @@ omxplayer.1: omxplayer.pod
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) deps.mak omxplayer.bin $(DIST) version_info.h omxplayer.1
+	rm -f $(OBJS) *.so deps.mak omxplayer.bin $(DIST) version_info.h omxplayer.1
+
+%.so: /opt/vc/lib/%.so
+	$(STRIP) $< -o $@
 
 .PHONY: dist
-dist:
+dist: omxplayer.bin omxplayer.1 libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so libbcm_host.so libvchiq_arm.so libvcos.so
 	$(STRIP) omxplayer.bin
-	tar -cPf $(DIST) \
+	tar -caPf $(DIST) \
 	--transform 's,^omxplayer$$,/usr/local/bin/omxplayer,S' \
 	--transform 's,^omxplayer\.bin$$,/usr/local/bin/omxplayer.bin,S' \
 	--transform 's,^COPYING$$,/usr/local/share/doc/omxplayer/COPYING,S' \
 	--transform 's,^README\.md$$,/usr/local/share/doc/omxplayer/README,S' \
 	--transform 's,^omxplayer\.1$$,/usr/local/share/man/man1/omxplayer.1,S' \
-	--transform 's,^/opt/vc/lib/,/usr/local/lib/omxplayer/,S' \
+	--transform 's,^.*\.so$$,/usr/local/lib/omxplayer/&,S' \
 	omxplayer omxplayer.bin COPYING README.md omxplayer.1 \
-	/opt/vc/lib/libbrcmEGL.so /opt/vc/lib/libbrcmGLESv2.so /opt/vc/lib/libopenmaxil.so
+	libbrcmEGL.so libbrcmGLESv2.so libopenmaxil.so \
+	libbcm_host.so libvchiq_arm.so libvcos.so
 
 .PHONY: install
 install:
