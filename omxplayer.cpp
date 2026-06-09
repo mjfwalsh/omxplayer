@@ -115,6 +115,7 @@ static bool              m_playlist_enabled    = true;
 static float             m_latency             = 0.0f;
 static VideoCore         m_video_core;
 static CECListener       m_cec_listener;
+static bool              m_keep_last_frame     = false;
 
 template <class T>
 static void safe_delete(T &object)
@@ -371,6 +372,7 @@ static int startup(int argc, char *argv[])
   const int start_paused_opt = 0x403;
   const int ffmpeg_log_level = 0x404;
   const int omxplayer_log_level = 0x405;
+  const int keep_last_frame_opt = 0x8000;
 
   struct option longopts[] = {
     { "info",         no_argument,        nullptr,          'i' },
@@ -438,6 +440,7 @@ static int startup(int argc, char *argv[])
     { "start-paused", no_argument,        nullptr,          start_paused_opt },
     { "ffmpeg-log",   required_argument,  nullptr,          ffmpeg_log_level },
     { "log",          required_argument,  nullptr,          omxplayer_log_level },
+    { "keep-last-frame", no_argument,     nullptr,          keep_last_frame_opt },
     { nullptr, 0, nullptr, 0 }
   };
 
@@ -823,6 +826,9 @@ static int startup(int argc, char *argv[])
         break;
       case start_paused_opt:
         m_Pause = true;
+        break;
+      case keep_last_frame_opt:
+        m_keep_last_frame = true;
         break;
       case 'h':
         print_usage();
@@ -2050,6 +2056,12 @@ static int run_play_loop()
 
     if(m_omx_reader->IsEof() && !m_omx_pkt)
     {
+      if (!m_loop && m_keep_last_frame)
+      {
+        OMXClock::Sleep(100);
+        continue;
+      }
+
       if (!m_send_eos && m_player_video)
         m_player_video->SubmitEOS();
       if (!m_send_eos && m_player_audio)
