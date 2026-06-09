@@ -2221,6 +2221,7 @@ static int playlist_control()
     m_firstfile = true;
     m_subtitle_index = -1;
     m_audio_index = -1;
+    m_stopped = false;
 
     return CHANGE_FILE;
   }
