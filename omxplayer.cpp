@@ -114,7 +114,7 @@ static std::string       m_replacement_filename;
 static bool              m_playlist_enabled    = true;
 static float             m_latency             = 0.0f;
 static VideoCore         m_video_core;
-static CECListener       m_cec_listener;
+static CECListener       *m_cec_listener       = NULL;
 static bool              m_keep_last_frame     = false;
 
 template <class T>
@@ -373,6 +373,7 @@ static int startup(int argc, char *argv[])
   const int ffmpeg_log_level = 0x404;
   const int omxplayer_log_level = 0x405;
   const int keep_last_frame_opt = 0x8000;
+  const int no_cec_opt      = 0x8001;
 
   struct option longopts[] = {
     { "info",         no_argument,        nullptr,          'i' },
@@ -441,6 +442,7 @@ static int startup(int argc, char *argv[])
     { "ffmpeg-log",   required_argument,  nullptr,          ffmpeg_log_level },
     { "log",          required_argument,  nullptr,          omxplayer_log_level },
     { "keep-last-frame", no_argument,     nullptr,          keep_last_frame_opt },
+    { "no-cec",       no_argument,        nullptr,          no_cec_opt },
     { nullptr, 0, nullptr, 0 }
   };
 
@@ -453,6 +455,7 @@ static int startup(int argc, char *argv[])
   const char        *log_file           = nullptr;
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
+  bool              enable_cec          = true;
 
   while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, nullptr)) != -1)
   {
@@ -830,6 +833,9 @@ static int startup(int argc, char *argv[])
       case keep_last_frame_opt:
         m_keep_last_frame = true;
         break;
+      case no_cec_opt:
+        enable_cec = false;
+        break;
       case 'h':
         print_usage();
         return EXIT_SUCCESS;
@@ -847,6 +853,9 @@ static int startup(int argc, char *argv[])
     print_usage();
     return EXIT_FAILURE;
   }
+
+  if (enable_cec)
+    m_cec_listener = new CECListener();
 
   // stop two instances of omxplayer running
   {
@@ -1929,8 +1938,7 @@ static int run_play_loop()
       enum ControlFlow next;
 
       if(!m_keyboard || (action = m_keyboard->getEvent()) == INVALID_ACTION)
-        action = m_cec_listener.getEvent();
-
+        action = (m_cec_listener) ? m_cec_listener->getEvent() : INVALID_ACTION;
       if(action != INVALID_ACTION)
         next = handle_event(action, nullptr);
       else if(m_omxcontrol)
