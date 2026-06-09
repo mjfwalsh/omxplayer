@@ -124,6 +124,7 @@ enum Action
   SET_SPEED,
   SET_SUBTITLE_STREAM,
   SET_VOLUME,
+  LIST_CHAPTERS,
 };
 
 #define KEY_LEFT 0x5b44

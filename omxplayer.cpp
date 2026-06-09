@@ -1635,6 +1635,13 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       break;
     }
 
+  case LIST_CHAPTERS:
+    {
+      std::vector<std::string> chapter_list;
+      m_omx_reader->GetChapterMetaData(chapter_list);
+      m->respond_array(chapter_list);
+    }
+
   case DO_ACTION:
     {
       int action;

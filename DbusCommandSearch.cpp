@@ -49,6 +49,7 @@ const struct lookup_item table[] = {
 {"HideVideo",           ACTION_HIDE_VIDEO,         INVALID_PROPERTY},
 {"Identity",            GET_IDENTITY,              GET_IDENTITY},
 {"ListAudio",           LIST_AUDIO,                INVALID_PROPERTY},
+{"ListChapters",        LIST_CHAPTERS,             INVALID_PROPERTY},
 {"ListSubtitles",       LIST_SUBTITLES,            INVALID_PROPERTY},
 {"ListVideo",           LIST_VIDEO,                INVALID_PROPERTY},
 {"MaximumRate",         GET_MAXIMUM_RATE,          GET_MAXIMUM_RATE},
