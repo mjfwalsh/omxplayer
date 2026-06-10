@@ -1601,7 +1601,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       int64_t layer;
 
       // Make sure a value is sent for setting layer
-      if(m->ignore_arg() && m->get_arg_int64(&layer))
+      if(m->get_arg_int64(&layer))
       {
         m->respond_int64(layer);
         if(m_player_video) m_player_video->SetLayer(layer);
