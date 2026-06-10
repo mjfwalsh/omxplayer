@@ -1313,6 +1313,43 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
     break;
 
+  case SET_VIDEO_CROP_POS:
+    {
+      std::string pos;
+      if(!m->ignore_arg() || !m->get_arg_string(pos))
+      {
+        m->respond_invalid_args();
+        break;
+      }
+      int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+      sscanf(pos.c_str(), "%d %d %d %d", &x1, &y1, &x2, &y2);
+      m_config_video.src_rect.x = x1;
+      m_config_video.src_rect.y = y1;
+      m_config_video.src_rect.width = x2 - x1;
+      m_config_video.src_rect.height = y2 - y1;
+      if(m_player_video) m_player_video->SetVideoRect(m_config_video.src_rect, m_config_video.dst_rect);
+      break;
+    }
+
+  case SET_VIDEO_POS:
+    {
+      std::string pos;
+      if(!m->ignore_arg() || !m->get_arg_string(pos))
+      {
+        m->respond_invalid_args();
+        break;
+      }
+      int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+      sscanf(pos.c_str(), "%d %d %d %d", &x1, &y1, &x2, &y2);
+      m_config_video.dst_rect.x = x1;
+      m_config_video.dst_rect.y = y1;
+      m_config_video.dst_rect.width = x2 - x1;
+      m_config_video.dst_rect.height = y2 - y1;
+      if(m_player_video) m_player_video->SetVideoRect(m_config_video.src_rect, m_config_video.dst_rect);
+      //if(m_player_subtitles) m_player_subtitles->SetSubtitleRect(x1, y1, x2, y2);
+      break;
+    }
+
   case ACTION_HIDE_VIDEO:
     // set alpha to minimum
     if(m_player_video) m_player_video->SetAlpha(0);
