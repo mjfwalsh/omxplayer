@@ -599,3 +599,36 @@ bool OMXReader::SetAvDict(const char *ad)
 {
   return av_dict_parse_string(&s_avdict, ad, ":", ",", 0) >= 0;
 }
+
+void OMXReader::GetChapterMetaData(std::vector<std::string>& chapter_list)
+{
+  chapter_list.clear();
+
+  if (!m_pFormatContext)
+    return;
+
+  for (unsigned int i = 0; i < m_pFormatContext->nb_chapters; i++)
+  {
+    AVChapter *ch = m_pFormatContext->chapters[i];
+
+    int64_t start_ms = av_rescale_q(
+      ch->start,
+      ch->time_base,
+      AVRational{1,1000});
+
+    const AVDictionaryEntry *title =
+      av_dict_get(ch->metadata, "title", NULL, 0);
+
+    char buf[256];
+
+    snprintf(buf,
+             sizeof(buf),
+             "%02lld:%02lld:%02lld %s",
+             start_ms / 3600000,
+             (start_ms / 60000) % 60,
+             (start_ms / 1000) % 60,
+             title ? title->value : "");
+
+    chapter_list.push_back(buf);
+  }
+}

@@ -114,7 +114,8 @@ static std::string       m_replacement_filename;
 static bool              m_playlist_enabled    = true;
 static float             m_latency             = 0.0f;
 static VideoCore         m_video_core;
-static CECListener       m_cec_listener;
+static CECListener       *m_cec_listener       = NULL;
+static bool              m_keep_last_frame     = false;
 
 template <class T>
 static void safe_delete(T &object)
@@ -371,6 +372,8 @@ static int startup(int argc, char *argv[])
   const int start_paused_opt = 0x403;
   const int ffmpeg_log_level = 0x404;
   const int omxplayer_log_level = 0x405;
+  const int keep_last_frame_opt = 0x8000;
+  const int no_cec_opt      = 0x8001;
 
   struct option longopts[] = {
     { "info",         no_argument,        nullptr,          'i' },
@@ -438,6 +441,8 @@ static int startup(int argc, char *argv[])
     { "start-paused", no_argument,        nullptr,          start_paused_opt },
     { "ffmpeg-log",   required_argument,  nullptr,          ffmpeg_log_level },
     { "log",          required_argument,  nullptr,          omxplayer_log_level },
+    { "keep-last-frame", no_argument,     nullptr,          keep_last_frame_opt },
+    { "no-cec",       no_argument,        nullptr,          no_cec_opt },
     { nullptr, 0, nullptr, 0 }
   };
 
@@ -450,6 +455,7 @@ static int startup(int argc, char *argv[])
   const char        *log_file           = nullptr;
   bool              use_key_ctrl        = true;
   const char        *dbus_name          = "org.mpris.MediaPlayer2.omxplayer";
+  bool              enable_cec          = true;
 
   while ((c = getopt_long(argc, argv, "awiIhvn:l:o:slb::pd3:Myzt:rg", longopts, nullptr)) != -1)
   {
@@ -824,6 +830,12 @@ static int startup(int argc, char *argv[])
       case start_paused_opt:
         m_Pause = true;
         break;
+      case keep_last_frame_opt:
+        m_keep_last_frame = true;
+        break;
+      case no_cec_opt:
+        enable_cec = false;
+        break;
       case 'h':
         print_usage();
         return EXIT_SUCCESS;
@@ -841,6 +853,9 @@ static int startup(int argc, char *argv[])
     print_usage();
     return EXIT_FAILURE;
   }
+
+  if (enable_cec)
+    m_cec_listener = new CECListener();
 
   // stop two instances of omxplayer running
   {
@@ -1298,6 +1313,43 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
     }
     break;
 
+  case SET_VIDEO_CROP_POS:
+    {
+      std::string pos;
+      if(!m->ignore_arg() || !m->get_arg_string(pos))
+      {
+        m->respond_invalid_args();
+        break;
+      }
+      int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+      sscanf(pos.c_str(), "%d %d %d %d", &x1, &y1, &x2, &y2);
+      m_config_video.src_rect.x = x1;
+      m_config_video.src_rect.y = y1;
+      m_config_video.src_rect.width = x2 - x1;
+      m_config_video.src_rect.height = y2 - y1;
+      if(m_player_video) m_player_video->SetVideoRect(m_config_video.src_rect, m_config_video.dst_rect);
+      break;
+    }
+
+  case SET_VIDEO_POS:
+    {
+      std::string pos;
+      if(!m->ignore_arg() || !m->get_arg_string(pos))
+      {
+        m->respond_invalid_args();
+        break;
+      }
+      int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+      sscanf(pos.c_str(), "%d %d %d %d", &x1, &y1, &x2, &y2);
+      m_config_video.dst_rect.x = x1;
+      m_config_video.dst_rect.y = y1;
+      m_config_video.dst_rect.width = x2 - x1;
+      m_config_video.dst_rect.height = y2 - y1;
+      if(m_player_video) m_player_video->SetVideoRect(m_config_video.src_rect, m_config_video.dst_rect);
+      //if(m_player_subtitles) m_player_subtitles->SetSubtitleRect(x1, y1, x2, y2);
+      break;
+    }
+
   case ACTION_HIDE_VIDEO:
     // set alpha to minimum
     if(m_player_video) m_player_video->SetAlpha(0);
@@ -1549,7 +1601,7 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
       int64_t layer;
 
       // Make sure a value is sent for setting layer
-      if(m->ignore_arg() && m->get_arg_int64(&layer))
+      if(m->get_arg_int64(&layer))
       {
         m->respond_int64(layer);
         if(m_player_video) m_player_video->SetLayer(layer);
@@ -1627,6 +1679,13 @@ enum ControlFlow handle_event(enum Action search_key, DMessage *m)
 
       m->respond_array(video_list);
       break;
+    }
+
+  case LIST_CHAPTERS:
+    {
+      std::vector<std::string> chapter_list;
+      m_omx_reader->GetChapterMetaData(chapter_list);
+      m->respond_array(chapter_list);
     }
 
   case DO_ACTION:
@@ -1916,8 +1975,7 @@ static int run_play_loop()
       enum ControlFlow next;
 
       if(!m_keyboard || (action = m_keyboard->getEvent()) == INVALID_ACTION)
-        action = m_cec_listener.getEvent();
-
+        action = (m_cec_listener) ? m_cec_listener->getEvent() : INVALID_ACTION;
       if(action != INVALID_ACTION)
         next = handle_event(action, nullptr);
       else if(m_omxcontrol)
@@ -2050,6 +2108,12 @@ static int run_play_loop()
 
     if(m_omx_reader->IsEof() && !m_omx_pkt)
     {
+      if (!m_loop && m_keep_last_frame)
+      {
+        OMXClock::Sleep(100);
+        continue;
+      }
+
       if (!m_send_eos && m_player_video)
         m_player_video->SubmitEOS();
       if (!m_send_eos && m_player_audio)
@@ -2221,6 +2285,7 @@ static int playlist_control()
     m_firstfile = true;
     m_subtitle_index = -1;
     m_audio_index = -1;
+    m_stopped = false;
 
     return CHANGE_FILE;
   }

@@ -65,6 +65,14 @@ setlayer)
 	dbus-send --print-reply=literal --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.SetLayer int64:$2 >/dev/null
 	;;
 
+setvideopos)
+	dbus-send --print-reply=literal --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.VideoPos objpath:/not/used string:"$2 $3 $4 $5" >/dev/null
+	;;
+
+setvideocroppos)
+	dbus-send --print-reply=literal --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.SetVideoCropPos objpath:/not/used string:"$2 $3 $4 $5" >/dev/null
+	;;
+
 setaspectmode)
 	dbus-send --print-reply=literal --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.SetAspectMode objpath:/not/used string:"$2" >/dev/null
 	;;
@@ -101,8 +109,11 @@ getsource)
 	[ $? -ne 0 ] && exit 1
 	echo "$source" | sed 's/^ *//'
 	;;
+listchapters)
+	dbus-send --print-reply --session --dest=org.mpris.MediaPlayer2.omxplayer /org/mpris/MediaPlayer2 org.mpris.MediaPlayer2.Player.ListChapters | sed -n 's/.*string "\(.*\)"/\1/p'
+	;;
 *)
-	echo "usage: $0 status|openuri|pause|stop|seek|volumeup|volumedown|setposition [position in microseconds]|hidevideo|unhidevideo|togglesubtitles|hidesubtitles|showsubtitles|setvideopos [x1 y1 x2 y2]|setvideocroppos [x1 y1 x2 y2]|setaspectmode [letterbox,fill,stretch,default]|setalpha [alpha (0..255)]|setlayer [layer]|getsource" >&2
+	echo "usage: $0 status|openuri|pause|stop|seek|volumeup|volumedown|setposition [position in microseconds]|hidevideo|unhidevideo|togglesubtitles|hidesubtitles|showsubtitles|setvideopos [x1 y1 x2 y2]|setvideocroppos [x1 y1 x2 y2]|setaspectmode [letterbox,fill,stretch,default]|setalpha [alpha (0..255)]|setlayer [layer]|getsource|listchapters" >&2
 	exit 1
 	;;
 esac
